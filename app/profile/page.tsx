@@ -1,0 +1,100 @@
+import { redirect } from "next/navigation";
+import { AppShell } from "@/components/layout/app-shell";
+import { PageHeader } from "@/components/layout/page-header";
+import { ProfileEditForm } from "@/components/profile/profile-edit-form";
+import { Badge } from "@/components/ui/badge";
+import { Card, CardHeader, CardTitle } from "@/components/ui/card";
+import { VerificationBadge } from "@/components/verification/verification-badge";
+import { createAdminClient } from "@/lib/supabase/admin";
+import { createClient } from "@/lib/supabase/server";
+
+export default async function ProfilePage() {
+  const supabase = await createClient();
+  const { data } = await supabase.auth.getUser();
+  if (!data.user) redirect("/login");
+
+  const admin = createAdminClient();
+  if (!admin) redirect("/app");
+
+  const { data: profile } = await admin.from("profiles").select("*").eq("id", data.user.id).single();
+  const role = String(profile?.role ?? data.user.user_metadata?.role ?? "creator");
+  const bundle = await getProfileBundle(role, data.user.id, data.user.email ?? "");
+
+  if (!bundle.profile) {
+    redirect("/intake");
+  }
+
+  return (
+    <AppShell>
+      <PageHeader
+        eyebrow="Profile settings"
+        title="Edit your Agently profile"
+        description="Update the data used for marketplace cards, readiness checklists, AI matching, valuation, campaign recommendations, and payment workflow context."
+      />
+      <Card>
+        <CardHeader>
+          <div>
+            <CardTitle>{roleLabel(role)} profile</CardTitle>
+            <p className="mt-1 text-sm text-muted-foreground">Changes save to Supabase and update your dashboard immediately.</p>
+          </div>
+          <div className="flex flex-col items-end gap-2">
+            <Badge tone="blue">{role}</Badge>
+            <VerificationBadge status={bundle.profile.verification_status} tier={bundle.profile.verification_tier} />
+          </div>
+        </CardHeader>
+        <ProfileEditForm
+          audit={bundle.audit}
+          platforms={bundle.platforms}
+          portfolio={bundle.portfolio}
+          profile={bundle.profile}
+          role={role as "creator" | "brand" | "freelancer"}
+          serviceRates={bundle.serviceRates}
+        />
+      </Card>
+    </AppShell>
+  );
+}
+
+async function getProfileBundle(role: string, userId: string, email: string) {
+  const admin = createAdminClient();
+  if (!admin) return emptyBundle();
+
+  if (role === "creator") {
+    const { data: creator } = await admin.from("creators").select("*").eq("profile_id", userId).maybeSingle();
+    if (!creator) return emptyBundle();
+    const [{ data: platforms }, { data: audits }] = await Promise.all([
+      admin.from("creator_platforms").select("*").eq("creator_id", creator.id).order("created_at", { ascending: true }),
+      admin.from("creator_audits").select("*").eq("creator_id", creator.id).order("created_at", { ascending: false }).limit(1)
+    ]);
+    return { profile: creator, platforms: platforms ?? [], audit: audits?.[0] ?? null, serviceRates: [], portfolio: [] };
+  }
+
+  if (role === "freelancer") {
+    const { data: freelancer } = await admin.from("freelancers").select("*").eq("profile_id", userId).maybeSingle();
+    if (!freelancer) return emptyBundle();
+    const [{ data: serviceRates }, { data: portfolio }] = await Promise.all([
+      admin.from("freelancer_service_rates").select("*").eq("freelancer_id", freelancer.id).order("created_at", { ascending: true }),
+      admin.from("portfolio_items").select("*").eq("freelancer_id", freelancer.id).order("created_at", { ascending: true })
+    ]);
+    return { profile: freelancer, platforms: [], audit: null, serviceRates: serviceRates ?? [], portfolio: portfolio ?? [] };
+  }
+
+  if (role === "brand") {
+    const { data: brand } = await admin.from("brands").select("*").eq("contact_email", email).maybeSingle();
+    if (!brand) return emptyBundle();
+    const { data: audits } = await admin.from("brand_audits").select("*").eq("brand_id", brand.id).order("created_at", { ascending: false }).limit(1);
+    return { profile: brand, platforms: [], audit: audits?.[0] ?? null, serviceRates: [], portfolio: [] };
+  }
+
+  return emptyBundle();
+}
+
+function emptyBundle() {
+  return { profile: null, platforms: [], audit: null, serviceRates: [], portfolio: [] };
+}
+
+function roleLabel(role: string) {
+  if (role === "brand") return "Brand";
+  if (role === "freelancer") return "Freelancer";
+  return "Creator";
+}

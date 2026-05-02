@@ -1,0 +1,122 @@
+import Link from "next/link";
+import { redirect } from "next/navigation";
+import { AppShell } from "@/components/layout/app-shell";
+import { MarketplaceTabs } from "@/components/marketplace/marketplace-tabs";
+import { PageHeader } from "@/components/layout/page-header";
+import { ProfileCompletenessCard } from "@/components/profile/profile-completeness-card";
+import { ProfileImageUpload } from "@/components/profile/profile-image-upload";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Card, CardHeader, CardTitle } from "@/components/ui/card";
+import { Table, Td, Th } from "@/components/ui/table";
+import { createAdminClient } from "@/lib/supabase/admin";
+import { createClient } from "@/lib/supabase/server";
+import { brandCompleteness } from "@/lib/profile/completeness";
+import { formatCurrency } from "@/lib/utils/format";
+
+export default async function BrandHomePage() {
+  const supabase = await createClient();
+  const { data } = await supabase.auth.getUser();
+  if (!data.user) redirect("/login");
+
+  const admin = createAdminClient();
+  if (!admin) redirect("/dashboard");
+
+  const { data: audit } = await admin.from("brand_audits").select("*").eq("profile_id", data.user.id).order("created_at", { ascending: false }).limit(1).single();
+  const { data: brand } = audit?.brand_id
+    ? await admin.from("brands").select("*").eq("id", audit.brand_id).single()
+    : { data: null };
+  const [{ data: deals }, { data: creators }, { data: platforms }, { data: freelancers }, { data: campaigns }, { data: projects }] = await Promise.all([
+    brand?.id
+    ? await admin.from("deals").select("*").eq("brand_id", brand.id).order("created_at", { ascending: false })
+    : { data: [] },
+    admin.from("creators").select("*").order("created_at", { ascending: false }).limit(6),
+    admin.from("creator_platforms").select("*"),
+    admin.from("freelancers").select("*").order("created_at", { ascending: false }).limit(6),
+    admin.from("campaigns").select("*").eq("profile_id", data.user.id).order("created_at", { ascending: false }),
+    brand?.id
+      ? await admin.from("freelancer_projects").select("*").eq("brand_id", brand.id).order("created_at", { ascending: false })
+      : { data: [] }
+  ]);
+
+  const result = audit?.result as Record<string, unknown> | undefined;
+  const completeness = brandCompleteness({ brand, audit: audit ?? null, campaigns: campaigns ?? [], deals: deals ?? [], projects: projects ?? [] });
+
+  return (
+    <AppShell>
+      <PageHeader
+        eyebrow="Brand home"
+        title={brand?.name ? `${brand.name} campaign workspace` : "Brand campaign workspace"}
+        description="Review your AI campaign audit, creator archetypes, submitted offers, and payment flow."
+        action={<div className="flex flex-wrap gap-2"><Link href="/profile"><Button variant="secondary">Edit profile</Button></Link><Link href="/brand-insights"><Button variant="secondary">View insights</Button></Link><Link href="/campaigns"><Button>Create campaign brief</Button></Link></div>}
+      />
+
+      <section className="grid gap-4 md:grid-cols-3">
+        <Metric label="Bangalore launch fit" value={`${result?.bangalore_launch_fit_score ?? "-"}/100`} />
+        <Metric label="Creator size band" value={String(result?.creator_size_band ?? "Run intake")} />
+        <Metric label="Active offers" value={`${deals?.length ?? 0}`} />
+      </section>
+
+      <div className="mt-5">
+        <ProfileCompletenessCard title="Brand Launch Checklist" completeness={completeness} />
+      </div>
+
+      {brand?.id ? (
+        <Card className="mt-5">
+          <CardHeader><CardTitle>Brand Profile Image</CardTitle><Badge tone="blue">shown on marketplace cards</Badge></CardHeader>
+          <ProfileImageUpload entityId={brand.id} entityType="brand" />
+        </Card>
+      ) : null}
+
+      <Card className="mt-5">
+        <CardHeader><CardTitle>Marketplace Talent</CardTitle><Badge tone="green">{(creators?.length ?? 0) + (freelancers?.length ?? 0)}</Badge></CardHeader>
+        <MarketplaceTabs
+          tabs={[
+            { id: "creators", label: `Available Creators (${creators?.length ?? 0})`, type: "creator", items: creators ?? [], platforms: platforms ?? [] },
+            { id: "freelancers", label: `Available Freelancers (${freelancers?.length ?? 0})`, type: "freelancer", items: freelancers ?? [] }
+          ]}
+        />
+      </Card>
+
+      <section className="mt-5 grid gap-5 xl:grid-cols-[0.9fr_1.1fr]">
+        <Card>
+          <CardHeader><CardTitle>Campaign Audit</CardTitle><Badge tone="blue">{audit?.source ?? "intake"}</Badge></CardHeader>
+          <p className="text-sm leading-6 text-muted-foreground">{String(result?.outreach_brief ?? "Run brand intake to generate a campaign profile.")}</p>
+          <div className="mt-4 space-y-2">
+            {(Array.isArray(result?.ideal_creator_archetypes) ? result?.ideal_creator_archetypes : []).map((item) => (
+              <p key={String(item)} className="rounded-md border bg-white p-3 text-sm">{String(item)}</p>
+            ))}
+          </div>
+        </Card>
+
+        <Card>
+          <CardHeader><CardTitle>Submitted Offers</CardTitle><Badge tone="green">{deals?.length ?? 0}</Badge></CardHeader>
+          <div className="overflow-x-auto">
+            <Table>
+              <thead><tr><Th>Deal</Th><Th>Stage</Th><Th>Payment</Th><Th className="text-right">Amount</Th></tr></thead>
+              <tbody>
+                {(deals ?? []).map((deal) => (
+                  <tr key={deal.id}>
+                    <Td className="font-medium">{deal.title}</Td>
+                    <Td><Badge>{deal.stage}</Badge></Td>
+                    <Td>{deal.payment_status}</Td>
+                    <Td className="text-right font-semibold">{formatCurrency(deal.amount_cents, deal.currency ?? "inr")}</Td>
+                  </tr>
+                ))}
+              </tbody>
+            </Table>
+          </div>
+        </Card>
+      </section>
+    </AppShell>
+  );
+}
+
+function Metric({ label, value }: { label: string; value: string }) {
+  return (
+    <Card>
+      <p className="text-sm text-muted-foreground">{label}</p>
+      <p className="mt-2 text-xl font-bold">{value}</p>
+    </Card>
+  );
+}

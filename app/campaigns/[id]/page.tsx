@@ -1,0 +1,280 @@
+import Link from "next/link";
+import { notFound } from "next/navigation";
+import { ArrowLeft } from "lucide-react";
+import { RecommendationCard } from "@/components/campaigns/recommendation-card";
+import { RemoveShortlistButton } from "@/components/campaigns/remove-shortlist-button";
+import { AppShell } from "@/components/layout/app-shell";
+import { PageHeader } from "@/components/layout/page-header";
+import { Badge } from "@/components/ui/badge";
+import { Card, CardHeader, CardTitle } from "@/components/ui/card";
+import { rankCreators, rankFreelancers, type CampaignRecommendation, type FreelancerRecommendationInput, type ServiceRateInput } from "@/lib/campaigns/recommendations";
+import { getAgentlyData } from "@/lib/db/live-data";
+import { createAdminClient } from "@/lib/supabase/admin";
+import { formatCurrency } from "@/lib/utils/format";
+import type { Campaign, CampaignInvite, CampaignShortlist } from "@/types";
+
+export default async function CampaignDetailPage({ params }: { params: Promise<{ id: string }> }) {
+  const { id } = await params;
+  const [{ creators, creatorPlatforms }, campaignData] = await Promise.all([getAgentlyData(), getCampaignData(id)]);
+  if (!campaignData.campaign) notFound();
+
+  const campaign = campaignData.campaign;
+  const creatorPool = campaign.visibility === "invite_only" && campaignData.invites.length
+    ? creators.filter((creator) => campaignData.invites.some((invite) => invite.creator_id === creator.id))
+    : creators;
+  const creatorRecommendations = rankCreators(campaign, creatorPool, creatorPlatforms).slice(0, 8);
+  const freelancerRecommendations = rankFreelancers(campaign, campaignData.freelancers, campaignData.serviceRates).slice(0, 8);
+  const creatorShortlist = campaignData.shortlists.filter((item) => item.entity_type === "creator");
+  const freelancerShortlist = campaignData.shortlists.filter((item) => item.entity_type === "freelancer");
+  await persistRecommendationSnapshots(campaign.id, creatorRecommendations, freelancerRecommendations);
+
+  return (
+    <AppShell>
+      <PageHeader
+        eyebrow="Campaign recommendations"
+        title={campaign.title}
+        description={campaign.campaign_goal || "Review recommended creators and freelancers for this campaign brief."}
+        action={<Link className="inline-flex h-10 items-center gap-2 rounded-md border bg-white px-4 text-sm font-medium" href="/campaigns"><ArrowLeft className="h-4 w-4" /> Campaigns</Link>}
+      />
+
+      <section className="grid gap-4 md:grid-cols-4">
+        <Metric label="Budget" value={formatCurrency(campaign.budget_cents, "inr")} />
+        <Metric label="Focus" value={campaign.city_focus || campaign.region_focus || "Flexible"} />
+        <Metric label="Length" value={campaign.campaign_length || "Not set"} />
+        <Metric label="Shortlisted" value={`${campaignData.shortlists.length}`} />
+      </section>
+
+      <Card className="mt-5">
+        <CardHeader><CardTitle>Brief Inputs</CardTitle><Badge tone="blue">{campaign.status}</Badge></CardHeader>
+        <div className="grid gap-3 md:grid-cols-3">
+          <BriefItem label="Audience" value={campaign.target_audience || "Not set"} />
+          <BriefItem label="Platforms" value={campaign.platforms.join(", ") || "Flexible"} />
+          <BriefItem label="Languages" value={campaign.languages.join(", ") || "Flexible"} />
+          <BriefItem label="Visibility" value={campaign.visibility.replace("_", " ")} />
+          <BriefItem label="Creator categories" value={campaign.creator_categories.join(", ") || "Flexible"} />
+          <BriefItem label="Freelancer needs" value={campaign.freelancer_needs.join(", ") || "Not requested"} />
+          <BriefItem label="Region" value={campaign.region_focus || campaign.city_focus || "Flexible"} />
+        </div>
+      </Card>
+
+      <Card className="mt-5">
+        <CardHeader><CardTitle>Shortlist</CardTitle><Badge tone="blue">{campaignData.shortlists.length}</Badge></CardHeader>
+        {campaignData.shortlists.length ? (
+          <div className="grid gap-3 md:grid-cols-2">
+            <ShortlistGroup campaign={campaign} items={creatorShortlist} recommendations={creatorRecommendations} title="Creators" type="creator" />
+            <ShortlistGroup campaign={campaign} items={freelancerShortlist} recommendations={freelancerRecommendations} title="Freelancers" type="freelancer" />
+          </div>
+        ) : (
+          <p className="text-sm leading-6 text-muted-foreground">Shortlist talent from the recommendation cards below.</p>
+        )}
+      </Card>
+
+      <section className="mt-5 grid gap-5 xl:grid-cols-2">
+        <RecommendationColumn
+          campaign={campaign}
+          recommendations={creatorRecommendations}
+          shortlists={campaignData.shortlists}
+          title="Recommended Creators"
+          type="creator"
+        />
+        <RecommendationColumn
+          campaign={campaign}
+          recommendations={freelancerRecommendations}
+          shortlists={campaignData.shortlists}
+          title="Recommended Freelancers"
+          type="freelancer"
+        />
+      </section>
+    </AppShell>
+  );
+}
+
+function ShortlistGroup({
+  campaign,
+  items,
+  recommendations,
+  title,
+  type
+}: {
+  campaign: Campaign;
+  items: CampaignShortlist[];
+  recommendations: CampaignRecommendation[];
+  title: string;
+  type: "creator" | "freelancer";
+}) {
+  return (
+    <div className="rounded-md border bg-white p-3">
+      <p className="font-semibold">{title}</p>
+      <div className="mt-3 space-y-2">
+        {items.length ? items.map((item) => {
+          const recommendation = recommendations.find((match) => match.id === item.entity_id);
+          return (
+            <div className="rounded-md bg-muted p-3" key={item.id}>
+              <div className="flex flex-wrap items-start justify-between gap-2">
+                <div>
+                  <p className="text-sm font-semibold">{recommendation?.name ?? item.entity_id}</p>
+                  <p className="mt-1 text-xs text-muted-foreground">{item.reason}</p>
+                </div>
+                <Badge tone="green">{item.fit_score}</Badge>
+              </div>
+              <div className="mt-2 flex flex-wrap gap-2">
+                <RemoveShortlistButton campaignId={campaign.id} entityId={item.entity_id} entityType={type} />
+              </div>
+            </div>
+          );
+        }) : <p className="text-sm text-muted-foreground">No {title.toLowerCase()} shortlisted yet.</p>}
+      </div>
+    </div>
+  );
+}
+
+function RecommendationColumn({
+  campaign,
+  recommendations,
+  shortlists,
+  title,
+  type
+}: {
+  campaign: Campaign;
+  recommendations: CampaignRecommendation[];
+  shortlists: CampaignShortlist[];
+  title: string;
+  type: "creator" | "freelancer";
+}) {
+  return (
+    <Card>
+      <CardHeader><CardTitle>{title}</CardTitle><Badge tone="green">{recommendations.length}</Badge></CardHeader>
+      <div className="space-y-3">
+        {recommendations.map((item) => {
+          const isShortlisted = shortlists.some((shortlist) => shortlist.campaign_id === campaign.id && shortlist.entity_type === type && shortlist.entity_id === item.id);
+          return (
+            <RecommendationCard campaignId={campaign.id} isShortlisted={isShortlisted} item={item} key={item.id} type={type} />
+          );
+        })}
+      </div>
+    </Card>
+  );
+}
+
+function Metric({ label, value }: { label: string; value: string }) {
+  return (
+    <Card>
+      <p className="text-sm text-muted-foreground">{label}</p>
+      <p className="mt-2 text-xl font-bold">{value}</p>
+    </Card>
+  );
+}
+
+function BriefItem({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="rounded-md border bg-white p-3">
+      <p className="text-xs font-semibold uppercase text-muted-foreground">{label}</p>
+      <p className="mt-1 text-sm leading-5">{value}</p>
+    </div>
+  );
+}
+
+async function getCampaignData(id: string) {
+  const admin = createAdminClient();
+  if (!admin) {
+    return { campaign: null, freelancers: [] as FreelancerRecommendationInput[], serviceRates: [] as ServiceRateInput[], shortlists: [] as CampaignShortlist[], invites: [] as CampaignInvite[] };
+  }
+
+  const [campaignResult, freelancersResult, serviceRatesResult, shortlistsResult, invitesResult] = await Promise.all([
+    admin.from("campaigns").select("*").eq("id", id).maybeSingle(),
+    admin.from("freelancers").select("*").order("created_at", { ascending: false }),
+    admin.from("freelancer_service_rates").select("*"),
+    admin.from("campaign_shortlists").select("*").eq("campaign_id", id),
+    admin.from("campaign_invites").select("*").eq("campaign_id", id)
+  ]);
+
+  return {
+    campaign: campaignResult.data ? normalizeCampaign(campaignResult.data) : null,
+    freelancers: (freelancersResult.data ?? []) as FreelancerRecommendationInput[],
+    serviceRates: (serviceRatesResult.data ?? []) as ServiceRateInput[],
+    shortlists: (shortlistsResult.data ?? []).map(normalizeShortlist),
+    invites: (invitesResult.data ?? []).map(normalizeInvite)
+  };
+}
+
+function normalizeCampaign(row: Record<string, unknown>): Campaign {
+  return {
+    id: String(row.id),
+    brand_id: row.brand_id ? String(row.brand_id) : null,
+    profile_id: row.profile_id ? String(row.profile_id) : null,
+    title: String(row.title ?? "Untitled campaign"),
+    campaign_goal: String(row.campaign_goal ?? ""),
+    budget_cents: Number(row.budget_cents ?? 0),
+    city_focus: String(row.city_focus ?? ""),
+    region_focus: String(row.region_focus ?? ""),
+    campaign_length: String(row.campaign_length ?? ""),
+    target_audience: String(row.target_audience ?? ""),
+    platforms: toStringArray(row.platforms),
+    creator_categories: toStringArray(row.creator_categories),
+    freelancer_needs: toStringArray(row.freelancer_needs),
+    languages: toStringArray(row.languages),
+    visibility: String(row.visibility ?? "open"),
+    status: String(row.status ?? "brief")
+  };
+}
+
+function normalizeInvite(row: Record<string, unknown>): CampaignInvite {
+  return {
+    id: String(row.id),
+    campaign_id: String(row.campaign_id),
+    creator_id: String(row.creator_id),
+    status: String(row.status ?? "invited")
+  };
+}
+
+function normalizeShortlist(row: Record<string, unknown>): CampaignShortlist {
+  return {
+    id: String(row.id),
+    campaign_id: String(row.campaign_id),
+    entity_type: String(row.entity_type) as "creator" | "freelancer",
+    entity_id: String(row.entity_id),
+    fit_score: Number(row.fit_score ?? 0),
+    reason: String(row.reason ?? ""),
+    status: String(row.status ?? "shortlisted")
+  };
+}
+
+function toStringArray(value: unknown) {
+  if (Array.isArray(value)) return value.map(String);
+  if (typeof value === "string" && value.trim()) return value.split(",").map((item) => item.trim()).filter(Boolean);
+  return [];
+}
+
+async function persistRecommendationSnapshots(campaignId: string, creators: CampaignRecommendation[], freelancers: CampaignRecommendation[]) {
+  const admin = createAdminClient();
+  if (!admin) return;
+
+  const rows = [
+    ...creators.map((item) => snapshotRow(campaignId, "creator", item)),
+    ...freelancers.map((item) => snapshotRow(campaignId, "freelancer", item))
+  ];
+  if (!rows.length) return;
+
+  await admin
+    .from("campaign_recommendation_snapshots")
+    .upsert(rows, { onConflict: "campaign_id,entity_type,entity_id" });
+}
+
+function snapshotRow(campaignId: string, entityType: "creator" | "freelancer", item: CampaignRecommendation) {
+  return {
+    campaign_id: campaignId,
+    entity_type: entityType,
+    entity_id: item.id,
+    fit_score: item.score,
+    score_breakdown: item.score_breakdown,
+    roi_estimate: item.roi_estimate,
+    watchouts: item.watchouts,
+    match_type: item.match_type,
+    best_use_case: item.best_use_case,
+    expected_outcome: item.expected_outcome,
+    risk_level: item.risk_level,
+    proof_points: item.proof_points,
+    reason: item.reason,
+    updated_at: new Date().toISOString()
+  };
+}
