@@ -4,7 +4,6 @@ import { AppShell } from "@/components/layout/app-shell";
 import { MarketplaceTabs } from "@/components/marketplace/marketplace-tabs";
 import { PageHeader } from "@/components/layout/page-header";
 import { ProfileCompletenessCard } from "@/components/profile/profile-completeness-card";
-import { ProfileImageUpload } from "@/components/profile/profile-image-upload";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardHeader, CardTitle } from "@/components/ui/card";
@@ -27,8 +26,18 @@ export default async function CreatorHomePage() {
   if (!creator) {
     return (
       <AppShell>
-        <PageHeader title="Creator dashboard" eyebrow="Creator home" description="No creator profile found for this account yet." />
-        <Link href="/signup"><Button>Run creator intake</Button></Link>
+        <PageHeader
+          title="Complete creator intake"
+          eyebrow="Creator home"
+          description="Your account exists, but Agently still needs your creator intake to build the profile brands will see. Intake powers matching, sponsor valuation, contract protection, verification signals, and payout workflows."
+          action={<Link href="/intake"><Button>Run creator intake</Button></Link>}
+        />
+        <Card>
+          <p className="font-semibold">Why this is required</p>
+          <p className="mt-2 text-sm leading-6 text-muted-foreground">
+            Without intake, Agently does not know your niche, platforms, audience, city relevance, content style, or brand-fit signals. Complete it once, then you can edit and improve your profile later.
+          </p>
+        </Card>
       </AppShell>
     );
   }
@@ -62,11 +71,6 @@ export default async function CreatorHomePage() {
       <div className="mt-5">
         <ProfileCompletenessCard title="Creator Readiness Checklist" completeness={completeness} />
       </div>
-
-      <Card className="mt-5">
-        <CardHeader><CardTitle>Creator Profile Image</CardTitle><Badge tone="blue">shown on marketplace cards</Badge></CardHeader>
-        <ProfileImageUpload entityId={creator.id} entityType="creator" />
-      </Card>
 
       <Card className="mt-5">
         <CardHeader><CardTitle>Marketplace Network</CardTitle><Badge tone="green">{(brands?.length ?? 0) + (freelancers?.length ?? 0)}</Badge></CardHeader>

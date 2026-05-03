@@ -30,6 +30,21 @@ const operatingSystem = [
   "Protected payment workflow from funding to release"
 ];
 
+const useCases = [
+  {
+    title: "Creators grow sponsor income",
+    copy: "Use pricing guidance, offer negotiation, profile verification, and contract checks to avoid undercharging or giving away broad usage rights."
+  },
+  {
+    title: "Brands build better campaigns",
+    copy: "Create briefs, compare creators and freelancers, shortlist talent, message profiles, track sent offers, and review deliverables from one workspace."
+  },
+  {
+    title: "Freelancers win production work",
+    copy: "List editing, shooting, design, and production services with portfolio proof, service rates, availability, and protected project payouts."
+  }
+];
+
 export default async function HomePage() {
   const user = await getCurrentUser();
 
@@ -74,9 +89,11 @@ export default async function HomePage() {
                 <ArrowRight className="h-4 w-4" />
               </Button>
             </Link>
-            <Link href={user ? "/app" : "/dashboard"}>
-              <Button className="h-11 px-5" variant="secondary">{user ? "Go to your workspace" : "View prototype dashboard"}</Button>
-            </Link>
+            {user ? (
+              <Link href="/app">
+                <Button className="h-11 px-5" variant="secondary">Go to your workspace</Button>
+              </Link>
+            ) : null}
           </div>
         </div>
 
@@ -117,6 +134,21 @@ export default async function HomePage() {
               </div>
             ))}
           </div>
+        </div>
+      </section>
+
+      <section className="mx-auto max-w-7xl px-4 pb-16 sm:px-6 lg:px-8">
+        <div className="mb-5 flex flex-col gap-2">
+          <Badge tone="blue" className="w-fit">Use cases</Badge>
+          <h2 className="text-3xl font-bold tracking-normal">Built for the work around brand deals, not just browsing profiles.</h2>
+        </div>
+        <div className="grid gap-4 md:grid-cols-3">
+          {useCases.map((item) => (
+            <Card key={item.title}>
+              <CardTitle>{item.title}</CardTitle>
+              <p className="mt-3 text-sm leading-6 text-muted-foreground">{item.copy}</p>
+            </Card>
+          ))}
         </div>
       </section>
     </main>

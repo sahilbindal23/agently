@@ -1,11 +1,9 @@
 import { redirect } from "next/navigation";
 import Link from "next/link";
-import { CreateFreelancerProfileForm } from "@/components/freelancers/create-freelancer-profile-form";
 import { AppShell } from "@/components/layout/app-shell";
 import { MarketplaceTabs } from "@/components/marketplace/marketplace-tabs";
 import { PageHeader } from "@/components/layout/page-header";
 import { ProfileCompletenessCard } from "@/components/profile/profile-completeness-card";
-import { ProfileImageUpload } from "@/components/profile/profile-image-upload";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardHeader, CardTitle } from "@/components/ui/card";
@@ -28,13 +26,16 @@ export default async function FreelancerHomePage() {
     return (
       <AppShell>
         <PageHeader
-          title="Add your freelancer profile"
+          title="Complete freelancer intake"
           eyebrow="Production talent"
-          description="Creators can also list production services here. Creator work means posting to your own audience; freelancer work means brands hire you to edit, shoot, design, or produce assets without requiring you to post."
+          description="Your account exists, but Agently still needs your freelancer intake to build the production profile brands will see. Intake powers project matching, service-rate clarity, portfolio verification, and protected payout workflows."
+          action={<Link href="/intake"><Button>Run freelancer intake</Button></Link>}
         />
         <Card>
-          <CardHeader><CardTitle>Create Freelancer Services</CardTitle><Badge tone="blue">creator compatible</Badge></CardHeader>
-          <CreateFreelancerProfileForm />
+          <CardHeader><CardTitle>Why this is required</CardTitle><Badge tone="blue">setup step</Badge></CardHeader>
+          <p className="text-sm leading-6 text-muted-foreground">
+            Without intake, Agently does not know your service category, skills, portfolio links, hourly/project rates, city coverage, or availability. Complete it once, then you can customize your profile later.
+          </p>
         </Card>
       </AppShell>
     );
@@ -69,11 +70,6 @@ export default async function FreelancerHomePage() {
       <div className="mt-5">
         <ProfileCompletenessCard title="Freelancer Readiness Checklist" completeness={completeness} />
       </div>
-
-      <Card className="mt-5">
-        <CardHeader><CardTitle>Freelancer Profile Image</CardTitle><Badge tone="blue">shown on marketplace cards</Badge></CardHeader>
-        <ProfileImageUpload entityId={freelancer.id} entityType="freelancer" />
-      </Card>
 
       <Card className="mt-5">
         <CardHeader><CardTitle>Marketplace Network</CardTitle><Badge tone="green">{(brands?.length ?? 0) + (creators?.length ?? 0)}</Badge></CardHeader>

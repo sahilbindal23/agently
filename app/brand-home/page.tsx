@@ -41,6 +41,25 @@ export default async function BrandHomePage() {
   const result = audit?.result as Record<string, unknown> | undefined;
   const completeness = brandCompleteness({ brand, audit: audit ?? null, campaigns: campaigns ?? [], deals: deals ?? [], projects: projects ?? [] });
 
+  if (!brand) {
+    return (
+      <AppShell>
+        <PageHeader
+          eyebrow="Brand home"
+          title="Complete brand intake"
+          description="Your account exists, but Agently still needs your brand intake to create your campaign workspace. Intake powers creator/freelancer matching, campaign recommendations, verification signals, and future performance insights."
+          action={<Link href="/intake"><Button>Run brand intake</Button></Link>}
+        />
+        <Card>
+          <p className="font-semibold">Why this is required</p>
+          <p className="mt-2 text-sm leading-6 text-muted-foreground">
+            Without intake, Agently does not know your category, target audience, budget range, campaign goal, timeline, or launch market. Complete it once, then refine campaign briefs from your workspace.
+          </p>
+        </Card>
+      </AppShell>
+    );
+  }
+
   return (
     <AppShell>
       <PageHeader
