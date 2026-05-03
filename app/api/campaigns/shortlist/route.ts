@@ -29,14 +29,14 @@ export async function POST(request: Request) {
 
   const { data, error } = await admin
     .from("campaign_shortlists")
-    .insert({
+    .upsert({
       campaign_id: campaignId,
       entity_type: entityType,
       entity_id: entityId,
       fit_score: Number(body.fit_score ?? 0),
       reason: String(body.reason ?? "").trim(),
       status: "shortlisted"
-    })
+    }, { onConflict: "campaign_id,entity_type,entity_id" })
     .select("*")
     .single();
 

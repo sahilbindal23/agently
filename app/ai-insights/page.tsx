@@ -18,7 +18,8 @@ const modules = [
   { title: "Payment risk scoring", icon: WalletCards, copy: "Tracks payment delays, dispute states, release readiness, and future brand reliability signals." }
 ];
 
-export default async function AiInsightsPage() {
+export default async function AiInsightsPage({ searchParams }: { searchParams: Promise<Record<string, string | string[] | undefined>> }) {
+  const params = await searchParams;
   const user = await getCurrentUser();
   if (user?.role === "brand") redirect("/campaigns");
   const { creators } = await getAgentlyData();
@@ -53,9 +54,23 @@ export default async function AiInsightsPage() {
 
       <BrandMatchEngine creators={visibleCreators} role={user?.role ?? "admin"} />
 
-      {showNegotiationCopilot ? <NegotiationCopilot role={negotiationRole} /> : null}
+      {showNegotiationCopilot ? <NegotiationCopilot initialValues={negotiationPrefill(params)} role={negotiationRole} /> : null}
     </AppShell>
   );
+}
+
+function negotiationPrefill(params: Record<string, string | string[] | undefined>) {
+  return {
+    offer_amount_inr: first(params.amount),
+    brand: first(params.brand),
+    deliverables: first(params.deliverables),
+    contract_terms: first(params.terms),
+    valuation_context: first(params.context)
+  };
+}
+
+function first(value: string | string[] | undefined) {
+  return Array.isArray(value) ? value[0] : value;
 }
 
 async function getVisibleCreators(creators: Awaited<ReturnType<typeof getAgentlyData>>["creators"], user: Awaited<ReturnType<typeof getCurrentUser>>) {

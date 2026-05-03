@@ -13,6 +13,8 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { formatCurrency } from "@/lib/utils/format";
 import type { Campaign, CampaignInvite, CampaignShortlist } from "@/types";
 
+export const dynamic = "force-dynamic";
+
 export default async function CampaignDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
   const [{ creators, creatorPlatforms }, campaignData] = await Promise.all([getAgentlyData(), getCampaignData(id)]);

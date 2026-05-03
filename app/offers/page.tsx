@@ -16,6 +16,7 @@ import type { ContractFlag, Deliverable, RiskLevel } from "@/types";
 
 type OfferRow = {
   id: string;
+  brand_id?: string;
   title: string;
   deliverables: string;
   amount_cents: number;
@@ -38,6 +39,7 @@ type ContractRow = {
 
 type ProjectRow = {
   id: string;
+  brand_id?: string;
   title: string;
   scope: string;
   amount_cents: number;
@@ -82,6 +84,11 @@ export default async function OffersPage() {
       .order("created_at", { ascending: false })
     : { data: [] };
   const freelancerProjects = (projects ?? []) as ProjectRow[];
+  const brandIds = Array.from(new Set([
+    ...offers.map((offer) => offer.brand_id).filter((id): id is string => Boolean(id)),
+    ...freelancerProjects.map((project) => project.brand_id).filter((id): id is string => Boolean(id))
+  ]));
+  const brandNames = await getBrandNames(admin, brandIds);
   const latestDeliverables = await getLatestDeliverables(admin, [
     ...offers.map((offer) => ({ type: "deal" as const, id: offer.id })),
     ...freelancerProjects.map((project) => ({ type: "freelancer_project" as const, id: project.id }))
@@ -127,6 +134,15 @@ export default async function OffersPage() {
                     <p className="mt-1 whitespace-pre-wrap text-sm leading-6">{offer.notes}</p>
                   </div>
                 ) : null}
+                <Link href={negotiationHref({
+                  amountCents: offer.amount_cents,
+                  brand: brandNames.get(offer.brand_id ?? "") ?? "",
+                  deliverables: offer.deliverables,
+                  terms: [offer.notes, offerContracts.get(offer.id)?.summary].filter(Boolean).join("\n"),
+                  context: "Creator offer opened from Agently offer inbox."
+                })}>
+                  <Button variant="secondary">Negotiate this offer</Button>
+                </Link>
                 {offer.talent_response ? (
                   <div className="rounded-md bg-muted p-3">
                     <p className="text-xs font-semibold uppercase text-muted-foreground">Your response</p>
@@ -167,6 +183,15 @@ export default async function OffersPage() {
                   <p className="text-xs font-semibold uppercase text-muted-foreground">Terms</p>
                   <p className="mt-1 whitespace-pre-wrap text-sm leading-6">{[project.usage_context, project.approval_terms, project.notes].filter(Boolean).join("\n") || "No extra terms added."}</p>
                 </div>
+                <Link href={negotiationHref({
+                  amountCents: project.amount_cents,
+                  brand: brandNames.get(project.brand_id ?? "") ?? "",
+                  deliverables: project.scope,
+                  terms: [project.usage_context, project.approval_terms, project.notes].filter(Boolean).join("\n"),
+                  context: "Freelancer project opened from Agently offer inbox."
+                })}>
+                  <Button variant="secondary">Negotiate this project</Button>
+                </Link>
                 {project.talent_response ? (
                   <div className="rounded-md bg-muted p-3">
                     <p className="text-xs font-semibold uppercase text-muted-foreground">Your response</p>
@@ -191,6 +216,37 @@ export default async function OffersPage() {
       )}
     </AppShell>
   );
+}
+
+async function getBrandNames(admin: NonNullable<ReturnType<typeof createAdminClient>>, brandIds: string[]) {
+  const map = new Map<string, string>();
+  if (!brandIds.length) return map;
+  const { data } = await admin.from("brands").select("id, name").in("id", brandIds);
+  (data ?? []).forEach((brand) => map.set(String(brand.id), String(brand.name ?? "")));
+  return map;
+}
+
+function negotiationHref({
+  amountCents,
+  brand,
+  deliverables,
+  terms,
+  context
+}: {
+  amountCents: number;
+  brand: string;
+  deliverables: string;
+  terms: string;
+  context: string;
+}) {
+  const params = new URLSearchParams({
+    amount: String(Math.round(amountCents / 100)),
+    brand,
+    deliverables,
+    terms,
+    context
+  });
+  return `/ai-insights?${params.toString()}#negotiation`;
 }
 
 function Metric({ label, value }: { label: string; value: string }) {

@@ -26,8 +26,16 @@ export async function POST(request: Request) {
   if (profile?.role !== "admin" && profile?.role !== "brand") {
     return NextResponse.json({ error: "Only brands or admins can update payment status in this prototype." }, { status: 403 });
   }
+  const brandIds = profile?.role === "brand" ? await getBrandIdsForUser(admin, authData.user.id, authData.user.email ?? "") : [];
 
   if (entityType === "deal") {
+    if (profile?.role === "brand") {
+      const { data: deal } = await admin.from("deals").select("brand_id").eq("id", entityId).single();
+      if (!deal || !brandIds.includes(String(deal.brand_id))) {
+        return NextResponse.json({ error: "Not allowed to update this deal payment." }, { status: 403 });
+      }
+    }
+
     const { data, error } = await admin
       .from("deals")
       .update({ payment_status: status })
@@ -40,6 +48,13 @@ export async function POST(request: Request) {
     return NextResponse.json({ data });
   }
 
+  if (profile?.role === "brand") {
+    const { data: project } = await admin.from("freelancer_projects").select("brand_id").eq("id", entityId).single();
+    if (!project || !brandIds.includes(String(project.brand_id))) {
+      return NextResponse.json({ error: "Not allowed to update this project payment." }, { status: 403 });
+    }
+  }
+
   const { data, error } = await admin
     .from("freelancer_projects")
     .update({ payment_status: status })
@@ -49,6 +64,18 @@ export async function POST(request: Request) {
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
   return NextResponse.json({ data });
+}
+
+async function getBrandIdsForUser(admin: NonNullable<ReturnType<typeof createAdminClient>>, profileId: string, email: string) {
+  const [{ data: brands }, { data: audits }] = await Promise.all([
+    admin.from("brands").select("id").eq("contact_email", email),
+    admin.from("brand_audits").select("brand_id").eq("profile_id", profileId)
+  ]);
+
+  return Array.from(new Set([
+    ...((brands ?? []).map((brand) => String(brand.id))),
+    ...((audits ?? []).map((audit) => String(audit.brand_id)).filter(Boolean))
+  ]));
 }
 
 async function upsertPaymentForDeal(admin: NonNullable<ReturnType<typeof createAdminClient>>, deal: Record<string, unknown>, status: string) {

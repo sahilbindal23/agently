@@ -3,6 +3,7 @@ import { notFound } from "next/navigation";
 import { ArrowLeft } from "lucide-react";
 import { AppShell } from "@/components/layout/app-shell";
 import { PageHeader } from "@/components/layout/page-header";
+import { MessageRecipientButton } from "@/components/messages/message-recipient-button";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, Td, Th } from "@/components/ui/table";
@@ -22,7 +23,7 @@ export default async function FreelancerDetailPage({ params }: { params: Promise
         eyebrow="Freelancer profile"
         title={String(freelancer.display_name)}
         description={String(freelancer.bio ?? "Production partner for creator campaigns.")}
-        action={<Link className="inline-flex h-10 items-center gap-2 rounded-md border bg-white px-4 text-sm font-medium" href="/brand-home"><ArrowLeft className="h-4 w-4" /> Marketplace</Link>}
+        action={<div className="flex flex-wrap gap-2"><MessageRecipientButton entityId={String(freelancer.id)} entityType="freelancer" label="Message freelancer" /><Link className="inline-flex h-9 items-center gap-2 rounded-md border bg-white px-3 text-sm font-medium" href="/brand-home"><ArrowLeft className="h-4 w-4" /> Marketplace</Link></div>}
       />
 
       <section className="grid gap-5 xl:grid-cols-[0.85fr_1.15fr]">

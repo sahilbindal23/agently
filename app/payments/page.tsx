@@ -6,6 +6,7 @@ import { ProtectionCalculator } from "@/components/payments/protection-calculato
 import { Badge } from "@/components/ui/badge";
 import { Card, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, Td, Th } from "@/components/ui/table";
+import { getCurrentUser } from "@/lib/auth/session";
 import { getAgentlyData } from "@/lib/db/live-data";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { formatCurrency } from "@/lib/utils/format";
@@ -13,15 +14,22 @@ import type { Deliverable } from "@/types";
 
 const statuses = ["unpaid", "pending", "funded", "release_ready", "released", "refunded", "disputed"];
 
+export const dynamic = "force-dynamic";
+
 export default async function PaymentsPage() {
+  const user = await getCurrentUser();
+  const admin = createAdminClient();
   const { deals, payments } = await getAgentlyData();
-  const projects = await getFreelancerProjects();
+  const scope = admin && user ? await getPaymentScope(admin, user) : { dealIds: [], brandIds: [], creatorIds: [], freelancerIds: [], projectIds: [] };
+  const visibleDeals = filterDealsForUser(deals, user?.role, scope);
+  const visiblePayments = payments.filter((payment) => visibleDeals.some((deal) => deal.id === payment.deal_id));
+  const projects = await getFreelancerProjects(scope, user?.role);
   const latestDeliverables = await getLatestDeliverables(
-    deals.map((deal) => ({ type: "deal" as const, id: deal.id })),
+    visibleDeals.map((deal) => ({ type: "deal" as const, id: deal.id })),
     projects.map((project) => ({ type: "freelancer_project" as const, id: String(project.id) }))
   );
   const queue = [
-    ...deals.map((deal) => ({
+    ...visibleDeals.map((deal) => ({
       id: deal.id,
       type: "deal" as const,
       title: deal.title,
@@ -29,7 +37,7 @@ export default async function PaymentsPage() {
       amount_cents: deal.amount_cents,
       currency: deal.currency,
       payout_cents: Math.max(0, deal.amount_cents - Math.round(deal.amount_cents * 0.1)),
-      session: payments.find((payment) => payment.deal_id === deal.id)?.stripe_checkout_session_id ?? "not created",
+      session: visiblePayments.find((payment) => payment.deal_id === deal.id)?.stripe_checkout_session_id ?? "not created",
       deliverable: latestDeliverables.get(`deal-${deal.id}`)
     })),
     ...projects.map((project) => ({
@@ -45,6 +53,7 @@ export default async function PaymentsPage() {
     }))
   ];
   const largestAmount = queue.reduce((max, item) => Math.max(max, item.amount_cents), 0);
+  const canManagePayments = user?.role === "admin" || user?.role === "brand";
 
   return (
     <AppShell>
@@ -79,9 +88,14 @@ export default async function PaymentsPage() {
                   <Td>{item.session}</Td>
                   <Td className="text-right">{formatCurrency(item.amount_cents, item.currency)}</Td>
                   <Td className="text-right font-semibold">{formatCurrency(item.payout_cents, item.currency)}</Td>
-                  <Td><PaymentActions entityId={item.id} entityType={item.type} /></Td>
+                  <Td>{canManagePayments ? <PaymentActions entityId={item.id} entityType={item.type} /> : <Badge tone="neutral">view only</Badge>}</Td>
                 </tr>
               ))}
+              {queue.length === 0 ? (
+                <tr>
+                  <Td colSpan={8} className="text-muted-foreground">No payments are connected to your account yet.</Td>
+                </tr>
+              ) : null}
             </tbody>
           </Table>
         </div>
@@ -90,10 +104,50 @@ export default async function PaymentsPage() {
   );
 }
 
-async function getFreelancerProjects() {
+type PaymentScope = {
+  brandIds: string[];
+  creatorIds: string[];
+  freelancerIds: string[];
+};
+
+async function getPaymentScope(admin: NonNullable<ReturnType<typeof createAdminClient>>, user: NonNullable<Awaited<ReturnType<typeof getCurrentUser>>>): Promise<PaymentScope> {
+  if (user.role === "admin") return { brandIds: [], creatorIds: [], freelancerIds: [] };
+
+  const [{ data: brands }, { data: audits }, { data: creators }, { data: freelancers }] = await Promise.all([
+    admin.from("brands").select("id").eq("contact_email", user.email),
+    admin.from("brand_audits").select("brand_id").eq("profile_id", user.id),
+    admin.from("creators").select("id").eq("profile_id", user.id),
+    admin.from("freelancers").select("id").eq("profile_id", user.id)
+  ]);
+
+  return {
+    brandIds: Array.from(new Set([
+      ...((brands ?? []).map((brand) => String(brand.id))),
+      ...((audits ?? []).map((audit) => String(audit.brand_id)).filter(Boolean))
+    ])),
+    creatorIds: (creators ?? []).map((creator) => String(creator.id)),
+    freelancerIds: (freelancers ?? []).map((freelancer) => String(freelancer.id))
+  };
+}
+
+function filterDealsForUser(deals: Awaited<ReturnType<typeof getAgentlyData>>["deals"], role: string | undefined, scope: PaymentScope) {
+  if (role === "admin") return deals;
+  if (role === "brand") return deals.filter((deal) => scope.brandIds.includes(deal.brand_id));
+  if (role === "creator") return deals.filter((deal) => scope.creatorIds.includes(deal.creator_id));
+  return [];
+}
+
+async function getFreelancerProjects(scope: PaymentScope, role: string | undefined) {
   const admin = createAdminClient();
   if (!admin) return [];
-  const { data } = await admin.from("freelancer_projects").select("*").order("created_at", { ascending: false });
+  if (role === "brand" && scope.brandIds.length === 0) return [];
+  if (role === "freelancer" && scope.freelancerIds.length === 0) return [];
+
+  let query = admin.from("freelancer_projects").select("*").order("created_at", { ascending: false });
+  if (role === "brand") query = query.in("brand_id", scope.brandIds);
+  if (role === "freelancer") query = query.in("freelancer_id", scope.freelancerIds);
+  if (role === "creator") return [];
+  const { data } = await query;
   return data ?? [];
 }
 

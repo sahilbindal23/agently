@@ -1,6 +1,7 @@
 import { CreateOfferButton } from "@/components/campaigns/create-offer-button";
 import { CreateFreelancerProjectButton } from "@/components/campaigns/create-freelancer-project-button";
 import { ShortlistButton } from "@/components/campaigns/shortlist-button";
+import { MessageRecipientButton } from "@/components/messages/message-recipient-button";
 import { Badge } from "@/components/ui/badge";
 import { formatCurrency, formatNumber } from "@/lib/utils/format";
 import type { CampaignRecommendation } from "@/lib/campaigns/recommendations";
@@ -38,16 +39,22 @@ export function RecommendationCard({
         <p className="mt-1 text-sm leading-6 text-sky-950">{item.expected_outcome}</p>
       </div>
 
-      <div className="mt-3 grid gap-2 sm:grid-cols-2">
-        {Object.entries(item.score_breakdown).map(([key, value]) => (
-          <div className="rounded-md bg-muted p-2" key={key}>
-            <p className="text-[11px] font-semibold uppercase text-muted-foreground">{key.replaceAll("_", " ")}</p>
-            <div className="mt-1 h-1.5 rounded-full bg-white">
-              <div className="h-1.5 rounded-full bg-primary" style={{ width: `${Math.min(100, Math.max(0, value))}%` }} />
+      <div className="mt-3 rounded-md border bg-white p-3">
+        <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
+          <p className="text-xs font-semibold uppercase text-muted-foreground">Score composition</p>
+          <Badge tone="blue">{scoreLabel(item.score)}</Badge>
+        </div>
+        <div className="grid gap-2 sm:grid-cols-2">
+          {scoreHighlights(item.score_breakdown).map((metric) => (
+            <div className="rounded-md bg-muted px-3 py-2" key={metric.key}>
+              <div className="flex items-center justify-between gap-3">
+                <p className="text-sm font-medium">{metric.label}</p>
+                <Badge tone={metric.value >= 75 ? "green" : metric.value >= 55 ? "amber" : "neutral"}>{metric.value}</Badge>
+              </div>
+              <p className="mt-1 text-xs leading-5 text-muted-foreground">{metric.copy}</p>
             </div>
-            <p className="mt-1 text-xs font-semibold">{value}/100</p>
-          </div>
-        ))}
+          ))}
+        </div>
       </div>
 
       <div className="mt-3 rounded-md border bg-white p-3">
@@ -76,6 +83,7 @@ export function RecommendationCard({
         {isShortlisted ? <Badge tone="blue">shortlisted</Badge> : (
           <ShortlistButton campaignId={campaignId} entityId={item.id} entityType={type} fitScore={item.score} reason={item.reason} />
         )}
+        <MessageRecipientButton entityId={item.id} entityType={type} label="Message" />
         {type === "creator" ? <CreateOfferButton campaignId={campaignId} creatorId={item.id} /> : <CreateFreelancerProjectButton campaignId={campaignId} freelancerId={item.id} />}
       </div>
     </div>
@@ -101,4 +109,26 @@ function MiniMetric({ label, value }: { label: string; value: string }) {
       <p className="text-sm font-semibold">{value}</p>
     </div>
   );
+}
+
+function scoreLabel(score: number) {
+  if (score >= 82) return "strong match";
+  if (score >= 65) return "usable match";
+  return "needs review";
+}
+
+function scoreHighlights(score: CampaignRecommendation["score_breakdown"]) {
+  const entries = [
+    { key: "category_fit", label: "Category", value: score.category_fit, copy: "How closely the niche or service maps to the brief." },
+    { key: "audience_fit", label: "Audience", value: score.audience_fit, copy: "How well the talent can reach the requested audience." },
+    { key: "city_fit", label: "City", value: score.city_fit, copy: "Bangalore and India relevance for this campaign." },
+    { key: "budget_fit", label: "Budget", value: score.budget_fit, copy: "Whether the budget is realistic for the expected work." },
+    { key: "data_confidence", label: "Confidence", value: score.data_confidence, copy: "How much Agently trusts the available data." },
+    { key: "platform_fit", label: "Platform", value: score.platform_fit, copy: "Fit against requested creator channels or production format." },
+    { key: "language_fit", label: "Language", value: score.language_fit, copy: "Language overlap with the campaign market." }
+  ];
+
+  const strongest = [...entries].sort((a, b) => b.value - a.value).slice(0, 2);
+  const weakest = [...entries].sort((a, b) => a.value - b.value).slice(0, 2);
+  return [...strongest, ...weakest].filter((item, index, list) => list.findIndex((entry) => entry.key === item.key) === index).slice(0, 4);
 }

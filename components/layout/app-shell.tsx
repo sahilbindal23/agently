@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { Activity, BarChart3, Bot, BriefcaseBusiness, ClipboardList, CreditCard, FileText, HelpCircle, Home, LayoutDashboard, MessageSquareText, Palette, Users } from "lucide-react";
+import { Activity, BarChart3, Bot, BriefcaseBusiness, ClipboardList, CreditCard, FileText, HelpCircle, Home, LayoutDashboard, MessageSquare, MessageSquareText, Palette, Users } from "lucide-react";
 import { LogoutButton } from "@/components/auth/logout-button";
 import { HomeLogo } from "@/components/layout/home-logo";
 import { GuidedWalkthrough } from "@/components/onboarding/guided-walkthrough";
@@ -13,6 +13,7 @@ const adminNav = [
   { href: "/freelancers", label: "Freelancers", icon: Palette, tour: "freelancers" },
   { href: "/campaigns", label: "Campaigns", icon: ClipboardList, tour: "campaigns" },
   { href: "/deals", label: "Deals", icon: BriefcaseBusiness, tour: "offers" },
+  { href: "/messages", label: "Messages", icon: MessageSquare, tour: "messages" },
   { href: "/activity", label: "Activity", icon: Activity, tour: "activity" },
   { href: "/contracts", label: "Contracts", icon: FileText, tour: "contracts" },
   { href: "/payments", label: "Payments", icon: CreditCard, tour: "payments" },
@@ -25,6 +26,7 @@ const creatorNav = [
   { href: "/creator-home", label: "Home", icon: Home, tour: "home" },
   { href: "/profile", label: "Edit Profile", icon: Users, tour: "profile" },
   { href: "/offers", label: "Offers", icon: BriefcaseBusiness, tour: "offers" },
+  { href: "/messages", label: "Messages", icon: MessageSquare, tour: "messages" },
   { href: "/activity", label: "Activity", icon: Activity, tour: "activity" },
   { href: "/freelancer-home", label: "Freelancer Profile", icon: Palette, tour: "freelancers" },
   { href: "/ai-insights", label: "AI Tools", icon: Bot, tour: "ai" },
@@ -39,6 +41,7 @@ const brandNav = [
   { href: "/campaigns", label: "Campaigns", icon: ClipboardList, tour: "campaigns" },
   { href: "/brand-insights", label: "Insights", icon: BarChart3, tour: "insights" },
   { href: "/deals", label: "Offers", icon: BriefcaseBusiness, tour: "offers" },
+  { href: "/messages", label: "Messages", icon: MessageSquare, tour: "messages" },
   { href: "/activity", label: "Activity", icon: Activity, tour: "activity" },
   { href: "/payments", label: "Payments", icon: CreditCard, tour: "payments" },
   { href: "/demo-guide", label: "Walkthrough", icon: HelpCircle, tour: "walkthrough" },
@@ -49,6 +52,7 @@ const freelancerNav = [
   { href: "/freelancer-home", label: "Home", icon: Home, tour: "home" },
   { href: "/profile", label: "Edit Profile", icon: Users, tour: "profile" },
   { href: "/offers", label: "Offers", icon: BriefcaseBusiness, tour: "offers" },
+  { href: "/messages", label: "Messages", icon: MessageSquare, tour: "messages" },
   { href: "/activity", label: "Activity", icon: Activity, tour: "activity" },
   { href: "/ai-insights", label: "AI Tools", icon: Bot, tour: "ai" },
   { href: "/payments", label: "Payments", icon: CreditCard, tour: "payments" },

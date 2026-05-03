@@ -3,16 +3,18 @@ import { NextResponse } from "next/server";
 import { createServerClient } from "@supabase/ssr";
 
 const publicRoutes = new Set(["/", "/login", "/signup"]);
-const creatorRoutes = ["/creator-home", "/activity", "/profile", "/demo-guide", "/feedback", "/creators", "/freelancers", "/offers", "/freelancer-home", "/ai-insights", "/payments"];
-const freelancerRoutes = ["/freelancer-home", "/activity", "/profile", "/demo-guide", "/feedback", "/creators", "/freelancers", "/offers", "/ai-insights", "/payments"];
-const brandRoutes = ["/brand-home", "/activity", "/profile", "/demo-guide", "/feedback", "/brand-insights", "/campaigns", "/deals", "/creators", "/freelancers", "/payments"];
+const creatorRoutes = ["/creator-home", "/activity", "/messages", "/profile", "/demo-guide", "/feedback", "/creators", "/freelancers", "/brands", "/offers", "/freelancer-home", "/ai-insights", "/payments"];
+const freelancerRoutes = ["/freelancer-home", "/activity", "/messages", "/profile", "/demo-guide", "/feedback", "/creators", "/freelancers", "/brands", "/offers", "/ai-insights", "/payments"];
+const brandRoutes = ["/brand-home", "/activity", "/messages", "/profile", "/demo-guide", "/feedback", "/brand-insights", "/campaigns", "/deals", "/creators", "/freelancers", "/brands", "/payments"];
 const adminRoutes = [
   "/dashboard",
   "/activity",
   "/creators",
   "/freelancers",
+  "/brands",
   "/campaigns",
   "/deals",
+  "/messages",
   "/contracts",
   "/payments",
   "/ai-insights",

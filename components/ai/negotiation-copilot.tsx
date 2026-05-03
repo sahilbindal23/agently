@@ -17,7 +17,15 @@ type NegotiationResult = {
   source?: string;
 };
 
-export function NegotiationCopilot({ role }: { role: "admin" | "creator" | "freelancer" }) {
+type NegotiationPrefill = {
+  offer_amount_inr?: string;
+  brand?: string;
+  deliverables?: string;
+  contract_terms?: string;
+  valuation_context?: string;
+};
+
+export function NegotiationCopilot({ role, initialValues }: { role: "admin" | "creator" | "freelancer"; initialValues?: NegotiationPrefill }) {
   const [status, setStatus] = useState<"idle" | "loading" | "error">("idle");
   const [result, setResult] = useState<NegotiationResult | null>(null);
   const [error, setError] = useState("");
@@ -55,7 +63,7 @@ export function NegotiationCopilot({ role }: { role: "admin" | "creator" | "free
   }
 
   return (
-    <section className="mt-5 grid gap-5 xl:grid-cols-[0.9fr_1.1fr]">
+    <section className="mt-5 grid gap-5 xl:grid-cols-[0.9fr_1.1fr]" id="negotiation">
       <Card>
         <CardHeader>
           <div>
@@ -65,11 +73,11 @@ export function NegotiationCopilot({ role }: { role: "admin" | "creator" | "free
           <Badge tone="blue">talent-side</Badge>
         </CardHeader>
         <form className="grid gap-3 md:grid-cols-2" onSubmit={onSubmit}>
-          <Input name="offer_amount_inr" placeholder="Offer amount in INR" type="number" required />
-          <Input name="brand" placeholder="Brand name" />
-          <Textarea className="md:col-span-2" name="deliverables" placeholder="Deliverables, timelines, channels, assets, or services requested" required />
-          <Textarea className="md:col-span-2" name="contract_terms" placeholder="Contract terms or concerns, e.g. usage, payment timing, revisions, exclusivity" />
-          <Textarea className="md:col-span-2" name="valuation_context" placeholder="Your rate context, audience/portfolio strength, past deal range, or minimum acceptable rate" />
+          <Input defaultValue={initialValues?.offer_amount_inr ?? ""} name="offer_amount_inr" placeholder="Offer amount in INR" type="number" required />
+          <Input defaultValue={initialValues?.brand ?? ""} name="brand" placeholder="Brand name" />
+          <Textarea className="md:col-span-2" defaultValue={initialValues?.deliverables ?? ""} name="deliverables" placeholder="Deliverables, timelines, channels, assets, or services requested" required />
+          <Textarea className="md:col-span-2" defaultValue={initialValues?.contract_terms ?? ""} name="contract_terms" placeholder="Contract terms or concerns, e.g. usage, payment timing, revisions, exclusivity" />
+          <Textarea className="md:col-span-2" defaultValue={initialValues?.valuation_context ?? ""} name="valuation_context" placeholder="Your rate context, audience/portfolio strength, past deal range, or minimum acceptable rate" />
           <Button className="md:col-span-2" disabled={status === "loading"}>
             <Handshake className="h-4 w-4" />
             {status === "loading" ? "Generating..." : "Generate counter"}
