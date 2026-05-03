@@ -11,7 +11,7 @@ import { getAgentlyData } from "@/lib/db/live-data";
 import { createAdminClient } from "@/lib/supabase/admin";
 
 const modules = [
-  { title: "Valuation engine", icon: Sparkles, copy: "Rules plus LLM rationale to produce low, base, high pricing bands with confidence." },
+  { title: "Sponsor Growth Calculator", icon: Sparkles, copy: "India-first pricing and target planning for creators who want to understand what metrics unlock higher sponsorship income." },
   { title: "Brand match engine", icon: SearchCheck, copy: "Scores brands by niche, audience, category fit, content style, and outreach angle." },
   { title: "Negotiation copilot", icon: Handshake, copy: "Recommends counters, floors, pushback terms, and talent-friendly response copy for creators and freelancers." },
   { title: "Contract intelligence", icon: ShieldAlert, copy: "Finds risky terms across usage, exclusivity, revisions, cancellation, whitelisting, and payment timing." },

@@ -8,11 +8,13 @@ import { Button } from "@/components/ui/button";
 export function RemoveShortlistButton({
   campaignId,
   entityType,
-  entityId
+  entityId,
+  label = "Remove"
 }: {
   campaignId: string;
   entityType: "creator" | "freelancer";
   entityId: string;
+  label?: string;
 }) {
   const router = useRouter();
   const [status, setStatus] = useState<"idle" | "saving" | "error">("idle");
@@ -36,7 +38,7 @@ export function RemoveShortlistButton({
   return (
     <Button disabled={status === "saving"} onClick={remove} size="sm" type="button" variant="secondary">
       <X className="h-4 w-4" />
-      Remove
+      {label}
     </Button>
   );
 }

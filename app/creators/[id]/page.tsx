@@ -29,6 +29,10 @@ export default async function CreatorDetailPage({ params }: { params: Promise<{ 
             <CardTitle>Talent Scorecard</CardTitle>
             <Badge tone="green">{bundle.creator.primary_niche}</Badge>
           </CardHeader>
+          {bundle.creator.image_url ? (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img alt={bundle.creator.display_name} className="mb-4 aspect-[4/3] w-full rounded-md object-cover" src={bundle.creator.image_url} />
+          ) : null}
           <div className="grid grid-cols-2 gap-4">
             <Score label="Monetization" value={bundle.creator.monetization_score} />
             <Score label="Valuation" value={bundle.creator.valuation_score} />

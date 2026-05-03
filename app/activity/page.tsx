@@ -252,6 +252,18 @@ async function getCreatorActivity(admin: AdminClient, user: NonNullable<Awaited<
 
   addCompletenessItems(items, completeness.items, "Profile readiness");
 
+  for (const offer of deals.filter((row: AnyRow) => !["accepted", "declined"].includes(String(row.offer_status ?? "")))) {
+    items.push({
+      id: `creator-offer-${offer.id}`,
+      group: "Offers needing response",
+      severity: "high",
+      title: `Respond to ${toText(offer.title, "new creator offer")}`,
+      description: "Review the scope, scan contract terms if available, negotiate if needed, then accept or decline.",
+      href: "/offers",
+      cta: "Review offer"
+    });
+  }
+
   for (const deliverable of deliverables.filter((row: AnyRow) => row.status === "revision_requested")) {
     items.push({
       id: `revision-${deliverable.id}`,
@@ -343,6 +355,18 @@ async function getFreelancerActivity(admin: AdminClient, user: NonNullable<Await
   const deliverables = projectIds.length ? await selectIn(admin, "deliverables", "*", "freelancer_project_id", projectIds) : [];
   const completeness = freelancerCompleteness({ freelancer, serviceRates: rates, portfolio, projects });
   addCompletenessItems(items, completeness.items, "Profile readiness");
+
+  for (const project of projects.filter((row: AnyRow) => !["accepted", "declined"].includes(String(row.status ?? "")))) {
+    items.push({
+      id: `freelancer-project-offer-${project.id}`,
+      group: "Offers needing response",
+      severity: "high",
+      title: `Respond to ${toText(project.title, "new freelancer project")}`,
+      description: "Review the project scope, usage, approval terms, and rate before accepting or requesting changes.",
+      href: "/offers",
+      cta: "Review project"
+    });
+  }
 
   for (const deliverable of deliverables.filter((row: AnyRow) => row.status === "revision_requested")) {
     items.push({

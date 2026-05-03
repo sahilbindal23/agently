@@ -4,7 +4,6 @@ import { AppShell } from "@/components/layout/app-shell";
 import { MarketplaceTabs } from "@/components/marketplace/marketplace-tabs";
 import { PageHeader } from "@/components/layout/page-header";
 import { ProfileCompletenessCard } from "@/components/profile/profile-completeness-card";
-import { ProfileImageUpload } from "@/components/profile/profile-image-upload";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardHeader, CardTitle } from "@/components/ui/card";
@@ -60,13 +59,6 @@ export default async function BrandHomePage() {
       <div className="mt-5">
         <ProfileCompletenessCard title="Brand Launch Checklist" completeness={completeness} />
       </div>
-
-      {brand?.id ? (
-        <Card className="mt-5">
-          <CardHeader><CardTitle>Brand Profile Image</CardTitle><Badge tone="blue">shown on marketplace cards</Badge></CardHeader>
-          <ProfileImageUpload entityId={brand.id} entityType="brand" />
-        </Card>
-      ) : null}
 
       <Card className="mt-5">
         <CardHeader><CardTitle>Marketplace Talent</CardTitle><Badge tone="green">{(creators?.length ?? 0) + (freelancers?.length ?? 0)}</Badge></CardHeader>

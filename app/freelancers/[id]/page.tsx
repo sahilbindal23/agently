@@ -32,6 +32,10 @@ export default async function FreelancerDetailPage({ params }: { params: Promise
             <CardTitle>Service Scorecard</CardTitle>
             <Badge tone="green">{String(freelancer.service_category ?? "Creative services")}</Badge>
           </CardHeader>
+          {freelancer.image_url ? (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img alt={String(freelancer.display_name)} className="mb-4 aspect-[4/3] w-full rounded-md object-cover" src={String(freelancer.image_url)} />
+          ) : null}
           <div className="grid grid-cols-2 gap-4">
             <Score label="Portfolio" value={`${Number(freelancer.portfolio_score ?? 0)}/100`} />
             <Score label="Rating" value={`${Number(freelancer.rating_score ?? 0)}/5`} />

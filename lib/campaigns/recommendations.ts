@@ -12,6 +12,7 @@ export type FreelancerRecommendationInput = {
   hourly_rate_cents?: number;
   day_rate_cents?: number;
   portfolio_score?: number;
+  image_url?: string | null;
   verification_tier?: string;
   verification_status?: string;
 };
@@ -44,6 +45,7 @@ export type CampaignRecommendation = {
   id: string;
   name: string;
   subtitle: string;
+  image_url?: string | null;
   score: number;
   reason: string;
   match_type: string;
@@ -86,6 +88,7 @@ export function rankCreators(campaign: Campaign, creators: Creator[], platforms:
     return {
       id: creator.id,
       name: creator.display_name,
+      image_url: creator.image_url ?? null,
       subtitle: `${creator.primary_niche} - ${primary ? `${primary.platform}, ${compactNumber(primary.followers)} followers` : getCreatorLanguages(creator)}`,
       score,
       reason: `${creator.display_name} fits through ${creator.primary_niche.toLowerCase()}, ${creator.home_city || "India"} relevance, and ${creator.content_style || "audience"} style.`,
@@ -129,6 +132,7 @@ export function rankFreelancers(campaign: Campaign, freelancers: FreelancerRecom
     return {
       id: freelancer.id,
       name: freelancer.display_name,
+      image_url: String((freelancer as Record<string, unknown>).image_url ?? "") || null,
       subtitle: `${freelancer.service_category || "Creative services"} - hourly ${currency(freelancer.hourly_rate_cents ?? freelancer.day_rate_cents ?? 0)}`,
       score,
       reason: `${freelancer.display_name} fits the production need through ${(freelancer.skills ?? []).slice(0, 3).join(", ") || freelancer.service_category}. ${rates.length ? `Listed rates: ${rates.map((rate) => `${rate.service_name} ${currency(rate.rate_cents)}`).join(", ")}.` : "Add service rates to improve pricing clarity."}`,

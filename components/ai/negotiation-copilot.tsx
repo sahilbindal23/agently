@@ -13,6 +13,8 @@ type NegotiationResult = {
   minimum_floor_cents: number;
   terms_to_push_back_on: string[];
   acceptance_likelihood: number;
+  counter_rationale?: string;
+  tradeoff_notes?: string;
   message: string;
   source?: string;
 };
@@ -104,6 +106,10 @@ export function NegotiationCopilot({ role, initialValues }: { role: "admin" | "c
                 {result.terms_to_push_back_on.map((term) => <Badge key={term} tone="amber">{term}</Badge>)}
               </div>
             </div>
+            <div className="grid gap-3 md:grid-cols-2">
+              <Explanation title="Why this counter is stronger" copy={result.counter_rationale ?? "The counter better accounts for scope, usage, revision time, and payment risk."} />
+              <Explanation title="What could make it harder" copy={result.tradeoff_notes ?? "A higher counter can reduce acceptance if the brand budget is fixed. Accept lower only when usage is narrow or strategic value is clear."} />
+            </div>
             <div className="rounded-md border bg-white p-3">
               <p className="text-xs font-semibold uppercase text-muted-foreground">Suggested message</p>
               <p className="mt-2 whitespace-pre-wrap text-sm leading-6">{result.message}</p>
@@ -116,6 +122,15 @@ export function NegotiationCopilot({ role, initialValues }: { role: "admin" | "c
         )}
       </Card>
     </section>
+  );
+}
+
+function Explanation({ title, copy }: { title: string; copy: string }) {
+  return (
+    <div className="rounded-md border bg-white p-3">
+      <p className="text-xs font-semibold uppercase text-muted-foreground">{title}</p>
+      <p className="mt-2 text-sm leading-6">{copy}</p>
+    </div>
   );
 }
 

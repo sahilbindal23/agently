@@ -1,5 +1,6 @@
 import { CreateOfferButton } from "@/components/campaigns/create-offer-button";
 import { CreateFreelancerProjectButton } from "@/components/campaigns/create-freelancer-project-button";
+import { RemoveShortlistButton } from "@/components/campaigns/remove-shortlist-button";
 import { ShortlistButton } from "@/components/campaigns/shortlist-button";
 import { MessageRecipientButton } from "@/components/messages/message-recipient-button";
 import { Badge } from "@/components/ui/badge";
@@ -20,9 +21,12 @@ export function RecommendationCard({
   return (
     <div className="rounded-md border bg-white p-4">
       <div className="mb-2 flex flex-wrap items-start justify-between gap-3">
-        <div>
-          <p className="font-semibold">{item.name}</p>
-          <p className="mt-1 text-xs text-muted-foreground">{item.subtitle}</p>
+        <div className="flex min-w-0 gap-3">
+          <RecommendationImage src={item.image_url ?? ""} label={item.name} />
+          <div className="min-w-0">
+            <p className="font-semibold">{item.name}</p>
+            <p className="mt-1 text-xs text-muted-foreground">{item.subtitle}</p>
+          </div>
         </div>
         <Badge tone={item.score >= 80 ? "green" : item.score >= 60 ? "amber" : "neutral"}>{item.score}</Badge>
       </div>
@@ -80,12 +84,23 @@ export function RecommendationCard({
       </div>
 
       <div className="mt-3 flex flex-wrap gap-2">
-        {isShortlisted ? <Badge tone="blue">shortlisted</Badge> : (
+        {isShortlisted ? <RemoveShortlistButton campaignId={campaignId} entityId={item.id} entityType={type} label="Unshortlist" /> : (
           <ShortlistButton campaignId={campaignId} entityId={item.id} entityType={type} fitScore={item.score} reason={item.reason} />
         )}
         <MessageRecipientButton entityId={item.id} entityType={type} label="Message" />
         {type === "creator" ? <CreateOfferButton campaignId={campaignId} creatorId={item.id} /> : <CreateFreelancerProjectButton campaignId={campaignId} freelancerId={item.id} />}
       </div>
+    </div>
+  );
+}
+
+function RecommendationImage({ src, label }: { src: string; label: string }) {
+  return src ? (
+    // eslint-disable-next-line @next/next/no-img-element
+    <img alt={label} className="h-14 w-14 shrink-0 rounded-md object-cover" src={src} />
+  ) : (
+    <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-md bg-muted text-lg font-bold text-muted-foreground">
+      {label.slice(0, 1)}
     </div>
   );
 }

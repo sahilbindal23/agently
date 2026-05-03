@@ -101,7 +101,6 @@ export default async function OffersPage() {
         eyebrow="Talent offer inbox"
         title="Offers"
         description="Review brand-submitted offers, respond with acceptance or changes, and use negotiation tools before work begins."
-        action={<Link href="/ai-insights"><Button variant="secondary">Open negotiation tools</Button></Link>}
       />
 
       {hasItems ? (

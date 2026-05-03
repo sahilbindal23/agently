@@ -17,6 +17,8 @@ export async function POST(request: Request) {
     minimum_floor_cents: Math.round(offer * 0.9),
     terms_to_push_back_on: ["perpetual usage", "payment after approval", "uncapped revisions"],
     acceptance_likelihood: 0.64,
+    counter_rationale: `The counter is better for the ${talentType} because it prices the work, usage rights, revision time, and payment risk instead of only the base deliverable.`,
+    tradeoff_notes: "A higher counter can reduce acceptance likelihood if the brand budget is fixed. Accepting the original offer may still make sense for a strategic brand, guaranteed future work, or very limited usage rights.",
     message: `Thanks for the offer. Based on the ${talentType === "freelancer" ? "scope, production time, and revision expectations" : "deliverables and usage rights"}, we can move forward at the counter rate with usage capped to 30 days, one revision round, and payment funded before publication.`
   };
   const openai = getOpenAI();

@@ -133,7 +133,7 @@ async function getPaymentScope(admin: NonNullable<ReturnType<typeof createAdminC
 function filterDealsForUser(deals: Awaited<ReturnType<typeof getAgentlyData>>["deals"], role: string | undefined, scope: PaymentScope) {
   if (role === "admin") return deals;
   if (role === "brand") return deals.filter((deal) => scope.brandIds.includes(deal.brand_id));
-  if (role === "creator") return deals.filter((deal) => scope.creatorIds.includes(deal.creator_id));
+  if (role === "creator") return deals.filter((deal) => scope.creatorIds.includes(deal.creator_id) && deal.offer_status === "accepted");
   return [];
 }
 

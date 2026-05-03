@@ -24,6 +24,8 @@ type ValuationResult = {
 
 export function ValuationEngine() {
   const [result, setResult] = useState<ValuationResult | null>(null);
+  const [targetInr, setTargetInr] = useState(0);
+  const [currentInr, setCurrentInr] = useState(0);
   const [status, setStatus] = useState<"idle" | "loading" | "error">("idle");
   const [error, setError] = useState("");
 
@@ -48,6 +50,8 @@ export function ValuationEngine() {
       whitelisting: formData.get("whitelisting") === "on",
       paid_usage: formData.get("paid_usage") === "on"
     };
+    setTargetInr(Number(formData.get("target_sponsorship_inr") ?? 0));
+    setCurrentInr(Number(formData.get("current_sponsorship_inr") ?? 0));
 
     const response = await fetch("/api/ai/value-creator", {
       method: "POST",
@@ -70,12 +74,16 @@ export function ValuationEngine() {
       <Card>
         <CardHeader>
           <div>
-            <CardTitle>India Valuation Engine</CardTitle>
-            <p className="mt-1 text-sm text-muted-foreground">Estimate Bangalore/India sponsorship bands using creator metrics, deliverables, rights, and category demand.</p>
+            <CardTitle>Sponsor Growth Calculator</CardTitle>
+            <p className="mt-1 text-sm text-muted-foreground">
+              Estimate India-first sponsorship bands and use the target fields to understand what metrics need to improve if you want to earn more than your current deal range.
+            </p>
           </div>
           <Badge tone="green">INR rules model</Badge>
         </CardHeader>
         <form className="grid gap-3 md:grid-cols-2" onSubmit={onSubmit}>
+          <Input name="current_sponsorship_inr" placeholder="Current typical sponsorship INR" type="number" />
+          <Input name="target_sponsorship_inr" placeholder="Target sponsorship INR" type="number" />
           <Input name="platform" placeholder="Platform" />
           <Input name="deliverable_type" placeholder="Deliverable type" />
           <Input name="avg_views" placeholder="Average views" type="number" />
@@ -121,6 +129,7 @@ export function ValuationEngine() {
               <p className="text-sm text-muted-foreground">Negotiation floor</p>
               <p className="mt-1 text-xl font-bold">{formatCurrency(result.negotiation_floor_cents, result.currency)}</p>
             </div>
+            {targetInr > 0 ? <TargetGap targetInr={targetInr} currentInr={currentInr} baseCents={result.base_estimate_cents} /> : null}
             <p className="text-sm leading-6 text-muted-foreground">{result.rationale}</p>
             <div className="rounded-md bg-muted p-3">
               <p className="text-xs font-semibold uppercase text-muted-foreground">Package</p>
@@ -131,11 +140,27 @@ export function ValuationEngine() {
           </div>
         ) : (
           <div className="rounded-md border bg-white p-4 text-sm leading-6 text-muted-foreground">
-            Run an estimate to see INR pricing bands, package recommendation, floor, and pricing caveats.
+            Run an estimate to see INR pricing bands, package recommendation, negotiation floor, pricing caveats, and the metric gap to reach your target sponsorship amount.
           </div>
         )}
       </Card>
     </section>
+  );
+}
+
+function TargetGap({ targetInr, currentInr, baseCents }: { targetInr: number; currentInr: number; baseCents: number }) {
+  const baseInr = Math.round(baseCents / 100);
+  const multiplier = baseInr > 0 ? targetInr / baseInr : 0;
+  const currentGap = currentInr > 0 ? targetInr - currentInr : 0;
+  return (
+    <div className="rounded-md border bg-sky-50 p-4">
+      <p className="text-xs font-semibold uppercase text-sky-800">Target sponsorship path</p>
+      <p className="mt-2 text-sm leading-6 text-sky-950">
+        Target: <span className="font-semibold">{formatCurrency(targetInr * 100, "inr")}</span>. Current estimate: <span className="font-semibold">{formatCurrency(baseCents, "inr")}</span>.
+        {multiplier > 1.05 ? ` You likely need about ${multiplier.toFixed(1)}x stronger pricing power through higher average views, stronger India/Bangalore audience proof, better engagement, premium category fit, or more valuable deliverables/usage terms.` : " Your current estimate is already close to or above that target, so focus on protecting usage rights and payment terms."}
+      </p>
+      {currentGap > 0 ? <p className="mt-2 text-sm text-sky-900">Gap from your current typical deal: {formatCurrency(currentGap * 100, "inr")}.</p> : null}
+    </div>
   );
 }
 

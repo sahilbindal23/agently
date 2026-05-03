@@ -1,11 +1,12 @@
 import Link from "next/link";
-import { Activity, BarChart3, Bot, BriefcaseBusiness, ClipboardList, CreditCard, FileText, HelpCircle, Home, LayoutDashboard, MessageSquare, MessageSquareText, Palette, Users } from "lucide-react";
+import { Activity, BarChart3, Bell, Bot, BriefcaseBusiness, ClipboardList, CreditCard, FileText, HelpCircle, Home, LayoutDashboard, MessageSquare, MessageSquareText, Palette, Users } from "lucide-react";
 import { LogoutButton } from "@/components/auth/logout-button";
 import { HomeLogo } from "@/components/layout/home-logo";
 import { GuidedWalkthrough } from "@/components/onboarding/guided-walkthrough";
 import { WalkthroughLaunchButton } from "@/components/onboarding/walkthrough-launch-button";
 import { Badge } from "@/components/ui/badge";
 import { getCurrentUser } from "@/lib/auth/session";
+import { createAdminClient } from "@/lib/supabase/admin";
 
 const adminNav = [
   { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard, tour: "dashboard" },
@@ -62,6 +63,7 @@ const freelancerNav = [
 
 export async function AppShell({ children }: { children: React.ReactNode }) {
   const user = await getCurrentUser();
+  const notification = user ? await getNotification(user) : null;
   const nav = user?.role === "creator" ? creatorNav : user?.role === "brand" ? brandNav : user?.role === "freelancer" ? freelancerNav : adminNav;
 
   return (
@@ -98,8 +100,37 @@ export async function AppShell({ children }: { children: React.ReactNode }) {
           </div>
         </div>
       </aside>
-      <main className="px-4 py-6 sm:px-6 lg:px-8">{children}</main>
+      <main className="px-4 py-6 sm:px-6 lg:px-8">
+        {notification ? (
+          <Link className="mb-4 flex items-center justify-between gap-3 rounded-md border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900" href={notification.href}>
+            <span className="inline-flex items-center gap-2"><Bell className="h-4 w-4" /> {notification.copy}</span>
+            <span className="font-semibold">Review</span>
+          </Link>
+        ) : null}
+        {children}
+      </main>
       <GuidedWalkthrough role={user?.role ?? "admin"} />
     </div>
   );
+}
+
+async function getNotification(user: NonNullable<Awaited<ReturnType<typeof getCurrentUser>>>) {
+  const admin = createAdminClient();
+  if (!admin) return null;
+
+  if (user.role === "creator") {
+    const { data: creator } = await admin.from("creators").select("id").eq("profile_id", user.id).maybeSingle();
+    if (!creator?.id) return null;
+    const { data } = await admin.from("deals").select("id").eq("creator_id", creator.id).not("offer_status", "in", "(accepted,declined)").limit(1);
+    return data?.length ? { href: "/offers", copy: "You have an incoming creator offer waiting for a response." } : null;
+  }
+
+  if (user.role === "freelancer") {
+    const { data: freelancer } = await admin.from("freelancers").select("id").eq("profile_id", user.id).maybeSingle();
+    if (!freelancer?.id) return null;
+    const { data } = await admin.from("freelancer_projects").select("id").eq("freelancer_id", freelancer.id).not("status", "in", "(accepted,declined)").limit(1);
+    return data?.length ? { href: "/offers", copy: "You have an incoming freelancer project waiting for a response." } : null;
+  }
+
+  return null;
 }

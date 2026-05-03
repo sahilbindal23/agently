@@ -2,6 +2,7 @@ import { redirect } from "next/navigation";
 import { AppShell } from "@/components/layout/app-shell";
 import { PageHeader } from "@/components/layout/page-header";
 import { ProfileEditForm } from "@/components/profile/profile-edit-form";
+import { ProfileImageUpload } from "@/components/profile/profile-image-upload";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardHeader, CardTitle } from "@/components/ui/card";
 import { VerificationBadge } from "@/components/verification/verification-badge";
@@ -42,6 +43,19 @@ export default async function ProfilePage() {
             <VerificationBadge status={bundle.profile.verification_status} tier={bundle.profile.verification_tier} />
           </div>
         </CardHeader>
+        <div className="mb-5 rounded-md border bg-muted p-4">
+          <div className="mb-3 flex items-center justify-between gap-3">
+            <div>
+              <p className="text-sm font-semibold">Profile image</p>
+              <p className="mt-1 text-xs text-muted-foreground">Shown on marketplace cards, recommendations, and profile pages.</p>
+            </div>
+            {bundle.profile.image_url ? (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img alt="Profile" className="h-14 w-14 rounded-md object-cover" src={String(bundle.profile.image_url)} />
+            ) : null}
+          </div>
+          <ProfileImageUpload entityId={String(bundle.profile.id)} entityType={role as "creator" | "brand" | "freelancer"} />
+        </div>
         <ProfileEditForm
           audit={bundle.audit}
           platforms={bundle.platforms}
