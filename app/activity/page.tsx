@@ -8,6 +8,7 @@ import { getCurrentUser } from "@/lib/auth/session";
 import { creatorCompleteness, freelancerCompleteness } from "@/lib/profile/completeness";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { formatCurrency } from "@/lib/utils/format";
+import { getWorkflowNudges } from "@/lib/workflow/nudges";
 
 type ActivitySeverity = "high" | "medium" | "low" | "info";
 type ActivityItem = {
@@ -114,10 +115,20 @@ export default async function ActivityPage() {
 }
 
 async function getActivityItems(admin: AdminClient, user: NonNullable<Awaited<ReturnType<typeof getCurrentUser>>>) {
-  if (user.role === "brand") return getBrandActivity(admin, user);
-  if (user.role === "creator") return getCreatorActivity(admin, user);
-  if (user.role === "freelancer") return getFreelancerActivity(admin, user);
-  return getAdminActivity(admin);
+  const [nudges, items] = await Promise.all([
+    getWorkflowNudges(admin, user),
+    user.role === "brand"
+      ? getBrandActivity(admin, user)
+      : user.role === "creator"
+        ? getCreatorActivity(admin, user)
+        : user.role === "freelancer"
+          ? getFreelancerActivity(admin, user)
+          : getAdminActivity(admin)
+  ]);
+  return dedupeItems([
+    ...nudges.map((item) => ({ ...item, id: `nudge-${item.id}` })),
+    ...items
+  ]);
 }
 
 async function getBrandActivity(admin: AdminClient, user: NonNullable<Awaited<ReturnType<typeof getCurrentUser>>>) {
@@ -592,6 +603,16 @@ function addCompletenessItems(items: ActivityItem[], completenessItems: ReturnTy
 function limitItems(items: ActivityItem[], limit = 25) {
   const rank: Record<ActivitySeverity, number> = { high: 0, medium: 1, low: 2, info: 3 };
   return items.sort((a, b) => rank[a.severity] - rank[b.severity] || a.group.localeCompare(b.group)).slice(0, limit);
+}
+
+function dedupeItems(items: ActivityItem[]) {
+  const seen = new Set<string>();
+  return items.filter((item) => {
+    const key = `${item.group}:${item.title}:${item.href}`;
+    if (seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  });
 }
 
 function groupItems(items: ActivityItem[]) {

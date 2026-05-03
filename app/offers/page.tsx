@@ -6,6 +6,7 @@ import { DeliverableSubmitForm } from "@/components/deliverables/deliverable-sub
 import { OfferResponseActions } from "@/components/offers/offer-response-actions";
 import { AppShell } from "@/components/layout/app-shell";
 import { PageHeader } from "@/components/layout/page-header";
+import { MessageRecipientButton } from "@/components/messages/message-recipient-button";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardHeader, CardTitle } from "@/components/ui/card";
@@ -133,15 +134,27 @@ export default async function OffersPage() {
                     <p className="mt-1 whitespace-pre-wrap text-sm leading-6">{offer.notes}</p>
                   </div>
                 ) : null}
-                <Link href={negotiationHref({
-                  amountCents: offer.amount_cents,
-                  brand: brandNames.get(offer.brand_id ?? "") ?? "",
-                  deliverables: offer.deliverables,
-                  terms: [offer.notes, offerContracts.get(offer.id)?.summary].filter(Boolean).join("\n"),
-                  context: "Creator offer opened from Agently offer inbox."
-                })}>
-                  <Button variant="secondary">Negotiate this offer</Button>
-                </Link>
+                <div className="flex flex-wrap gap-2">
+                  <Link href={negotiationHref({
+                    amountCents: offer.amount_cents,
+                    brand: brandNames.get(offer.brand_id ?? "") ?? "",
+                    deliverables: offer.deliverables,
+                    terms: [offer.notes, offerContracts.get(offer.id)?.summary].filter(Boolean).join("\n"),
+                    context: "Creator offer opened from Agently offer inbox."
+                  })}>
+                    <Button variant="secondary">Negotiate this offer</Button>
+                  </Link>
+                  {offer.brand_id ? (
+                    <MessageRecipientButton contextId={offer.id} contextType="deal" entityId={offer.brand_id} entityType="brand" label="Message about offer" />
+                  ) : null}
+                </div>
+                <OfferTimeline
+                  accepted={offer.offer_status === "accepted"}
+                  funded={["funded", "release_ready", "released"].includes(offer.payment_status)}
+                  paymentStatus={offer.payment_status}
+                  responded={Boolean(offer.talent_response) || ["accepted", "declined", "changes_requested"].includes(String(offer.offer_status))}
+                  status={offer.offer_status ?? "submitted"}
+                />
                 {offer.talent_response ? (
                   <div className="rounded-md bg-muted p-3">
                     <p className="text-xs font-semibold uppercase text-muted-foreground">Your response</p>
@@ -182,15 +195,27 @@ export default async function OffersPage() {
                   <p className="text-xs font-semibold uppercase text-muted-foreground">Terms</p>
                   <p className="mt-1 whitespace-pre-wrap text-sm leading-6">{[project.usage_context, project.approval_terms, project.notes].filter(Boolean).join("\n") || "No extra terms added."}</p>
                 </div>
-                <Link href={negotiationHref({
-                  amountCents: project.amount_cents,
-                  brand: brandNames.get(project.brand_id ?? "") ?? "",
-                  deliverables: project.scope,
-                  terms: [project.usage_context, project.approval_terms, project.notes].filter(Boolean).join("\n"),
-                  context: "Freelancer project opened from Agently offer inbox."
-                })}>
-                  <Button variant="secondary">Negotiate this project</Button>
-                </Link>
+                <div className="flex flex-wrap gap-2">
+                  <Link href={negotiationHref({
+                    amountCents: project.amount_cents,
+                    brand: brandNames.get(project.brand_id ?? "") ?? "",
+                    deliverables: project.scope,
+                    terms: [project.usage_context, project.approval_terms, project.notes].filter(Boolean).join("\n"),
+                    context: "Freelancer project opened from Agently offer inbox."
+                  })}>
+                    <Button variant="secondary">Negotiate this project</Button>
+                  </Link>
+                  {project.brand_id ? (
+                    <MessageRecipientButton contextId={project.id} contextType="freelancer_project" entityId={project.brand_id} entityType="brand" label="Message about project" />
+                  ) : null}
+                </div>
+                <OfferTimeline
+                  accepted={project.status === "accepted"}
+                  funded={["funded", "release_ready", "released"].includes(project.payment_status)}
+                  paymentStatus={project.payment_status}
+                  responded={Boolean(project.talent_response) || ["accepted", "declined", "changes_requested"].includes(String(project.status))}
+                  status={project.status}
+                />
                 {project.talent_response ? (
                   <div className="rounded-md bg-muted p-3">
                     <p className="text-xs font-semibold uppercase text-muted-foreground">Your response</p>
@@ -255,6 +280,50 @@ function Metric({ label, value }: { label: string; value: string }) {
       <p className="mt-1 text-sm font-semibold">{value}</p>
     </div>
   );
+}
+
+function OfferTimeline({
+  accepted,
+  funded,
+  paymentStatus,
+  responded,
+  status
+}: {
+  accepted: boolean;
+  funded: boolean;
+  paymentStatus: string;
+  responded: boolean;
+  status: string;
+}) {
+  const steps = [
+    { label: "Sent", done: true },
+    { label: responded ? responseLabel(status) : "Needs response", done: responded },
+    { label: "Accepted", done: accepted },
+    { label: paymentStatus === "released" ? "Released" : funded ? "Funded" : "Payment pending", done: funded }
+  ];
+
+  return (
+    <div className="rounded-md border bg-muted/50 p-3">
+      <p className="text-xs font-semibold uppercase text-muted-foreground">Offer workflow</p>
+      <div className="mt-3 grid gap-2 sm:grid-cols-4">
+        {steps.map((step, index) => (
+          <div className="flex items-center gap-2" key={step.label}>
+            <span className={`flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-xs font-bold ${step.done ? "bg-primary text-primary-foreground" : "bg-white text-muted-foreground"}`}>
+              {index + 1}
+            </span>
+            <span className={`text-xs font-medium ${step.done ? "text-foreground" : "text-muted-foreground"}`}>{step.label}</span>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function responseLabel(status: string) {
+  if (status === "accepted") return "Accepted";
+  if (status === "declined") return "Declined";
+  if (status === "changes_requested") return "Negotiating";
+  return "Viewed";
 }
 
 function OfferContractNotice({ contract }: { contract?: ContractRow & { flags: ContractFlag[] } }) {

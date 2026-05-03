@@ -3,6 +3,7 @@ import { redirect } from "next/navigation";
 import { AppShell } from "@/components/layout/app-shell";
 import { MarketplaceTabs } from "@/components/marketplace/marketplace-tabs";
 import { PageHeader } from "@/components/layout/page-header";
+import { MarketplaceEligibilityCard } from "@/components/profile/marketplace-eligibility-card";
 import { ProfileCompletenessCard } from "@/components/profile/profile-completeness-card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -10,6 +11,7 @@ import { Card, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, Td, Th } from "@/components/ui/table";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
+import { brandAutomationDecision, creatorAutomationDecision, freelancerAutomationDecision, isDiscoverable } from "@/lib/profile/automation";
 import { creatorCompleteness } from "@/lib/profile/completeness";
 import { getBangaloreFit, getIndiaAudiencePercent } from "@/lib/utils/creator-metrics";
 import { formatCurrency } from "@/lib/utils/format";
@@ -42,16 +44,23 @@ export default async function CreatorHomePage() {
     );
   }
 
-  const [{ data: audits }, { data: deals }, { data: brands }, { data: freelancers }, { data: platforms }] = await Promise.all([
+  const [{ data: audits }, { data: deals }, { data: brands }, { data: freelancers }, { data: serviceRates }, { data: platforms }] = await Promise.all([
     admin.from("creator_audits").select("*").eq("creator_id", creator.id).order("created_at", { ascending: false }).limit(1),
     admin.from("deals").select("*").eq("creator_id", creator.id).order("created_at", { ascending: false }),
     admin.from("brands").select("*").order("created_at", { ascending: false }).limit(6),
     admin.from("freelancers").select("*").order("created_at", { ascending: false }).limit(6),
+    admin.from("freelancer_service_rates").select("*"),
     admin.from("creator_platforms").select("*").eq("creator_id", creator.id)
   ]);
 
   const latestAudit = audits?.[0]?.result as Record<string, unknown> | undefined;
   const completeness = creatorCompleteness({ creator, platforms: platforms ?? [], deals: deals ?? [], hasAudit: Boolean(latestAudit) });
+  const automation = creatorAutomationDecision({ creator, platforms: platforms ?? [] });
+  const visibleBrands = (brands ?? []).filter((brand) => isDiscoverable(brandAutomationDecision({ brand })));
+  const visibleFreelancers = (freelancers ?? []).filter((freelancer) => isDiscoverable(freelancerAutomationDecision({
+    freelancer,
+    serviceRates: (serviceRates ?? []).filter((rate) => rate.freelancer_id === freelancer.id)
+  })));
 
   return (
     <AppShell>
@@ -68,19 +77,21 @@ export default async function CreatorHomePage() {
         <Metric label="Sponsor readiness" value={`${latestAudit?.sponsor_readiness_score ?? creator.monetization_score}/100`} />
       </section>
 
-      <div className="mt-5">
-        <ProfileCompletenessCard title="Creator Readiness Checklist" completeness={completeness} />
-      </div>
-
-      <Card className="mt-5">
-        <CardHeader><CardTitle>Marketplace Network</CardTitle><Badge tone="green">{(brands?.length ?? 0) + (freelancers?.length ?? 0)}</Badge></CardHeader>
-        <MarketplaceTabs
-          tabs={[
-            { id: "brands", label: `Brands (${brands?.length ?? 0})`, type: "brand", items: brands ?? [] },
-            { id: "freelancers", label: `Freelancers (${freelancers?.length ?? 0})`, type: "freelancer", items: freelancers ?? [] }
-          ]}
-        />
-      </Card>
+      <section className="mt-5 grid gap-5 xl:grid-cols-[minmax(0,1fr)_320px]">
+        <Card>
+          <CardHeader><CardTitle>Marketplace Network</CardTitle><Badge tone="green">{visibleBrands.length + visibleFreelancers.length}</Badge></CardHeader>
+          <MarketplaceTabs
+            tabs={[
+              { id: "brands", label: `Brands (${visibleBrands.length})`, type: "brand", items: visibleBrands },
+              { id: "freelancers", label: `Freelancers (${visibleFreelancers.length})`, type: "freelancer", items: visibleFreelancers }
+            ]}
+          />
+        </Card>
+        <aside className="space-y-3 xl:sticky xl:top-5 xl:self-start">
+          <MarketplaceEligibilityCard decision={automation} />
+          <ProfileCompletenessCard compact title="Readiness" completeness={completeness} />
+        </aside>
+      </section>
 
       <section className="mt-5 grid gap-5 xl:grid-cols-[0.85fr_1.15fr]">
         <Card>

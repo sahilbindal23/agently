@@ -97,6 +97,9 @@ export default async function BrandInsightsPage() {
   const estimatedReach = snapshotRows.reduce((sum, snapshot) => sum + Number(snapshot.roi_estimate?.expected_reach ?? 0), 0);
   const estimatedEngagements = snapshotRows.reduce((sum, snapshot) => sum + Number(snapshot.roi_estimate?.expected_engagements ?? 0), 0);
   const blendedCpm = estimatedReach ? Math.round((activeSpend / estimatedReach) * 1000) : 0;
+  const costPerEngagement = estimatedEngagements ? Math.round(activeSpend / estimatedEngagements) : 0;
+  const projectionConfidence = projectedConfidence(snapshotRows);
+  const projectionNotes = projectionRiskNotes(campaignRows, snapshotRows, estimatedReach, estimatedEngagements);
   const avgFit = average(snapshotRows.map((snapshot) => Number(snapshot.fit_score ?? 0)));
   const campaignsWithInsights = campaignRows.map((campaign) => campaignInsight(campaign, dealRows, projectRows, snapshotRows, deliverables));
 
@@ -122,6 +125,26 @@ export default async function BrandInsightsPage() {
         <Metric label="Blended est. CPM" value={blendedCpm ? formatCurrency(blendedCpm, "inr") : "-"} />
         <Metric label="Avg recommendation fit" value={`${Math.round(avgFit) || 0}/100`} />
       </section>
+
+      <Card className="mt-5">
+        <CardHeader>
+          <div>
+            <CardTitle>Projected ROI Signals</CardTitle>
+            <p className="mt-1 text-sm text-muted-foreground">Directional model built from recommendation snapshots, accepted work, and current campaign spend. It is a planning signal, not a revenue guarantee.</p>
+          </div>
+          <Badge tone={projectionConfidence >= 70 ? "green" : projectionConfidence >= 45 ? "amber" : "red"}>{projectionConfidence}% confidence</Badge>
+        </CardHeader>
+        <div className="grid gap-3 md:grid-cols-4">
+          <InsightMetric label="CPM planning signal" value={blendedCpm ? formatCurrency(blendedCpm, "inr") : "Needs reach"} />
+          <InsightMetric label="Cost per engagement" value={costPerEngagement ? formatCurrency(costPerEngagement, "inr") : "Needs engagement"} />
+          <InsightMetric label="Creator reach source" value={`${snapshotRows.filter((snapshot) => snapshot.entity_type === "creator").length} creator signals`} />
+          <InsightMetric label="Production support" value={`${snapshotRows.filter((snapshot) => snapshot.entity_type === "freelancer").length} freelancer signals`} />
+        </div>
+        <div className="mt-4 grid gap-3 md:grid-cols-2">
+          <SignalPanel title="What would improve projected ROI" items={projectionImprovementLevers(campaignRows, snapshotRows, estimatedReach)} tone="green" />
+          <SignalPanel title="Projection risks" items={projectionNotes} tone="amber" />
+        </div>
+      </Card>
 
       <section className="mt-5 grid gap-5 xl:grid-cols-[1.1fr_0.9fr]">
         <Card>
@@ -218,6 +241,29 @@ function InsightLine({ label, value }: { label: string; value: string }) {
   );
 }
 
+function InsightMetric({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="rounded-md border bg-white p-3">
+      <p className="text-xs font-semibold uppercase text-muted-foreground">{label}</p>
+      <p className="mt-1 text-sm font-bold">{value}</p>
+    </div>
+  );
+}
+
+function SignalPanel({ items, title, tone }: { items: string[]; title: string; tone: "green" | "amber" }) {
+  return (
+    <div className="rounded-md border bg-white p-4">
+      <div className="mb-3 flex items-center justify-between gap-3">
+        <p className="text-xs font-semibold uppercase text-muted-foreground">{title}</p>
+        <Badge tone={tone}>{items.length}</Badge>
+      </div>
+      <div className="space-y-2">
+        {items.map((item) => <p className="rounded-md bg-muted px-3 py-2 text-sm leading-5" key={item}>{item}</p>)}
+      </div>
+    </div>
+  );
+}
+
 function campaignInsight(campaign: CampaignRow, deals: DealRow[], projects: ProjectRow[], snapshots: SnapshotRow[], deliverables: DeliverableRow[]) {
   const campaignDeals = deals.filter((deal) => deal.campaign_id === campaign.id);
   const campaignProjects = projects.filter((project) => project.campaign_id === campaign.id);
@@ -270,4 +316,34 @@ async function getDeliverables(dealIds: string[], projectIds: string[]) {
 function average(values: number[]) {
   const filtered = values.filter(Boolean);
   return filtered.length ? filtered.reduce((sum, value) => sum + value, 0) / filtered.length : 0;
+}
+
+function projectedConfidence(snapshots: SnapshotRow[]) {
+  if (!snapshots.length) return 20;
+  const confidence = average(snapshots.map((snapshot) => Number(snapshot.roi_estimate?.confidence_score ?? 0) * 100));
+  const fit = average(snapshots.map((snapshot) => Number(snapshot.fit_score ?? 0)));
+  return Math.max(20, Math.min(90, Math.round(confidence * 0.6 + fit * 0.4)));
+}
+
+function projectionRiskNotes(campaigns: CampaignRow[], snapshots: SnapshotRow[], reach: number, engagements: number) {
+  const notes = new Set<string>();
+  if (!snapshots.length) notes.add("Open campaign detail pages to generate recommendation snapshots before relying on projection signals.");
+  if (!reach) notes.add("Reach is missing because creator average-view data has not been captured for the current recommendations.");
+  if (!engagements) notes.add("Engagement projection needs verified engagement rates from selected creators.");
+  const watchouts = snapshots.flatMap((snapshot) => snapshot.watchouts ?? []).slice(0, 3);
+  watchouts.forEach((watchout) => notes.add(watchout));
+  if (campaigns.some((campaign) => !campaign.city_focus && !campaign.region_focus)) notes.add("Some campaigns are missing city or region focus, which weakens India/Bangalore relevance.");
+  if (!notes.size) notes.add("No major projection risk detected, but confirm creator fit and usage rights before offers are funded.");
+  return Array.from(notes).slice(0, 4);
+}
+
+function projectionImprovementLevers(campaigns: CampaignRow[], snapshots: SnapshotRow[], reach: number) {
+  const levers = new Set<string>();
+  if (reach < 100000) levers.add("Add at least one higher-view creator to strengthen top-of-funnel reach.");
+  if (snapshots.filter((snapshot) => snapshot.entity_type === "creator").length < 3) levers.add("Compare at least three creator options before sending offers.");
+  if (snapshots.filter((snapshot) => snapshot.entity_type === "freelancer").length === 0) levers.add("Add freelancer support when the campaign needs editing, shoots, graphics, or repurposed assets.");
+  if (campaigns.some((campaign) => !campaign.campaign_goal)) levers.add("Add sharper campaign goals so Agently can separate awareness, conversion, and launch campaigns.");
+  if (average(snapshots.map((snapshot) => Number(snapshot.fit_score ?? 0))) < 75) levers.add("Improve projected ROI by tightening niche, language, city, or audience filters.");
+  if (!levers.size) levers.add("Keep the current shortlist, clarify deliverables in messages, and avoid broad usage rights that add cost without better performance.");
+  return Array.from(levers).slice(0, 4);
 }

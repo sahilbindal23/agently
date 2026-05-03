@@ -7,10 +7,12 @@ import { AppShell } from "@/components/layout/app-shell";
 import { PageHeader } from "@/components/layout/page-header";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardHeader, CardTitle } from "@/components/ui/card";
+import { projectCampaignPerformance, type CampaignPerformanceProjection } from "@/lib/campaigns/performance";
 import { rankCreators, rankFreelancers, type CampaignRecommendation, type FreelancerRecommendationInput, type ServiceRateInput } from "@/lib/campaigns/recommendations";
 import { getAgentlyData } from "@/lib/db/live-data";
+import { creatorAutomationDecision, freelancerAutomationDecision, isDiscoverable } from "@/lib/profile/automation";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { formatCurrency } from "@/lib/utils/format";
+import { formatCurrency, formatNumber } from "@/lib/utils/format";
 import type { Campaign, CampaignInvite, CampaignShortlist } from "@/types";
 
 export const dynamic = "force-dynamic";
@@ -24,10 +26,24 @@ export default async function CampaignDetailPage({ params }: { params: Promise<{
   const creatorPool = campaign.visibility === "invite_only" && campaignData.invites.length
     ? creators.filter((creator) => campaignData.invites.some((invite) => invite.creator_id === creator.id))
     : creators;
-  const creatorRecommendations = rankCreators(campaign, creatorPool, creatorPlatforms).slice(0, 8);
-  const freelancerRecommendations = rankFreelancers(campaign, campaignData.freelancers, campaignData.serviceRates).slice(0, 8);
+  const eligibleCreators = creatorPool.filter((creator) => isDiscoverable(creatorAutomationDecision({
+    creator: creator as unknown as Record<string, unknown>,
+    platforms: creatorPlatforms.filter((platform) => platform.creator_id === creator.id) as unknown as Array<Record<string, unknown>>
+  })));
+  const eligibleFreelancers = campaignData.freelancers.filter((freelancer) => isDiscoverable(freelancerAutomationDecision({
+    freelancer: freelancer as unknown as Record<string, unknown>,
+    serviceRates: campaignData.serviceRates.filter((rate) => rate.freelancer_id === freelancer.id) as unknown as Array<Record<string, unknown>>
+  })));
+  const creatorRecommendations = rankCreators(campaign, eligibleCreators, creatorPlatforms).slice(0, 8);
+  const freelancerRecommendations = rankFreelancers(campaign, eligibleFreelancers, campaignData.serviceRates).slice(0, 8);
   const creatorShortlist = campaignData.shortlists.filter((item) => item.entity_type === "creator");
   const freelancerShortlist = campaignData.shortlists.filter((item) => item.entity_type === "freelancer");
+  const projection = projectCampaignPerformance({
+    campaign,
+    creatorRecommendations,
+    freelancerRecommendations,
+    shortlists: campaignData.shortlists
+  });
   await persistRecommendationSnapshots(campaign.id, creatorRecommendations, freelancerRecommendations);
 
   return (
@@ -45,6 +61,8 @@ export default async function CampaignDetailPage({ params }: { params: Promise<{
         <Metric label="Length" value={campaign.campaign_length || "Not set"} />
         <Metric label="Shortlisted" value={`${campaignData.shortlists.length}`} />
       </section>
+
+      <PerformanceProjectionCard projection={projection} />
 
       <Card className="mt-5">
         <CardHeader><CardTitle>Brief Inputs</CardTitle><Badge tone="blue">{campaign.status}</Badge></CardHeader>
@@ -155,6 +173,57 @@ function RecommendationColumn({
         })}
       </div>
     </Card>
+  );
+}
+
+function PerformanceProjectionCard({ projection }: { projection: CampaignPerformanceProjection }) {
+  return (
+    <Card className="mt-5">
+      <CardHeader>
+        <div>
+          <CardTitle>Projected Performance Signals</CardTitle>
+          <p className="mt-1 text-sm text-muted-foreground">Directional planning view based on the current recommendations or shortlist. Not a revenue guarantee.</p>
+        </div>
+        <Badge tone={projection.confidenceScore >= 70 ? "green" : projection.confidenceScore >= 48 ? "amber" : "red"}>
+          {projection.confidenceScore}% confidence
+        </Badge>
+      </CardHeader>
+      <div className="grid gap-3 md:grid-cols-4">
+        <BriefItem label="Projected reach" value={formatNumber(projection.projectedReach)} />
+        <BriefItem label="Projected engagements" value={formatNumber(projection.projectedEngagements)} />
+        <BriefItem label="Projected CPM" value={projection.projectedCpmCents ? formatCurrency(projection.projectedCpmCents, "inr") : "Needs reach data"} />
+        <BriefItem label="Cost per engagement" value={projection.projectedCostPerEngagementCents ? formatCurrency(projection.projectedCostPerEngagementCents, "inr") : "Needs engagement data"} />
+      </div>
+      <div className="mt-4 grid gap-4 xl:grid-cols-[0.9fr_1.1fr]">
+        <div className="rounded-md border bg-white p-4">
+          <p className="text-xs font-semibold uppercase text-muted-foreground">Production contribution</p>
+          <p className="mt-2 text-sm leading-6">{projection.productionContribution}</p>
+          <p className="mt-2 text-xs text-muted-foreground">
+            Projection uses {projection.creatorCount} creator{projection.creatorCount === 1 ? "" : "s"} and {projection.freelancerCount} freelancer{projection.freelancerCount === 1 ? "" : "s"}.
+          </p>
+        </div>
+        <div className="grid gap-3 md:grid-cols-2">
+          <SignalList title="What would improve ROI" items={projection.improvementLevers} tone="green" />
+          <SignalList title="Risk notes" items={projection.riskNotes.length ? projection.riskNotes : ["No major projection risks detected from the current inputs."]} tone="amber" />
+        </div>
+      </div>
+    </Card>
+  );
+}
+
+function SignalList({ items, title, tone }: { items: string[]; title: string; tone: "green" | "amber" }) {
+  return (
+    <div className="rounded-md border bg-white p-4">
+      <div className="mb-3 flex items-center justify-between gap-3">
+        <p className="text-xs font-semibold uppercase text-muted-foreground">{title}</p>
+        <Badge tone={tone}>{items.length}</Badge>
+      </div>
+      <div className="space-y-2">
+        {items.map((item) => (
+          <p className="rounded-md bg-muted px-3 py-2 text-sm leading-5" key={item}>{item}</p>
+        ))}
+      </div>
+    </div>
   );
 }
 

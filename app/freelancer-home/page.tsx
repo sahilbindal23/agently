@@ -3,6 +3,7 @@ import Link from "next/link";
 import { AppShell } from "@/components/layout/app-shell";
 import { MarketplaceTabs } from "@/components/marketplace/marketplace-tabs";
 import { PageHeader } from "@/components/layout/page-header";
+import { MarketplaceEligibilityCard } from "@/components/profile/marketplace-eligibility-card";
 import { ProfileCompletenessCard } from "@/components/profile/profile-completeness-card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -10,6 +11,7 @@ import { Card, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, Td, Th } from "@/components/ui/table";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
+import { brandAutomationDecision, creatorAutomationDecision, freelancerAutomationDecision, isDiscoverable } from "@/lib/profile/automation";
 import { freelancerCompleteness } from "@/lib/profile/completeness";
 import { formatCurrency } from "@/lib/utils/format";
 
@@ -51,6 +53,12 @@ export default async function FreelancerHomePage() {
   ]);
   const hourlyRate = freelancer.hourly_rate_cents ?? freelancer.day_rate_cents ?? 0;
   const completeness = freelancerCompleteness({ freelancer, serviceRates: serviceRates ?? [], portfolio: portfolio ?? [], projects: projects ?? [] });
+  const automation = freelancerAutomationDecision({ freelancer, serviceRates: serviceRates ?? [], portfolio: portfolio ?? [] });
+  const visibleBrands = (brands ?? []).filter((brand) => isDiscoverable(brandAutomationDecision({ brand })));
+  const visibleCreators = (creators ?? []).filter((creator) => isDiscoverable(creatorAutomationDecision({
+    creator,
+    platforms: (platforms ?? []).filter((platform) => platform.creator_id === creator.id)
+  })));
 
   return (
     <AppShell>
@@ -67,19 +75,21 @@ export default async function FreelancerHomePage() {
         <Metric label="Project offers" value={`${projects?.length ?? 0}`} />
       </section>
 
-      <div className="mt-5">
-        <ProfileCompletenessCard title="Freelancer Readiness Checklist" completeness={completeness} />
-      </div>
-
-      <Card className="mt-5">
-        <CardHeader><CardTitle>Marketplace Network</CardTitle><Badge tone="green">{(brands?.length ?? 0) + (creators?.length ?? 0)}</Badge></CardHeader>
-        <MarketplaceTabs
-          tabs={[
-            { id: "brands", label: `Brands (${brands?.length ?? 0})`, type: "brand", items: brands ?? [] },
-            { id: "creators", label: `Creators (${creators?.length ?? 0})`, type: "creator", items: creators ?? [], platforms: platforms ?? [] }
-          ]}
-        />
-      </Card>
+      <section className="mt-5 grid gap-5 xl:grid-cols-[minmax(0,1fr)_320px]">
+        <Card>
+          <CardHeader><CardTitle>Marketplace Network</CardTitle><Badge tone="green">{visibleBrands.length + visibleCreators.length}</Badge></CardHeader>
+          <MarketplaceTabs
+            tabs={[
+              { id: "brands", label: `Brands (${visibleBrands.length})`, type: "brand", items: visibleBrands },
+              { id: "creators", label: `Creators (${visibleCreators.length})`, type: "creator", items: visibleCreators, platforms: platforms ?? [] }
+            ]}
+          />
+        </Card>
+        <aside className="space-y-3 xl:sticky xl:top-5 xl:self-start">
+          <MarketplaceEligibilityCard decision={automation} />
+          <ProfileCompletenessCard compact title="Readiness" completeness={completeness} />
+        </aside>
+      </section>
 
       <section className="mt-5 grid gap-5 xl:grid-cols-[0.9fr_1.1fr]">
         <Card>

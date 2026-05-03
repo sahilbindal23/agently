@@ -9,6 +9,7 @@ import { Card, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, Td, Th } from "@/components/ui/table";
 import { rankCreators, rankFreelancers, type CampaignRecommendation, type FreelancerRecommendationInput, type ServiceRateInput } from "@/lib/campaigns/recommendations";
 import { getAgentlyData } from "@/lib/db/live-data";
+import { creatorAutomationDecision, freelancerAutomationDecision, isDiscoverable } from "@/lib/profile/automation";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { formatCurrency } from "@/lib/utils/format";
 import type { Campaign, CampaignShortlist } from "@/types";
@@ -20,8 +21,16 @@ export default async function CampaignsPage() {
   const creatorPool = latestCampaign?.visibility === "invite_only" && latestInvites.length
     ? creators.filter((creator) => latestInvites.some((invite) => invite.creator_id === creator.id))
     : creators;
-  const creatorRecommendations = latestCampaign ? rankCreators(latestCampaign, creatorPool, creatorPlatforms).slice(0, 5) : [];
-  const freelancerRecommendations = latestCampaign ? rankFreelancers(latestCampaign, campaignData.freelancers, campaignData.serviceRates).slice(0, 5) : [];
+  const eligibleCreators = creatorPool.filter((creator) => isDiscoverable(creatorAutomationDecision({
+    creator: creator as unknown as Record<string, unknown>,
+    platforms: creatorPlatforms.filter((platform) => platform.creator_id === creator.id) as unknown as Array<Record<string, unknown>>
+  })));
+  const eligibleFreelancers = campaignData.freelancers.filter((freelancer) => isDiscoverable(freelancerAutomationDecision({
+    freelancer: freelancer as unknown as Record<string, unknown>,
+    serviceRates: campaignData.serviceRates.filter((rate) => rate.freelancer_id === freelancer.id) as unknown as Array<Record<string, unknown>>
+  })));
+  const creatorRecommendations = latestCampaign ? rankCreators(latestCampaign, eligibleCreators, creatorPlatforms).slice(0, 5) : [];
+  const freelancerRecommendations = latestCampaign ? rankFreelancers(latestCampaign, eligibleFreelancers, campaignData.serviceRates).slice(0, 5) : [];
 
   return (
     <AppShell>

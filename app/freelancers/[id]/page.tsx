@@ -1,21 +1,29 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { ArrowLeft } from "lucide-react";
+import type { ReactNode } from "react";
+import { ArrowLeft, Clock3, ExternalLink, Layers3, PenTool, ShieldCheck, Wrench } from "lucide-react";
 import { AppShell } from "@/components/layout/app-shell";
 import { PageHeader } from "@/components/layout/page-header";
 import { MessageRecipientButton } from "@/components/messages/message-recipient-button";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, Td, Th } from "@/components/ui/table";
+import { VerificationBadge } from "@/components/verification/verification-badge";
+import { getCurrentUser } from "@/lib/auth/session";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { formatCurrency } from "@/lib/utils/format";
 
 export default async function FreelancerDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
-  const data = await getFreelancerBundle(id);
+  const [data, currentUser] = await Promise.all([getFreelancerBundle(id), getCurrentUser()]);
   if (!data.freelancer) notFound();
 
   const freelancer = data.freelancer;
+  const isOwnProfile = String(freelancer.profile_id ?? "") === currentUser?.id;
+  const skills = toArray(freelancer.skills);
+  const serviceRegions = toArray(freelancer.service_regions);
+  const languages = toArray(freelancer.languages);
+  const pastClients = unique(data.portfolio.map((item) => String(item.brand_client ?? "")).filter(Boolean));
 
   return (
     <AppShell>
@@ -23,14 +31,17 @@ export default async function FreelancerDetailPage({ params }: { params: Promise
         eyebrow="Freelancer profile"
         title={String(freelancer.display_name)}
         description={String(freelancer.bio ?? "Production partner for creator campaigns.")}
-        action={<div className="flex flex-wrap gap-2"><MessageRecipientButton entityId={String(freelancer.id)} entityType="freelancer" label="Message freelancer" /><Link className="inline-flex h-9 items-center gap-2 rounded-md border bg-white px-3 text-sm font-medium" href="/brand-home"><ArrowLeft className="h-4 w-4" /> Marketplace</Link></div>}
+        action={<div className="flex flex-wrap gap-2">{isOwnProfile ? null : <MessageRecipientButton entityId={String(freelancer.id)} entityType="freelancer" label="Message freelancer" />}<Link className="inline-flex h-9 items-center gap-2 rounded-md border bg-white px-3 text-sm font-medium" href="/brand-home"><ArrowLeft className="h-4 w-4" /> Marketplace</Link></div>}
       />
 
       <section className="grid gap-5 xl:grid-cols-[0.85fr_1.15fr]">
         <Card>
           <CardHeader>
             <CardTitle>Service Scorecard</CardTitle>
-            <Badge tone="green">{String(freelancer.service_category ?? "Creative services")}</Badge>
+            <div className="flex flex-wrap gap-2">
+              <Badge tone="green">{String(freelancer.service_category ?? "Creative services")}</Badge>
+              <VerificationBadge status={freelancer.verification_status} tier={freelancer.verification_tier} />
+            </div>
           </CardHeader>
           {freelancer.image_url ? (
             // eslint-disable-next-line @next/next/no-img-element
@@ -44,25 +55,28 @@ export default async function FreelancerDetailPage({ params }: { params: Promise
           </div>
           <div className="mt-4 rounded-md border bg-white p-4 text-sm leading-6 text-muted-foreground">
             <p><span className="font-semibold text-foreground">City:</span> {String(freelancer.home_city ?? "Flexible")}</p>
-            <p><span className="font-semibold text-foreground">Regions:</span> {toArray(freelancer.service_regions).join(", ") || "Remote"}</p>
-            <p><span className="font-semibold text-foreground">Languages:</span> {toArray(freelancer.languages).join(", ") || "Not captured"}</p>
+            <p><span className="font-semibold text-foreground">Regions:</span> {serviceRegions.join(", ") || "Remote"}</p>
+            <p><span className="font-semibold text-foreground">Languages:</span> {languages.join(", ") || "Not captured"}</p>
           </div>
         </Card>
 
         <Card>
-          <CardHeader><CardTitle>Skills</CardTitle><Badge tone="blue">{toArray(freelancer.skills).length}</Badge></CardHeader>
+          <CardHeader><CardTitle>Skills & Toolkit</CardTitle><Badge tone="blue">{skills.length}</Badge></CardHeader>
           <div className="flex flex-wrap gap-2">
-            {toArray(freelancer.skills).map((skill) => <Badge key={skill}>{skill}</Badge>)}
+            {skills.map((skill) => <Badge key={skill}>{skill}</Badge>)}
           </div>
-          <p className="mt-4 text-sm leading-6 text-muted-foreground">
-            Best used for brands that need production support around creator campaigns without requiring the freelancer to post on their own audience.
-          </p>
+          <div className="mt-4 grid gap-3 sm:grid-cols-2">
+            <ProofTile icon={<Wrench className="h-4 w-4" />} label="Production toolkit" value={toolkitFromSkills(skills, String(freelancer.service_category ?? ""))} />
+            <ProofTile icon={<Clock3 className="h-4 w-4" />} label="Turnaround posture" value={turnaroundFromAvailability(String(freelancer.availability_status ?? "available"))} />
+            <ProofTile icon={<Layers3 className="h-4 w-4" />} label="Best for" value={bestForFreelancer(String(freelancer.service_category ?? ""), skills)} />
+            <ProofTile icon={<ShieldCheck className="h-4 w-4" />} label="Revision policy" value="Set per project before work starts" />
+          </div>
         </Card>
       </section>
 
-      <section className="mt-5 grid gap-5 xl:grid-cols-2">
+      <section className="mt-5 grid gap-5 xl:grid-cols-[0.85fr_1.15fr]">
         <Card>
-          <CardHeader><CardTitle>Service Rates</CardTitle><Badge tone="blue">{data.serviceRates.length}</Badge></CardHeader>
+          <CardHeader><CardTitle>Service Packages</CardTitle><Badge tone="blue">{data.serviceRates.length}</Badge></CardHeader>
           <div className="overflow-x-auto">
             <Table>
               <thead><tr><Th>Service</Th><Th>Description</Th><Th className="text-right">Rate</Th></tr></thead>
@@ -80,22 +94,41 @@ export default async function FreelancerDetailPage({ params }: { params: Promise
         </Card>
 
         <Card>
-          <CardHeader><CardTitle>Portfolio</CardTitle><Badge tone="green">{data.portfolio.length}</Badge></CardHeader>
-          <div className="overflow-x-auto">
-            <Table>
-              <thead><tr><Th>Work</Th><Th>Category</Th><Th>Client</Th><Th>Link</Th></tr></thead>
-              <tbody>
-                {data.portfolio.map((item) => (
-                  <tr key={String(item.id)}>
-                    <Td className="font-medium">{String(item.title)}</Td>
-                    <Td>{String(item.category ?? "")}</Td>
-                    <Td>{String(item.brand_client ?? "")}</Td>
-                    <Td><a className="text-primary" href={String(item.url)} target="_blank">Open</a></Td>
-                  </tr>
-                ))}
-              </tbody>
-            </Table>
+          <CardHeader><CardTitle>Portfolio Gallery</CardTitle><Badge tone="green">{data.portfolio.length}</Badge></CardHeader>
+          <div className="grid gap-3 md:grid-cols-2">
+            {data.portfolio.slice(0, 6).map((item) => (
+              <a className="group rounded-md border bg-white p-4 transition hover:border-primary hover:shadow-soft" href={String(item.url)} key={String(item.id)} target="_blank">
+                <div className="mb-3 flex items-start justify-between gap-3">
+                  <div>
+                    <p className="font-semibold">{String(item.title)}</p>
+                    <p className="mt-1 text-xs text-muted-foreground">{String(item.category ?? "Portfolio work")}</p>
+                  </div>
+                  <ExternalLink className="h-4 w-4 text-muted-foreground transition group-hover:text-primary" />
+                </div>
+                <p className="text-sm leading-6 text-muted-foreground">{String(item.description ?? "Portfolio proof for production capability.")}</p>
+                <div className="mt-3 flex flex-wrap gap-2">
+                  {item.brand_client ? <Badge tone="blue">{String(item.brand_client)}</Badge> : null}
+                  {item.media_type ? <Badge>{String(item.media_type)}</Badge> : null}
+                </div>
+              </a>
+            ))}
+            {data.portfolio.length === 0 ? <p className="text-sm leading-6 text-muted-foreground">No portfolio items have been added yet.</p> : null}
           </div>
+        </Card>
+      </section>
+
+      <section className="mt-5 grid gap-5 xl:grid-cols-3">
+        <Card>
+          <CardHeader><CardTitle>Past Clients</CardTitle><PenTool className="h-4 w-4 text-primary" /></CardHeader>
+          <div className="flex flex-wrap gap-2">
+            {pastClients.length ? pastClients.map((client) => <Badge key={client} tone="blue">{client}</Badge>) : <p className="text-sm text-muted-foreground">No client names listed yet.</p>}
+          </div>
+        </Card>
+        <Card className="xl:col-span-2">
+          <CardHeader><CardTitle>Production Fit</CardTitle><Badge tone="green">brand-ready</Badge></CardHeader>
+          <p className="text-sm leading-6 text-muted-foreground">
+            Best used when a brand needs creative output without asking the freelancer to post to their own audience. Confirm scope, file formats, revision count, usage, and approval timing before project acceptance.
+          </p>
         </Card>
       </section>
     </AppShell>
@@ -130,4 +163,39 @@ async function getFreelancerBundle(id: string) {
 
 function toArray(value: unknown) {
   return Array.isArray(value) ? value.map(String) : [];
+}
+
+function unique(items: string[]) {
+  return Array.from(new Set(items));
+}
+
+function ProofTile({ icon, label, value }: { icon: ReactNode; label: string; value: string }) {
+  return (
+    <div className="rounded-md border bg-white p-3">
+      <div className="mb-2 flex items-center gap-2 text-primary">{icon}<p className="text-xs font-semibold uppercase text-muted-foreground">{label}</p></div>
+      <p className="text-sm font-medium leading-5">{value}</p>
+    </div>
+  );
+}
+
+function toolkitFromSkills(skills: string[], category: string) {
+  const text = `${skills.join(" ")} ${category}`.toLowerCase();
+  if (text.includes("video") || text.includes("shoot")) return "Video production, editing, creator campaign assets";
+  if (text.includes("design") || text.includes("graphic")) return "Design systems, social assets, campaign creatives";
+  if (text.includes("podcast") || text.includes("audio")) return "Podcast capture, edits, clips, and audio cleanup";
+  return "Creative production support for campaign execution";
+}
+
+function turnaroundFromAvailability(availability: string) {
+  if (availability.toLowerCase().includes("limited")) return "Plan ahead; confirm dates before shortlisting";
+  if (availability.toLowerCase().includes("busy")) return "Good for scheduled work, less ideal for rush jobs";
+  return "Suitable for active campaign briefs and near-term projects";
+}
+
+function bestForFreelancer(category: string, skills: string[]) {
+  const text = `${category} ${skills.join(" ")}`.toLowerCase();
+  if (text.includes("edit")) return "Editing, cutdowns, reels, and post-production";
+  if (text.includes("shoot") || text.includes("video")) return "On-ground shoots, product videos, and campaign assets";
+  if (text.includes("design")) return "Static creatives, decks, graphics, and visual identity work";
+  return "Production work that supports creator or brand campaigns";
 }

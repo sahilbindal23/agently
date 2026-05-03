@@ -6,6 +6,7 @@ export type VerificationStatus = "unverified" | "reviewing" | "verified" | "reje
 
 export type Creator = {
   id: string;
+  profile_id?: string | null;
   display_name: string;
   primary_niche: string;
   bio: string;
@@ -39,6 +40,7 @@ export type CreatorPlatform = {
 
 export type Brand = {
   id: string;
+  profile_id?: string | null;
   name: string;
   website: string;
   industry: string;

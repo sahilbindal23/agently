@@ -7,10 +7,14 @@ import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/input";
 
 export function MessageComposer({
+  contextId,
+  contextType,
   recipientId,
   recipientType,
   threadId
 }: {
+  contextId?: string;
+  contextType?: string;
   recipientId?: string;
   recipientType?: string;
   threadId?: string;
@@ -27,6 +31,8 @@ export function MessageComposer({
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         body,
+        context_id: contextId,
+        context_type: contextType,
         thread_id: threadId,
         to_id: recipientId,
         to_type: recipientType

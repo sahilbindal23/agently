@@ -117,6 +117,7 @@ export async function getDealBundle(id: string) {
 function normalizeCreator(row: Record<string, unknown>): Creator {
   return {
     id: String(row.id),
+    profile_id: row.profile_id ? String(row.profile_id) : null,
     display_name: String(row.display_name ?? "Untitled creator"),
     primary_niche: String(row.primary_niche ?? "General creator"),
     bio: String(row.bio ?? ""),
@@ -160,6 +161,7 @@ function normalizeCreatorPlatform(row: Record<string, unknown>): CreatorPlatform
 function normalizeBrand(row: Record<string, unknown>): Brand {
   return {
     id: String(row.id),
+    profile_id: row.profile_id ? String(row.profile_id) : null,
     name: String(row.name ?? "Brand"),
     website: String(row.website ?? ""),
     industry: String(row.industry ?? ""),

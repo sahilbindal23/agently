@@ -20,10 +20,13 @@ export default async function MessagesPage({ searchParams }: { searchParams: Pro
   const threads = await getThreads(admin, user.id);
   const selectedThreadId = first(params.thread) || threads[0]?.id || "";
   const selectedThread = threads.find((thread) => thread.id === selectedThreadId);
+  if (selectedThreadId) await markThreadRead(admin, selectedThreadId, user.id);
   const messages = selectedThreadId ? await getMessages(admin, selectedThreadId, user.id) : [];
   const recipient = first(params.to_type) && first(params.to_id)
     ? await getRecipient(admin, first(params.to_type) ?? "", first(params.to_id) ?? "")
     : null;
+  const contextType = first(params.context_type);
+  const contextId = first(params.context_id);
 
   return (
     <AppShell>
@@ -35,7 +38,13 @@ export default async function MessagesPage({ searchParams }: { searchParams: Pro
 
       <section className="grid gap-5 xl:grid-cols-[0.75fr_1.25fr]">
         <Card>
-          <CardHeader><CardTitle>Inbox</CardTitle><Badge tone="blue">{threads.length}</Badge></CardHeader>
+          <CardHeader>
+            <CardTitle>Inbox</CardTitle>
+            <div className="flex items-center gap-2">
+              {threads.some((thread) => thread.unread_count > 0) ? <Badge tone="amber">{threads.reduce((sum, thread) => sum + thread.unread_count, 0)} unread</Badge> : null}
+              <Badge tone="blue">{threads.length}</Badge>
+            </div>
+          </CardHeader>
           <div className="space-y-2">
             {threads.map((thread) => (
               <a
@@ -43,8 +52,14 @@ export default async function MessagesPage({ searchParams }: { searchParams: Pro
                 href={`/messages?thread=${thread.id}`}
                 key={thread.id}
               >
-                <p className="font-semibold">{thread.other_names || thread.subject || "Conversation"}</p>
-                <p className="mt-1 text-xs text-muted-foreground">{thread.last_message || "No messages yet"}</p>
+                <div className="flex items-start justify-between gap-3">
+                  <div>
+                    <p className="font-semibold">{thread.other_names || thread.subject || "Conversation"}</p>
+                    <p className="mt-1 text-xs text-muted-foreground">{thread.context_label}</p>
+                  </div>
+                  {thread.unread_count > 0 ? <Badge tone="amber">{thread.unread_count}</Badge> : null}
+                </div>
+                <p className="mt-2 text-xs text-muted-foreground">{thread.last_message || "No messages yet"}</p>
               </a>
             ))}
             {threads.length === 0 ? <p className="text-sm leading-6 text-muted-foreground">No conversations yet. Start one from a profile or discovery card.</p> : null}
@@ -55,9 +70,9 @@ export default async function MessagesPage({ searchParams }: { searchParams: Pro
           <CardHeader>
             <div>
               <CardTitle>{recipient ? `Message ${recipient.name}` : selectedThread?.other_names || "New conversation"}</CardTitle>
-              <p className="mt-1 text-sm text-muted-foreground">{recipient ? `${recipient.type} profile` : "Keep campaign fit, pricing, deliverables, and next steps in one place."}</p>
+              <p className="mt-1 text-sm text-muted-foreground">{recipient ? `${recipient.type} profile` : selectedThread?.context_label || "Keep campaign fit, pricing, deliverables, and next steps in one place."}</p>
             </div>
-            <Badge tone="green">prototype inbox</Badge>
+            <Badge tone="green">{recipient ? contextLabel(contextType) : "prototype inbox"}</Badge>
           </CardHeader>
 
           {messages.length ? (
@@ -79,6 +94,8 @@ export default async function MessagesPage({ searchParams }: { searchParams: Pro
           <MessageComposer
             recipientId={recipient ? first(params.to_id) : undefined}
             recipientType={recipient ? first(params.to_type) : undefined}
+            contextId={recipient ? contextId : undefined}
+            contextType={recipient ? contextType : undefined}
             threadId={selectedThreadId || undefined}
           />
         </Card>
@@ -96,7 +113,7 @@ async function getThreads(admin: NonNullable<ReturnType<typeof createAdminClient
   if (!threadIds.length) return [];
 
   const [{ data: threads }, { data: allParticipants }, { data: profiles }, { data: messages }] = await Promise.all([
-    admin.from("message_threads").select("*").in("id", threadIds).order("updated_at", { ascending: false }),
+    admin.from("message_threads").select("id, subject, context_type, context_id, updated_at").in("id", threadIds).order("updated_at", { ascending: false }),
     admin.from("message_thread_participants").select("*").in("thread_id", threadIds),
     admin.from("profiles").select("id, full_name, email, role"),
     admin.from("messages").select("*").in("thread_id", threadIds).order("created_at", { ascending: false })
@@ -108,11 +125,20 @@ async function getThreads(admin: NonNullable<ReturnType<typeof createAdminClient
       .map((participant) => profiles?.find((profile) => profile.id === participant.profile_id))
       .filter(Boolean);
     const last = messages?.find((message) => message.thread_id === thread.id);
+    const ownParticipant = (allParticipants ?? []).find((participant) => participant.thread_id === thread.id && participant.profile_id === profileId);
+    const lastReadAt = ownParticipant?.last_read_at ? new Date(String(ownParticipant.last_read_at)).getTime() : 0;
+    const unreadCount = (messages ?? []).filter((message) => (
+      message.thread_id === thread.id &&
+      message.sender_profile_id !== profileId &&
+      new Date(String(message.created_at)).getTime() > lastReadAt
+    )).length;
     return {
       id: String(thread.id),
       subject: String(thread.subject ?? ""),
+      context_label: contextLabel(String(thread.context_type ?? "general")),
       other_names: others.map((profile) => profile?.full_name || profile?.email || profile?.role).join(", "),
-      last_message: last?.body ? String(last.body).slice(0, 90) : ""
+      last_message: last?.body ? String(last.body).slice(0, 90) : "",
+      unread_count: unreadCount
     };
   });
 }
@@ -149,4 +175,19 @@ async function getRecipient(admin: NonNullable<ReturnType<typeof createAdminClie
 
 function first(value: string | string[] | undefined) {
   return Array.isArray(value) ? value[0] : value;
+}
+
+async function markThreadRead(admin: NonNullable<ReturnType<typeof createAdminClient>>, threadId: string, profileId: string) {
+  await admin
+    .from("message_thread_participants")
+    .update({ last_read_at: new Date().toISOString() })
+    .eq("thread_id", threadId)
+    .eq("profile_id", profileId);
+}
+
+function contextLabel(value?: string) {
+  if (value === "deal") return "Creator offer";
+  if (value === "freelancer_project") return "Freelancer project";
+  if (value === "campaign") return "Campaign conversation";
+  return "General conversation";
 }

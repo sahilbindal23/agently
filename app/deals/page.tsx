@@ -3,6 +3,7 @@ import { Plus } from "lucide-react";
 import { BrandOfferForm } from "@/components/deals/brand-offer-form";
 import { AppShell } from "@/components/layout/app-shell";
 import { PageHeader } from "@/components/layout/page-header";
+import { MessageRecipientButton } from "@/components/messages/message-recipient-button";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, Td, Th } from "@/components/ui/table";
@@ -36,7 +37,7 @@ export default async function DealsPage() {
         <CardHeader><CardTitle>{isBrand ? "Creator Offers Sent" : "Pipeline"}</CardTitle><Badge tone="blue">{visibleDeals.length} deals</Badge></CardHeader>
         <div className="overflow-x-auto">
           <Table>
-            <thead><tr><Th>Deal</Th><Th>Creator</Th><Th>Brand</Th><Th>Offer</Th><Th>Stage</Th><Th>Due</Th><Th>Risk</Th><Th className="text-right">Amount</Th></tr></thead>
+            <thead><tr><Th>Deal</Th><Th>Creator</Th><Th>Brand</Th><Th>Offer</Th><Th>Stage</Th><Th>Due</Th><Th>Risk</Th><Th className="text-right">Amount</Th>{isBrand ? <Th>Conversation</Th> : null}</tr></thead>
             <tbody>
               {visibleDeals.map((deal) => (
                 <tr key={deal.id}>
@@ -48,11 +49,16 @@ export default async function DealsPage() {
                   <Td>{deal.due_date}</Td>
                   <Td><Badge tone={deal.risk_score > 30 ? "amber" : "green"}>{deal.risk_score}</Badge></Td>
                   <Td className="text-right font-bold">{formatCurrency(deal.amount_cents, deal.currency)}</Td>
+                  {isBrand ? (
+                    <Td>
+                      <MessageRecipientButton contextId={deal.id} contextType="deal" entityId={deal.creator_id} entityType="creator" label="Message" />
+                    </Td>
+                  ) : null}
                 </tr>
               ))}
               {visibleDeals.length === 0 ? (
                 <tr>
-                  <Td colSpan={8} className="text-muted-foreground">No creator offers sent yet.</Td>
+                  <Td colSpan={isBrand ? 9 : 8} className="text-muted-foreground">No creator offers sent yet.</Td>
                 </tr>
               ) : null}
             </tbody>
@@ -64,7 +70,7 @@ export default async function DealsPage() {
         <CardHeader><CardTitle>Freelancer Projects Sent</CardTitle><Badge tone="green">{freelancerProjects.length}</Badge></CardHeader>
         <div className="overflow-x-auto">
           <Table>
-            <thead><tr><Th>Project</Th><Th>Status</Th><Th>Payment</Th><Th>Due</Th><Th>Scope</Th><Th className="text-right">Amount</Th></tr></thead>
+            <thead><tr><Th>Project</Th><Th>Status</Th><Th>Payment</Th><Th>Due</Th><Th>Scope</Th><Th className="text-right">Amount</Th>{isBrand ? <Th>Conversation</Th> : null}</tr></thead>
             <tbody>
               {freelancerProjects.map((project) => (
                 <tr key={String(project.id)}>
@@ -74,11 +80,16 @@ export default async function DealsPage() {
                   <Td>{String(project.due_date ?? "not set")}</Td>
                   <Td className="max-w-md truncate">{String(project.scope ?? "")}</Td>
                   <Td className="text-right font-bold">{formatCurrency(Number(project.amount_cents ?? 0), String(project.currency ?? "inr"))}</Td>
+                  {isBrand && project.freelancer_id ? (
+                    <Td>
+                      <MessageRecipientButton contextId={String(project.id)} contextType="freelancer_project" entityId={String(project.freelancer_id)} entityType="freelancer" label="Message" />
+                    </Td>
+                  ) : isBrand ? <Td /> : null}
                 </tr>
               ))}
               {freelancerProjects.length === 0 ? (
                 <tr>
-                  <Td colSpan={6} className="text-muted-foreground">No freelancer projects sent yet.</Td>
+                  <Td colSpan={isBrand ? 7 : 6} className="text-muted-foreground">No freelancer projects sent yet.</Td>
                 </tr>
               ) : null}
             </tbody>

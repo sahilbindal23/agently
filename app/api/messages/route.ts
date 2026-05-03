@@ -21,10 +21,12 @@ export async function POST(request: Request) {
   const threadId = String(body.thread_id ?? "").trim();
   const toType = String(body.to_type ?? "") as keyof typeof tableByType;
   const toId = String(body.to_id ?? "").trim();
+  const contextType = String(body.context_type ?? "general").trim();
+  const contextId = String(body.context_id ?? "").trim();
 
   if (!message) return NextResponse.json({ error: "Message is required." }, { status: 400 });
 
-  const finalThreadId = threadId || await createThread(admin, authData.user.id, toType, toId);
+  const finalThreadId = threadId || await createThread(admin, authData.user.id, toType, toId, contextType, contextId);
   if (!finalThreadId) return NextResponse.json({ error: "Recipient could not be resolved." }, { status: 400 });
 
   const allowed = await isParticipant(admin, finalThreadId, authData.user.id);
@@ -37,7 +39,15 @@ export async function POST(request: Request) {
   }).select("*").single();
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
-  await admin.from("message_threads").update({ updated_at: new Date().toISOString() }).eq("id", finalThreadId);
+  const now = new Date().toISOString();
+  await Promise.all([
+    admin.from("message_threads").update({ updated_at: now }).eq("id", finalThreadId),
+    admin
+      .from("message_thread_participants")
+      .update({ last_read_at: now })
+      .eq("thread_id", finalThreadId)
+      .eq("profile_id", authData.user.id)
+  ]);
 
   return NextResponse.json({ data, thread_id: finalThreadId }, { status: 201 });
 }
@@ -46,17 +56,22 @@ async function createThread(
   admin: NonNullable<ReturnType<typeof createAdminClient>>,
   senderId: string,
   toType: keyof typeof tableByType,
-  toId: string
+  toId: string,
+  contextType: string,
+  contextId: string
 ) {
   const recipientId = await resolveRecipientProfileId(admin, toType, toId);
   if (!recipientId || recipientId === senderId) return "";
 
-  const existing = await findExistingThread(admin, senderId, recipientId);
+  const normalizedContextType = normalizeContextType(contextType);
+  const existing = await findExistingThread(admin, senderId, recipientId, normalizedContextType, contextId);
   if (existing) return existing;
 
   const { data: thread, error } = await admin.from("message_threads").insert({
     created_by: senderId,
-    subject: "Agently conversation"
+    subject: subjectForContext(normalizedContextType),
+    context_type: normalizedContextType,
+    context_id: contextId || null
   }).select("id").single();
 
   if (error || !thread) return "";
@@ -82,14 +97,26 @@ async function resolveRecipientProfileId(admin: NonNullable<ReturnType<typeof cr
   return data?.profile_id ? String(data.profile_id) : "";
 }
 
-async function findExistingThread(admin: NonNullable<ReturnType<typeof createAdminClient>>, a: string, b: string) {
+async function findExistingThread(
+  admin: NonNullable<ReturnType<typeof createAdminClient>>,
+  a: string,
+  b: string,
+  contextType: string,
+  contextId: string
+) {
   const { data } = await admin
     .from("message_thread_participants")
-    .select("thread_id")
+    .select("thread_id, message_threads(context_type, context_id)")
     .in("profile_id", [a, b]);
 
   const counts = new Map<string, number>();
-  (data ?? []).forEach((row) => counts.set(String(row.thread_id), (counts.get(String(row.thread_id)) ?? 0) + 1));
+  (data ?? []).forEach((row) => {
+    const thread = Array.isArray(row.message_threads) ? row.message_threads[0] : row.message_threads;
+    const matchesContext = contextId
+      ? String(thread?.context_type ?? "general") === contextType && String(thread?.context_id ?? "") === contextId
+      : String(thread?.context_type ?? "general") === "general";
+    if (matchesContext) counts.set(String(row.thread_id), (counts.get(String(row.thread_id)) ?? 0) + 1);
+  });
   return Array.from(counts.entries()).find(([, count]) => count >= 2)?.[0] ?? "";
 }
 
@@ -101,4 +128,15 @@ async function isParticipant(admin: NonNullable<ReturnType<typeof createAdminCli
     .eq("profile_id", profileId)
     .maybeSingle();
   return Boolean(data);
+}
+
+function normalizeContextType(value: string) {
+  return ["deal", "freelancer_project", "campaign"].includes(value) ? value : "general";
+}
+
+function subjectForContext(contextType: string) {
+  if (contextType === "deal") return "Creator offer conversation";
+  if (contextType === "freelancer_project") return "Freelancer project conversation";
+  if (contextType === "campaign") return "Campaign conversation";
+  return "Agently conversation";
 }

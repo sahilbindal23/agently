@@ -7,6 +7,7 @@ import { WalkthroughLaunchButton } from "@/components/onboarding/walkthrough-lau
 import { Badge } from "@/components/ui/badge";
 import { getCurrentUser } from "@/lib/auth/session";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { getWorkflowNudges } from "@/lib/workflow/nudges";
 
 const adminNav = [
   { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard, tour: "dashboard" },
@@ -63,7 +64,9 @@ const freelancerNav = [
 
 export async function AppShell({ children }: { children: React.ReactNode }) {
   const user = await getCurrentUser();
-  const notification = user ? await getNotification(user) : null;
+  const admin = createAdminClient();
+  const [nudges, unreadMessages] = user && admin ? await Promise.all([getWorkflowNudges(admin, user), getUnreadMessageCount(user.id)]) : [[], 0];
+  const notification = nudges[0] ?? null;
   const nav = user?.role === "creator" ? creatorNav : user?.role === "brand" ? brandNav : user?.role === "freelancer" ? freelancerNav : adminNav;
 
   return (
@@ -81,7 +84,15 @@ export async function AppShell({ children }: { children: React.ReactNode }) {
                 className="flex min-w-fit items-center gap-3 rounded-md px-3 py-2.5 text-sm font-medium text-muted-foreground transition hover:bg-muted hover:text-foreground"
               >
                 <Icon className="h-4 w-4" />
-                {item.label}
+                <span className="flex flex-1 items-center justify-between gap-2">
+                  {item.label}
+                  {item.href === "/messages" && unreadMessages > 0 ? (
+                    <span className="rounded-full bg-amber-100 px-2 py-0.5 text-xs font-semibold text-amber-800">{unreadMessages}</span>
+                  ) : null}
+                  {item.href === "/activity" && nudges.length > 0 ? (
+                    <span className="rounded-full bg-blue-100 px-2 py-0.5 text-xs font-semibold text-blue-800">{nudges.length}</span>
+                  ) : null}
+                </span>
               </Link>
             );
           })}
@@ -101,12 +112,20 @@ export async function AppShell({ children }: { children: React.ReactNode }) {
         </div>
       </aside>
       <main className="px-4 py-6 sm:px-6 lg:px-8">
-        {notification ? (
-          <Link className="mb-4 flex items-center justify-between gap-3 rounded-md border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900" href={notification.href}>
-            <span className="inline-flex items-center gap-2"><Bell className="h-4 w-4" /> {notification.copy}</span>
-            <span className="font-semibold">Review</span>
-          </Link>
-        ) : null}
+        <div className="mb-4 space-y-2">
+          {unreadMessages > 0 ? (
+            <Link className="flex items-center justify-between gap-3 rounded-md border border-blue-200 bg-blue-50 px-4 py-3 text-sm text-blue-900" href="/messages">
+              <span className="inline-flex items-center gap-2"><MessageSquare className="h-4 w-4" /> {unreadMessages} unread message{unreadMessages === 1 ? "" : "s"} in campaign conversations.</span>
+              <span className="font-semibold">Open</span>
+            </Link>
+          ) : null}
+          {notification ? (
+            <Link className="flex items-center justify-between gap-3 rounded-md border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900" href={notification.href}>
+              <span className="inline-flex items-center gap-2"><Bell className="h-4 w-4" /> {notification.title}: {notification.description}</span>
+              <span className="font-semibold">{notification.cta}</span>
+            </Link>
+          ) : null}
+        </div>
         {children}
       </main>
       <GuidedWalkthrough role={user?.role ?? "admin"} />
@@ -114,23 +133,27 @@ export async function AppShell({ children }: { children: React.ReactNode }) {
   );
 }
 
-async function getNotification(user: NonNullable<Awaited<ReturnType<typeof getCurrentUser>>>) {
+async function getUnreadMessageCount(profileId: string) {
   const admin = createAdminClient();
-  if (!admin) return null;
+  if (!admin) return 0;
 
-  if (user.role === "creator") {
-    const { data: creator } = await admin.from("creators").select("id").eq("profile_id", user.id).maybeSingle();
-    if (!creator?.id) return null;
-    const { data } = await admin.from("deals").select("id").eq("creator_id", creator.id).not("offer_status", "in", "(accepted,declined)").limit(1);
-    return data?.length ? { href: "/offers", copy: "You have an incoming creator offer waiting for a response." } : null;
-  }
+  const { data: participants } = await admin
+    .from("message_thread_participants")
+    .select("thread_id, last_read_at")
+    .eq("profile_id", profileId);
+  const rows = participants ?? [];
+  const threadIds = rows.map((row) => String(row.thread_id));
+  if (!threadIds.length) return 0;
 
-  if (user.role === "freelancer") {
-    const { data: freelancer } = await admin.from("freelancers").select("id").eq("profile_id", user.id).maybeSingle();
-    if (!freelancer?.id) return null;
-    const { data } = await admin.from("freelancer_projects").select("id").eq("freelancer_id", freelancer.id).not("status", "in", "(accepted,declined)").limit(1);
-    return data?.length ? { href: "/offers", copy: "You have an incoming freelancer project waiting for a response." } : null;
-  }
+  const { data: messages } = await admin
+    .from("messages")
+    .select("thread_id, sender_profile_id, created_at")
+    .in("thread_id", threadIds)
+    .neq("sender_profile_id", profileId);
 
-  return null;
+  return (messages ?? []).filter((message) => {
+    const participant = rows.find((row) => row.thread_id === message.thread_id);
+    const lastReadAt = participant?.last_read_at ? new Date(String(participant.last_read_at)).getTime() : 0;
+    return new Date(String(message.created_at)).getTime() > lastReadAt;
+  }).length;
 }

@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useLayoutEffect, useMemo, useState } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import { ArrowRight, ChevronLeft, MousePointer2, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -175,6 +175,7 @@ export function GuidedWalkthrough({ role }: { role: Role }) {
   const [rect, setRect] = useState<Rect | null>(null);
   const [missingTarget, setMissingTarget] = useState(false);
   const [positionReady, setPositionReady] = useState(false);
+  const [pendingStart, setPendingStart] = useState(false);
 
   const current = steps[index];
 
@@ -188,6 +189,9 @@ export function GuidedWalkthrough({ role }: { role: Role }) {
 
   const goToIndex = useCallback((nextIndex: number) => {
     const bounded = Math.max(0, Math.min(steps.length - 1, nextIndex));
+    setPositionReady(false);
+    setMissingTarget(false);
+    setRect(null);
     setIndex(bounded);
     setActive(true);
     persist(true, bounded);
@@ -195,6 +199,7 @@ export function GuidedWalkthrough({ role }: { role: Role }) {
 
   const endTour = useCallback(() => {
     setActive(false);
+    setPendingStart(false);
     setRect(null);
     setMissingTarget(false);
     persist(false, 0);
@@ -210,8 +215,7 @@ export function GuidedWalkthrough({ role }: { role: Role }) {
       return;
     }
 
-    element.scrollIntoView({ block: "center", inline: "center", behavior: "auto" });
-    window.requestAnimationFrame(() => {
+    const updateRect = () => {
       const box = element.getBoundingClientRect();
       setMissingTarget(false);
       setRect({
@@ -221,7 +225,11 @@ export function GuidedWalkthrough({ role }: { role: Role }) {
         height: box.height + 16
       });
       setPositionReady(true);
-    });
+    };
+
+    element.scrollIntoView({ block: "center", inline: "center", behavior: "auto" });
+    updateRect();
+    window.requestAnimationFrame(updateRect);
   }, [active, current]);
 
   useEffect(() => {
@@ -241,25 +249,45 @@ export function GuidedWalkthrough({ role }: { role: Role }) {
 
   useEffect(() => {
     function start() {
-      goToIndex(0);
       if (steps[0]?.route && steps[0].route !== window.location.pathname) {
+        setIndex(0);
+        setActive(false);
+        setPendingStart(true);
+        setPositionReady(false);
+        setMissingTarget(false);
+        setRect(null);
+        persist(true, 0);
         router.push(steps[0].route);
+        return;
       }
+      goToIndex(0);
     }
 
     window.addEventListener("agently:start-walkthrough", start);
     return () => window.removeEventListener("agently:start-walkthrough", start);
-  }, [goToIndex, router, steps]);
+  }, [goToIndex, persist, router, steps]);
 
   useEffect(() => {
     if (!active || !current) return;
     if (current.route !== pathname) {
+      setPositionReady(false);
+      setRect(null);
       router.push(current.route);
-      return;
     }
+  }, [active, current, pathname, router]);
+
+  useLayoutEffect(() => {
+    if (pendingStart && current?.route === pathname) {
+      setPendingStart(false);
+      setActive(true);
+    }
+  }, [current, pathname, pendingStart]);
+
+  useLayoutEffect(() => {
+    if (!active || !current || current.route !== pathname) return;
 
     measure();
-    const timeout = window.setTimeout(measure, 0);
+    const timeout = window.setTimeout(measure, 40);
     window.addEventListener("resize", measure);
     window.addEventListener("scroll", measure, true);
     return () => {
@@ -267,9 +295,9 @@ export function GuidedWalkthrough({ role }: { role: Role }) {
       window.removeEventListener("resize", measure);
       window.removeEventListener("scroll", measure, true);
     };
-  }, [active, current, measure, pathname, router]);
+  }, [active, current, measure, pathname]);
 
-  if (!active || !current) return null;
+  if (!active || !current || current.route !== pathname) return null;
 
   const cardPosition = rect || missingTarget ? getCardPosition(rect) : undefined;
   const progress = `${index + 1} / ${steps.length}`;
@@ -279,14 +307,10 @@ export function GuidedWalkthrough({ role }: { role: Role }) {
       endTour();
       return;
     }
-    setMissingTarget(false);
-    setPositionReady(true);
     goToIndex(index + 1);
   }
 
   function back() {
-    setMissingTarget(false);
-    setPositionReady(true);
     goToIndex(index - 1);
   }
 
@@ -294,7 +318,7 @@ export function GuidedWalkthrough({ role }: { role: Role }) {
     <div className="fixed inset-0 z-50">
       {rect ? (
         <div
-          className="pointer-events-none absolute rounded-xl border-2 border-accent bg-transparent shadow-[0_0_0_9999px_rgba(15,23,42,0.62),0_18px_50px_rgba(20,184,166,0.28)] transition-all duration-150"
+          className="pointer-events-none absolute rounded-xl border-2 border-accent bg-transparent shadow-[0_0_0_9999px_rgba(15,23,42,0.62),0_18px_50px_rgba(20,184,166,0.28)] transition-[top,left,width,height] duration-75 ease-out"
           style={{ top: rect.top, left: rect.left, width: rect.width, height: rect.height }}
         >
           <div className="absolute -right-3 -top-3 flex h-8 w-8 animate-pulse items-center justify-center rounded-full bg-accent text-accent-foreground shadow-soft">
