@@ -17,8 +17,8 @@ export function MarketplaceEligibilityCard({ decision }: { decision: AutomationD
     <Card className="p-4 shadow-none">
       <CardHeader className="mb-3 gap-3">
         <div>
-          <CardTitle className="text-sm">Marketplace automation</CardTitle>
-          <p className="mt-1 text-xs leading-5 text-muted-foreground">Agently auto-routes profiles based on trust, data quality, and readiness.</p>
+          <CardTitle className="text-sm">Profile visibility</CardTitle>
+          <p className="mt-1 text-xs leading-5 text-muted-foreground">Complete profiles get stronger placement in discovery.</p>
         </div>
         <Badge tone={toneByStatus[decision.status]}>{decision.score}%</Badge>
       </CardHeader>
@@ -29,7 +29,7 @@ export function MarketplaceEligibilityCard({ decision }: { decision: AutomationD
           <p className="mt-1 text-xs leading-5 text-muted-foreground">
             {decision.status === "discoverable"
               ? "Your profile can appear in marketplace discovery."
-              : "Your profile stays limited until these issues are fixed or reviewed."}
+              : "Your profile visibility is limited until the missing details are fixed."}
           </p>
         </div>
       </div>

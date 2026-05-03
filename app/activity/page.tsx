@@ -143,22 +143,7 @@ async function getBrandActivity(admin: AdminClient, user: NonNullable<Awaited<Re
   const projects = brandIds.length ? await selectIn(admin, "freelancer_projects", "*", "brand_id", brandIds) : [];
 
   const dealIds = mapIds(deals);
-  const projectIds = mapIds(projects);
-  const dealDeliverables = dealIds.length ? await selectIn(admin, "deliverables", "*", "deal_id", dealIds) : [];
-  const projectDeliverables = projectIds.length ? await selectIn(admin, "deliverables", "*", "freelancer_project_id", projectIds) : [];
   const contracts = dealIds.length ? await selectIn(admin, "contracts", "*", "deal_id", dealIds) : [];
-
-  for (const deliverable of [...dealDeliverables, ...projectDeliverables].filter((row: AnyRow) => row.status === "submitted")) {
-    items.push({
-      id: `deliverable-${deliverable.id}`,
-      group: "Review queue",
-      severity: "high",
-      title: deliverable.title ? `Review deliverable: ${deliverable.title}` : "Review submitted deliverable",
-      description: "A creator or freelancer has submitted work. Reviewing it keeps the payout workflow moving.",
-      href: "/payments",
-      cta: "Review delivery"
-    });
-  }
 
   for (const deal of deals.filter((row: AnyRow) => row.payment_status === "release_ready")) {
     items.push({
@@ -194,36 +179,6 @@ async function getBrandActivity(admin: AdminClient, user: NonNullable<Awaited<Re
       href: "/contracts",
       cta: "Review contract"
     });
-  }
-
-  for (const campaign of campaigns) {
-    const campaignDeals = deals.filter((deal: AnyRow) => deal.campaign_id === campaign.id);
-    const campaignProjects = projects.filter((project: AnyRow) => project.campaign_id === campaign.id);
-    if (campaignDeals.length === 0 && campaignProjects.length === 0) {
-      items.push({
-        id: `campaign-empty-${campaign.id}`,
-        group: "Campaign setup",
-        severity: "medium",
-        title: `${toText(campaign.title, "Campaign")} has no offers or projects sent`,
-        description: "Use recommendations to invite creators or freelancers so the brief can turn into actual work.",
-        href: `/campaigns/${campaign.id}`,
-        cta: "Open recommendations"
-      });
-      continue;
-    }
-
-    const hasAcceptedTalent = [...campaignDeals, ...campaignProjects].some((row) => row.talent_response === "accepted" || row.status === "accepted");
-    if (!hasAcceptedTalent) {
-      items.push({
-        id: `campaign-no-accepted-${campaign.id}`,
-        group: "Campaign setup",
-        severity: "medium",
-      title: `${toText(campaign.title, "Campaign")} has no accepted talent yet`,
-        description: "Shortlisted talent exists, but nobody has accepted. Consider revising budget, scope, or target fit.",
-        href: `/campaigns/${campaign.id}`,
-        cta: "Review campaign"
-      });
-    }
   }
 
   return limitItems(items);

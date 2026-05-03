@@ -11,7 +11,6 @@ import { Table, Td, Th } from "@/components/ui/table";
 import { VerificationBadge } from "@/components/verification/verification-badge";
 import { getCurrentUser } from "@/lib/auth/session";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { formatCurrency } from "@/lib/utils/format";
 
 export const dynamic = "force-dynamic";
 
@@ -72,14 +71,13 @@ export default async function BrandProfilePage({ params }: { params: Promise<{ i
           </div>
           <div className="mt-4 overflow-x-auto">
             <Table>
-              <thead><tr><Th>Recent work</Th><Th>Type</Th><Th>Status</Th><Th className="text-right">Amount</Th></tr></thead>
+              <thead><tr><Th>Recent work</Th><Th>Type</Th><Th>Status</Th></tr></thead>
               <tbody>
                 {(deals ?? []).map((deal) => (
                   <tr key={`deal-${deal.id}`}>
                     <Td>{deal.title}</Td>
                     <Td>Creator offer</Td>
                     <Td>{deal.offer_status ?? deal.stage}</Td>
-                    <Td className="text-right">{formatCurrency(Number(deal.amount_cents ?? 0), String(deal.currency ?? "inr"))}</Td>
                   </tr>
                 ))}
                 {(projects ?? []).map((project) => (
@@ -87,7 +85,6 @@ export default async function BrandProfilePage({ params }: { params: Promise<{ i
                     <Td>{project.title}</Td>
                     <Td>Freelancer project</Td>
                     <Td>{project.status}</Td>
-                    <Td className="text-right">{formatCurrency(Number(project.amount_cents ?? 0), String(project.currency ?? "inr"))}</Td>
                   </tr>
                 ))}
               </tbody>
