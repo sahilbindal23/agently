@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { trackEvent, userEventBase } from "@/lib/analytics/track";
+import { applyLedgerEvent } from "@/lib/engines/outcome-ledger";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
 
@@ -61,6 +62,15 @@ export async function POST(request: Request) {
       brand_id: campaign.brand_id,
       amount_cents: amountCents
     }
+  });
+  await applyLedgerEvent(admin, {
+    amountCents,
+    campaignId,
+    entityId: freelancerId,
+    entityType: "freelancer",
+    eventName: "freelancer_project_sent",
+    freelancerProjectId: data.id,
+    outcomeLabel: "offer_sent"
   });
   return NextResponse.json({ data }, { status: 201 });
 }

@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { trackEvent, userEventBase } from "@/lib/analytics/track";
+import { applyLedgerEvent } from "@/lib/engines/outcome-ledger";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
 
@@ -62,8 +63,45 @@ export async function POST(request: Request) {
     entityId: String(deliverable.deal_id ?? deliverable.freelancer_project_id),
     metadata: { deliverable_id: deliverableId, has_review_notes: Boolean(reviewNotes) }
   });
+  await applyDeliverableLedgerEvent(admin, deliverable, status, reviewNotes);
 
   return NextResponse.json({ data });
+}
+
+async function applyDeliverableLedgerEvent(
+  admin: NonNullable<ReturnType<typeof createAdminClient>>,
+  deliverable: Record<string, unknown>,
+  status: "approved" | "revision_requested",
+  reviewNotes: string
+) {
+  if (deliverable.deal_id) {
+    const { data: deal } = await admin.from("deals").select("id, campaign_id, creator_id, amount_cents").eq("id", deliverable.deal_id).maybeSingle();
+    if (!deal) return;
+    await applyLedgerEvent(admin, {
+      amountCents: Number(deal.amount_cents ?? 0),
+      campaignId: deal.campaign_id ? String(deal.campaign_id) : null,
+      deliverableStatus: status,
+      entityId: String(deal.creator_id),
+      entityType: "creator",
+      eventName: status === "approved" ? "deliverable_approved" : "deliverable_revision_requested",
+      notes: reviewNotes,
+      offerId: String(deal.id)
+    });
+  }
+  if (deliverable.freelancer_project_id) {
+    const { data: project } = await admin.from("freelancer_projects").select("id, campaign_id, freelancer_id, amount_cents").eq("id", deliverable.freelancer_project_id).maybeSingle();
+    if (!project) return;
+    await applyLedgerEvent(admin, {
+      amountCents: Number(project.amount_cents ?? 0),
+      campaignId: project.campaign_id ? String(project.campaign_id) : null,
+      deliverableStatus: status,
+      entityId: String(project.freelancer_id),
+      entityType: "freelancer",
+      eventName: status === "approved" ? "deliverable_approved" : "deliverable_revision_requested",
+      freelancerProjectId: String(project.id),
+      notes: reviewNotes
+    });
+  }
 }
 
 async function updateDealAfterReview(admin: NonNullable<ReturnType<typeof createAdminClient>>, dealId: string, status: "approved" | "revision_requested") {

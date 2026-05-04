@@ -8,14 +8,34 @@ import { Input, Textarea } from "@/components/ui/input";
 
 type ResponseStatus = "accepted" | "changes_requested" | "declined";
 
-export function OfferResponseActions({ dealId, projectId, kind = "deal" }: { dealId?: string; projectId?: string; kind?: "deal" | "project" }) {
+type OfferResponseActionsProps = {
+  dealId?: string;
+  projectId?: string;
+  kind?: "deal" | "project";
+  initialAmountCents?: number | null;
+  initialScope?: string | null;
+  initialDueDate?: string | null;
+  initialUsageRights?: string | null;
+  initialApprovalTerms?: string | null;
+};
+
+export function OfferResponseActions({
+  dealId,
+  projectId,
+  kind = "deal",
+  initialAmountCents,
+  initialScope,
+  initialDueDate,
+  initialUsageRights,
+  initialApprovalTerms
+}: OfferResponseActionsProps) {
   const router = useRouter();
   const [response, setResponse] = useState("");
-  const [counterAmountInr, setCounterAmountInr] = useState("");
-  const [counterScope, setCounterScope] = useState("");
-  const [counterDueDate, setCounterDueDate] = useState("");
-  const [counterUsageRights, setCounterUsageRights] = useState("");
-  const [counterApprovalTerms, setCounterApprovalTerms] = useState("");
+  const [counterAmountInr, setCounterAmountInr] = useState(initialAmountCents ? String(Math.round(initialAmountCents / 100)) : "");
+  const [counterScope, setCounterScope] = useState(initialScope ?? "");
+  const [counterDueDate, setCounterDueDate] = useState(initialDueDate ?? "");
+  const [counterUsageRights, setCounterUsageRights] = useState(initialUsageRights ?? "");
+  const [counterApprovalTerms, setCounterApprovalTerms] = useState(initialApprovalTerms ?? "");
   const [acknowledgeHighRisk, setAcknowledgeHighRisk] = useState(false);
   const [status, setStatus] = useState<"idle" | "saving" | "error">("idle");
   const [message, setMessage] = useState("");

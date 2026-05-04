@@ -7,7 +7,7 @@ import { PageHeader } from "@/components/layout/page-header";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, Td, Th } from "@/components/ui/table";
-import { rankCreators, rankFreelancers, type CampaignRecommendation, type FreelancerRecommendationInput, type ServiceRateInput } from "@/lib/campaigns/recommendations";
+import { applyEventInformedRanking, rankCreators, rankFreelancers, type CampaignRecommendation, type FreelancerRecommendationInput, type RecommendationEventSignal, type ServiceRateInput } from "@/lib/campaigns/recommendations";
 import { getAgentlyData } from "@/lib/db/live-data";
 import { creatorAutomationDecision, freelancerAutomationDecision, isDiscoverable } from "@/lib/profile/automation";
 import { createAdminClient } from "@/lib/supabase/admin";
@@ -29,8 +29,12 @@ export default async function CampaignsPage() {
     freelancer: freelancer as unknown as Record<string, unknown>,
     serviceRates: campaignData.serviceRates.filter((rate) => rate.freelancer_id === freelancer.id) as unknown as Array<Record<string, unknown>>
   })));
-  const creatorRecommendations = latestCampaign ? rankCreators(latestCampaign, eligibleCreators, creatorPlatforms).slice(0, 5) : [];
-  const freelancerRecommendations = latestCampaign ? rankFreelancers(latestCampaign, eligibleFreelancers, campaignData.serviceRates).slice(0, 5) : [];
+  const creatorRecommendations = latestCampaign
+    ? applyEventInformedRanking(rankCreators(latestCampaign, eligibleCreators, creatorPlatforms), "creator", campaignData.productEvents, latestCampaign.id).slice(0, 5)
+    : [];
+  const freelancerRecommendations = latestCampaign
+    ? applyEventInformedRanking(rankFreelancers(latestCampaign, eligibleFreelancers, campaignData.serviceRates), "freelancer", campaignData.productEvents, latestCampaign.id).slice(0, 5)
+    : [];
 
   return (
     <AppShell>
@@ -140,15 +144,16 @@ function RecommendationColumn({
 async function getCampaignData() {
   const admin = createAdminClient();
   if (!admin) {
-    return { campaigns: [] as Campaign[], freelancers: [] as FreelancerRecommendationInput[], serviceRates: [] as ServiceRateInput[], shortlists: [] as CampaignShortlist[], invites: [] as { campaign_id: string; creator_id: string }[] };
+    return { campaigns: [] as Campaign[], freelancers: [] as FreelancerRecommendationInput[], serviceRates: [] as ServiceRateInput[], shortlists: [] as CampaignShortlist[], invites: [] as { campaign_id: string; creator_id: string }[], productEvents: [] as RecommendationEventSignal[] };
   }
 
-  const [campaignsResult, freelancersResult, serviceRatesResult, shortlistsResult, invitesResult] = await Promise.all([
+  const [campaignsResult, freelancersResult, serviceRatesResult, shortlistsResult, invitesResult, productEvents] = await Promise.all([
     admin.from("campaigns").select("*").order("created_at", { ascending: false }),
     admin.from("freelancers").select("*").order("created_at", { ascending: false }),
     admin.from("freelancer_service_rates").select("*"),
     admin.from("campaign_shortlists").select("*"),
-    admin.from("campaign_invites").select("*")
+    admin.from("campaign_invites").select("*"),
+    getProductEvents(admin)
   ]);
 
   return {
@@ -156,8 +161,22 @@ async function getCampaignData() {
     freelancers: (freelancersResult.data ?? []) as FreelancerRecommendationInput[],
     serviceRates: (serviceRatesResult.data ?? []) as ServiceRateInput[],
     shortlists: (shortlistsResult.data ?? []).map(normalizeShortlist),
-    invites: (invitesResult.data ?? []).map((row) => ({ campaign_id: String(row.campaign_id), creator_id: String(row.creator_id) }))
+    invites: (invitesResult.data ?? []).map((row) => ({ campaign_id: String(row.campaign_id), creator_id: String(row.creator_id) })),
+    productEvents
   };
+}
+
+async function getProductEvents(admin: NonNullable<ReturnType<typeof createAdminClient>>) {
+  try {
+    const { data } = await admin
+      .from("product_events")
+      .select("event_name, entity_type, entity_id, metadata, created_at")
+      .order("created_at", { ascending: false })
+      .limit(750);
+    return (data ?? []) as RecommendationEventSignal[];
+  } catch {
+    return [];
+  }
 }
 
 function normalizeCampaign(row: Record<string, unknown>): Campaign {

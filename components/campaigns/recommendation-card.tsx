@@ -85,6 +85,15 @@ export function RecommendationCard({
         </div>
       </div>
 
+      {item.marketplace_signals?.length ? (
+        <div className="mt-3 rounded-md border bg-emerald-50/70 p-3">
+          <p className="text-xs font-semibold uppercase text-emerald-800">Marketplace behavior</p>
+          <div className="mt-2 flex flex-wrap gap-2">
+            {item.marketplace_signals.map((signal) => <Badge key={signal} tone="green">{signal}</Badge>)}
+          </div>
+        </div>
+      ) : null}
+
       <div className="mt-3 flex flex-wrap gap-2">
         {isShortlisted ? <RemoveShortlistButton campaignId={campaignId} entityId={item.id} entityType={type} label="Unshortlist" /> : (
           <ShortlistButton campaignId={campaignId} entityId={item.id} entityType={type} fitScore={item.score} reason={item.reason} />

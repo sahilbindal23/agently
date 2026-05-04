@@ -6,6 +6,7 @@ import { DeliverableCard } from "@/components/deliverables/deliverable-card";
 import { AppShell } from "@/components/layout/app-shell";
 import { PageHeader } from "@/components/layout/page-header";
 import { PaymentActions } from "@/components/payments/payment-actions";
+import { DealProtectionTimeline } from "@/components/protection/deal-protection-timeline";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardHeader, CardTitle } from "@/components/ui/card";
 import { getDealBundle } from "@/lib/db/live-data";
@@ -22,6 +23,16 @@ export default async function DealDetailPage({ params }: { params: Promise<{ id:
   return (
     <AppShell>
       <PageHeader eyebrow="Deal workspace" title={deal.title} description={`${creator?.display_name} x ${brand?.name}`} />
+      <div className="mb-5">
+        <DealProtectionTimeline
+          accepted={deal.offer_status === "accepted"}
+          contractRisk={contract?.risk_level}
+          deliverableStatus={deliverable?.status ?? deal.deliverable_status}
+          hasContract={Boolean(contract)}
+          hasDeliverable={Boolean(deliverable)}
+          paymentStatus={deal.payment_status}
+        />
+      </div>
       <section className="grid gap-5 xl:grid-cols-[1.2fr_0.8fr]">
         <Card>
           <CardHeader><CardTitle>Commercial Terms</CardTitle><Badge>{deal.stage}</Badge></CardHeader>

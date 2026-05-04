@@ -6,6 +6,7 @@ import { OfferResponseActions } from "@/components/offers/offer-response-actions
 import { AppShell } from "@/components/layout/app-shell";
 import { PageHeader } from "@/components/layout/page-header";
 import { MessageRecipientButton } from "@/components/messages/message-recipient-button";
+import { DealProtectionTimeline } from "@/components/protection/deal-protection-timeline";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardHeader, CardTitle } from "@/components/ui/card";
@@ -157,12 +158,15 @@ export default async function OffersPage() {
                     <MessageRecipientButton contextId={offer.id} contextType="deal" entityId={offer.brand_id} entityType="brand" label="Ask brand a question" />
                   ) : null}
                 </div>
-                <OfferTimeline
+                <DealProtectionTimeline
                   accepted={offer.offer_status === "accepted"}
-                  funded={["funded", "release_ready", "released"].includes(offer.payment_status)}
+                  contractRisk={offerContracts.get(offer.id)?.risk_level}
+                  deliverableStatus={latestDeliverables.get(`deal-${offer.id}`)?.status}
+                  hasContract={offerContracts.has(offer.id)}
+                  hasDeliverable={latestDeliverables.has(`deal-${offer.id}`)}
                   paymentStatus={offer.payment_status}
-                  responded={Boolean(offer.talent_response) || ["accepted", "declined", "changes_requested"].includes(String(offer.offer_status))}
-                  status={offer.offer_status ?? "submitted"}
+                  title="Protected creator deal flow"
+                  variant="inline"
                 />
                 {offer.talent_response ? (
                   <div className="rounded-md bg-muted p-3">
@@ -190,7 +194,16 @@ export default async function OffersPage() {
                       <FundingHoldNotice />
                     )}
                   </div>
-                ) : offer.offer_status === "declined" ? null : <OfferResponseActions dealId={offer.id} />}
+                ) : offer.offer_status === "declined" ? null : (
+                  <OfferResponseActions
+                    dealId={offer.id}
+                    initialAmountCents={offer.counter_amount_cents ?? offer.amount_cents}
+                    initialApprovalTerms={offer.counter_approval_terms ?? termsFromNotes(offer.notes, "approval")}
+                    initialDueDate={offer.counter_due_date ?? offer.due_date ?? ""}
+                    initialScope={offer.counter_deliverables ?? offer.deliverables}
+                    initialUsageRights={offer.counter_usage_rights ?? termsFromNotes(offer.notes, "usage")}
+                  />
+                )}
               </div>
             </Card>
           ))}
@@ -235,12 +248,14 @@ export default async function OffersPage() {
                     <MessageRecipientButton contextId={project.id} contextType="freelancer_project" entityId={project.brand_id} entityType="brand" label="Ask brand a question" />
                   ) : null}
                 </div>
-                <OfferTimeline
+                <DealProtectionTimeline
                   accepted={project.status === "accepted"}
-                  funded={["funded", "release_ready", "released"].includes(project.payment_status)}
+                  deliverableStatus={latestDeliverables.get(`freelancer_project-${project.id}`)?.status}
+                  hasContract={Boolean(project.usage_context || project.approval_terms)}
+                  hasDeliverable={latestDeliverables.has(`freelancer_project-${project.id}`)}
                   paymentStatus={project.payment_status}
-                  responded={Boolean(project.talent_response) || ["accepted", "declined", "changes_requested"].includes(String(project.status))}
-                  status={project.status}
+                  title="Protected freelancer project flow"
+                  variant="inline"
                 />
                 {project.talent_response ? (
                   <div className="rounded-md bg-muted p-3">
@@ -268,7 +283,17 @@ export default async function OffersPage() {
                       <FundingHoldNotice />
                     )}
                   </div>
-                ) : project.status === "declined" ? null : <OfferResponseActions kind="project" projectId={project.id} />}
+                ) : project.status === "declined" ? null : (
+                  <OfferResponseActions
+                    initialAmountCents={project.counter_amount_cents ?? project.amount_cents}
+                    initialApprovalTerms={project.counter_approval_terms ?? project.approval_terms ?? ""}
+                    initialDueDate={project.counter_due_date ?? project.due_date ?? ""}
+                    initialScope={project.counter_scope ?? project.scope}
+                    initialUsageRights={project.counter_usage_rights ?? project.usage_context ?? ""}
+                    kind="project"
+                    projectId={project.id}
+                  />
+                )}
               </div>
             </Card>
           ))}
@@ -432,48 +457,18 @@ function getNextAction({
   return { title: "Submit deliverable when ready", copy: "Payment is protected. Upload the agreed deliverable URL for approval and release.", label: "ready", tone: "green" as const };
 }
 
-function OfferTimeline({
-  accepted,
-  funded,
-  paymentStatus,
-  responded,
-  status
-}: {
-  accepted: boolean;
-  funded: boolean;
-  paymentStatus: string;
-  responded: boolean;
-  status: string;
-}) {
-  const steps = [
-    { label: "Sent", done: true },
-    { label: responded ? responseLabel(status) : "Needs response", done: responded },
-    { label: "Accepted", done: accepted },
-    { label: paymentStatus === "released" ? "Released" : funded ? "Funded" : "Payment pending", done: funded }
-  ];
-
-  return (
-    <div className="rounded-md border bg-muted/50 p-3">
-      <p className="text-xs font-semibold uppercase text-muted-foreground">Deal workflow</p>
-      <div className="mt-3 grid gap-2 sm:grid-cols-4">
-        {steps.map((step, index) => (
-          <div className="flex items-center gap-2" key={step.label}>
-            <span className={`flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-xs font-bold ${step.done ? "bg-primary text-primary-foreground" : "bg-white text-muted-foreground"}`}>
-              {index + 1}
-            </span>
-            <span className={`text-xs font-medium ${step.done ? "text-foreground" : "text-muted-foreground"}`}>{step.label}</span>
-          </div>
-        ))}
-      </div>
-    </div>
-  );
-}
-
 function responseLabel(status: string) {
   if (status === "accepted") return "Accepted";
   if (status === "declined") return "Declined";
   if (status === "changes_requested") return "Negotiating";
   return "Viewed";
+}
+
+function termsFromNotes(notes: string | undefined, keyword: "approval" | "usage") {
+  if (!notes) return "";
+  const lines = notes.split("\n").map((line) => line.trim()).filter(Boolean);
+  const match = lines.find((line) => line.toLowerCase().includes(keyword));
+  return match ?? "";
 }
 
 function OfferContractNotice({ contract }: { contract?: ContractRow & { flags: ContractFlag[] } }) {

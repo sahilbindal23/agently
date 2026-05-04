@@ -8,8 +8,9 @@ import { PageHeader } from "@/components/layout/page-header";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardHeader, CardTitle } from "@/components/ui/card";
 import { projectCampaignPerformance, type CampaignPerformanceProjection } from "@/lib/campaigns/performance";
-import { rankCreators, rankFreelancers, type CampaignRecommendation, type FreelancerRecommendationInput, type ServiceRateInput } from "@/lib/campaigns/recommendations";
+import { applyEventInformedRanking, rankCreators, rankFreelancers, type CampaignRecommendation, type FreelancerRecommendationInput, type RecommendationEventSignal, type ServiceRateInput } from "@/lib/campaigns/recommendations";
 import { getAgentlyData } from "@/lib/db/live-data";
+import { upsertRecommendationLedgerRows } from "@/lib/engines/outcome-ledger";
 import { creatorAutomationDecision, freelancerAutomationDecision, isDiscoverable } from "@/lib/profile/automation";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { formatCurrency, formatNumber } from "@/lib/utils/format";
@@ -44,9 +45,9 @@ export default async function CampaignDetailPage({
     serviceRates: campaignData.serviceRates.filter((rate) => rate.freelancer_id === freelancer.id) as unknown as Array<Record<string, unknown>>
   })));
   const creatorTrustFilter = ["verified", "api_synced"].includes(String(first(query.creatorTrust))) ? "verified" : "all";
-  const allCreatorRecommendations = rankCreators(campaign, eligibleCreators, creatorPlatforms);
+  const allCreatorRecommendations = applyEventInformedRanking(rankCreators(campaign, eligibleCreators, creatorPlatforms), "creator", campaignData.productEvents, campaign.id);
   const creatorRecommendations = filterCreatorRecommendations(allCreatorRecommendations, creatorTrustFilter).slice(0, 8);
-  const freelancerRecommendations = rankFreelancers(campaign, eligibleFreelancers, campaignData.serviceRates).slice(0, 8);
+  const freelancerRecommendations = applyEventInformedRanking(rankFreelancers(campaign, eligibleFreelancers, campaignData.serviceRates), "freelancer", campaignData.productEvents, campaign.id).slice(0, 8);
   const creatorShortlist = campaignData.shortlists.filter((item) => item.entity_type === "creator");
   const freelancerShortlist = campaignData.shortlists.filter((item) => item.entity_type === "freelancer");
   const projection = projectCampaignPerformance({
@@ -294,16 +295,17 @@ function BriefItem({ label, value }: { label: string; value: string }) {
 async function getCampaignData(id: string) {
   const admin = createAdminClient();
   if (!admin) {
-    return { campaign: null, freelancers: [] as FreelancerRecommendationInput[], serviceRates: [] as ServiceRateInput[], shortlists: [] as CampaignShortlist[], invites: [] as CampaignInvite[], projects: [] as Array<Record<string, unknown>> };
+    return { campaign: null, freelancers: [] as FreelancerRecommendationInput[], serviceRates: [] as ServiceRateInput[], shortlists: [] as CampaignShortlist[], invites: [] as CampaignInvite[], projects: [] as Array<Record<string, unknown>>, productEvents: [] as RecommendationEventSignal[] };
   }
 
-  const [campaignResult, freelancersResult, serviceRatesResult, shortlistsResult, invitesResult, projectsResult] = await Promise.all([
+  const [campaignResult, freelancersResult, serviceRatesResult, shortlistsResult, invitesResult, projectsResult, productEvents] = await Promise.all([
     admin.from("campaigns").select("*").eq("id", id).maybeSingle(),
     admin.from("freelancers").select("*").order("created_at", { ascending: false }),
     admin.from("freelancer_service_rates").select("*"),
     admin.from("campaign_shortlists").select("*").eq("campaign_id", id),
     admin.from("campaign_invites").select("*").eq("campaign_id", id),
-    admin.from("freelancer_projects").select("id, freelancer_id, status, payment_status, deliverable_status")
+    admin.from("freelancer_projects").select("id, freelancer_id, status, payment_status, deliverable_status"),
+    getProductEvents(admin)
   ]);
 
   return {
@@ -312,8 +314,22 @@ async function getCampaignData(id: string) {
     serviceRates: (serviceRatesResult.data ?? []) as ServiceRateInput[],
     shortlists: (shortlistsResult.data ?? []).map(normalizeShortlist),
     invites: (invitesResult.data ?? []).map(normalizeInvite),
-    projects: projectsResult.data ?? []
+    projects: projectsResult.data ?? [],
+    productEvents
   };
+}
+
+async function getProductEvents(admin: NonNullable<ReturnType<typeof createAdminClient>>) {
+  try {
+    const { data } = await admin
+      .from("product_events")
+      .select("event_name, entity_type, entity_id, metadata, created_at")
+      .order("created_at", { ascending: false })
+      .limit(750);
+    return (data ?? []) as RecommendationEventSignal[];
+  } catch {
+    return [];
+  }
 }
 
 function withCreatorCompletedWork(creators: Creator[], deals: Deal[]) {
@@ -405,6 +421,23 @@ async function persistRecommendationSnapshots(campaignId: string, creators: Camp
   await admin
     .from("campaign_recommendation_snapshots")
     .upsert(rows, { onConflict: "campaign_id,entity_type,entity_id" });
+
+  await upsertRecommendationLedgerRows(admin, [
+    ...creators.map((item, index) => ({
+      campaignId,
+      entityType: "creator" as const,
+      finalRank: index + 1,
+      item,
+      originalRank: index + 1
+    })),
+    ...freelancers.map((item, index) => ({
+      campaignId,
+      entityType: "freelancer" as const,
+      finalRank: index + 1,
+      item,
+      originalRank: index + 1
+    }))
+  ]);
 }
 
 function snapshotRow(campaignId: string, entityType: "creator" | "freelancer", item: CampaignRecommendation) {

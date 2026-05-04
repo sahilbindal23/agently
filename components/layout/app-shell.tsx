@@ -1,8 +1,7 @@
 import Link from "next/link";
-import { Activity, BarChart3, Bell, Bot, BriefcaseBusiness, ClipboardList, CreditCard, FileText, HelpCircle, Home, LayoutDashboard, MessageSquare, MessageSquareText, Palette, Users } from "lucide-react";
+import { Activity, BarChart3, Bell, Bot, BrainCircuit, BriefcaseBusiness, ClipboardList, CreditCard, FileText, HelpCircle, Home, LayoutDashboard, MessageSquare, MessageSquareText, Palette, Users } from "lucide-react";
 import { LogoutButton } from "@/components/auth/logout-button";
 import { HomeLogo } from "@/components/layout/home-logo";
-import { WorkflowNotificationLink } from "@/components/layout/workflow-notification-link";
 import { NotificationBell } from "@/components/notifications/notification-bell";
 import { GuidedWalkthrough } from "@/components/onboarding/guided-walkthrough";
 import { WalkthroughLaunchButton } from "@/components/onboarding/walkthrough-launch-button";
@@ -15,6 +14,8 @@ const adminNav = [
   { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard, tour: "dashboard" },
   { href: "/ops", label: "Ops Center", icon: Activity, tour: "activity" },
   { href: "/analytics", label: "Analytics", icon: BarChart3, tour: "insights" },
+  { href: "/engine-room", label: "Engine Room", icon: BrainCircuit, tour: "ai" },
+  { href: "/outcome-ledger", label: "Outcome Ledger", icon: ClipboardList, tour: "insights" },
   { href: "/creators", label: "Creators", icon: Users, tour: "creators" },
   { href: "/freelancers", label: "Freelancers", icon: Palette, tour: "freelancers" },
   { href: "/campaigns", label: "Campaigns", icon: ClipboardList, tour: "campaigns" },
@@ -81,7 +82,6 @@ export async function AppShell({ children }: { children: React.ReactNode }) {
       getUnreadNotificationCount(admin, user.id)
     ])
     : [[], 0, [], 0];
-  const notification = nudges[0] ?? null;
   const nav = user?.role === "creator" ? creatorNav : user?.role === "brand" ? brandNav : user?.role === "freelancer" ? freelancerNav : adminNav;
 
   return (
@@ -137,7 +137,6 @@ export async function AppShell({ children }: { children: React.ReactNode }) {
               <span className="font-semibold">Open</span>
             </Link>
           ) : null}
-          {notification ? <WorkflowNotificationLink notification={notification} /> : null}
         </div>
         {children}
       </main>

@@ -10,6 +10,8 @@ const adminRoutes = [
   "/dashboard",
   "/ops",
   "/analytics",
+  "/engine-room",
+  "/outcome-ledger",
   "/activity",
   "/notifications",
   "/creators",

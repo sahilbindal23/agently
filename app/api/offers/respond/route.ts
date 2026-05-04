@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { trackEvent, userEventBase } from "@/lib/analytics/track";
+import { applyLedgerEvent } from "@/lib/engines/outcome-ledger";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
 
@@ -96,6 +97,17 @@ export async function POST(request: Request) {
       counter_amount_cents: status === "changes_requested" ? counterAmountCents : null,
       has_response: Boolean(response)
     }
+  });
+  await applyLedgerEvent(admin, {
+    amountCents: Number(deal.amount_cents ?? 0),
+    campaignId: deal.campaign_id ? String(deal.campaign_id) : null,
+    counterAmountCents,
+    entityId: String(deal.creator_id),
+    entityType: "creator",
+    eventName: status === "accepted" ? "offer_accepted" : status === "changes_requested" ? "offer_countered" : "offer_declined",
+    offerId: dealId,
+    outcomeLabel: status === "accepted" ? "accepted" : status === "changes_requested" ? "countered" : "declined",
+    responseStatus: status
   });
   return NextResponse.json({ data });
 }

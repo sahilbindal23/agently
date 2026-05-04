@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { trackEvent, userEventBase } from "@/lib/analytics/track";
+import { applyLedgerEvent } from "@/lib/engines/outcome-ledger";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
 
@@ -56,6 +57,15 @@ export async function POST(request: Request) {
       entityId,
       metadata: { status, amount_cents: data.amount_cents, brand_id: data.brand_id }
     });
+    await applyLedgerEvent(admin, {
+      amountCents: Number(data.amount_cents ?? 0),
+      campaignId: data.campaign_id ? String(data.campaign_id) : null,
+      entityId: String(data.creator_id),
+      entityType: "creator",
+      eventName: "payment_status_updated",
+      offerId: entityId,
+      paymentStatus: status
+    });
     return NextResponse.json({ data });
   }
 
@@ -81,6 +91,15 @@ export async function POST(request: Request) {
     entityType,
     entityId,
     metadata: { status, amount_cents: data.amount_cents, brand_id: data.brand_id }
+  });
+  await applyLedgerEvent(admin, {
+    amountCents: Number(data.amount_cents ?? 0),
+    campaignId: data.campaign_id ? String(data.campaign_id) : null,
+    entityId: String(data.freelancer_id),
+    entityType: "freelancer",
+    eventName: "payment_status_updated",
+    freelancerProjectId: entityId,
+    paymentStatus: status
   });
   return NextResponse.json({ data });
 }

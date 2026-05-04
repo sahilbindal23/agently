@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { trackEvent, userEventBase } from "@/lib/analytics/track";
+import { applyLedgerEvent } from "@/lib/engines/outcome-ledger";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
 
@@ -163,6 +164,15 @@ export async function POST(request: Request) {
       amount_cents: body.amount_cents,
       risk_score: deal.risk_score
     }
+  });
+  await applyLedgerEvent(admin, {
+    amountCents: body.amount_cents,
+    campaignId: body.campaign_id || null,
+    entityId: body.creator_id,
+    entityType: "creator",
+    eventName: "offer_sent",
+    offerId: deal.id,
+    outcomeLabel: "offer_sent"
   });
 
   return NextResponse.json({ data: deal, source: "supabase" }, { status: 201 });

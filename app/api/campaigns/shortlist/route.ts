@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { trackEvent, userEventBase } from "@/lib/analytics/track";
+import { applyLedgerEvent } from "@/lib/engines/outcome-ledger";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
 
@@ -52,6 +53,13 @@ export async function POST(request: Request) {
       fit_score: Number(body.fit_score ?? 0),
       reason: String(body.reason ?? "").trim()
     }
+  });
+  await applyLedgerEvent(admin, {
+    campaignId,
+    entityType,
+    entityId,
+    eventName: "talent_shortlisted",
+    outcomeLabel: "brand_interest"
   });
   return NextResponse.json({ data }, { status: 201 });
 }

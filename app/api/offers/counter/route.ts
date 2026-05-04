@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { trackEvent } from "@/lib/analytics/track";
+import { applyLedgerEvent } from "@/lib/engines/outcome-ledger";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
 
@@ -64,6 +65,17 @@ async function respondToDealCounter(
     entityId: dealId,
     metadata: { brand_id: deal.brand_id, creator_id: deal.creator_id, amount_cents: data.amount_cents }
   });
+  await applyLedgerEvent(admin, {
+    amountCents: Number(data.amount_cents ?? 0),
+    campaignId: deal.campaign_id ? String(deal.campaign_id) : null,
+    counterAmountCents: Number(deal.counter_amount_cents ?? 0) || null,
+    entityId: String(deal.creator_id),
+    entityType: "creator",
+    eventName: accepted ? "counter_accepted" : "counter_declined",
+    offerId: dealId,
+    outcomeLabel: accepted ? "accepted_after_counter" : "counter_declined",
+    responseStatus: accepted ? "accepted" : "changes_requested"
+  });
   return NextResponse.json({ data });
 }
 
@@ -104,6 +116,17 @@ async function respondToProjectCounter(
     entityType: "freelancer_project",
     entityId: projectId,
     metadata: { brand_id: project.brand_id, freelancer_id: project.freelancer_id, amount_cents: data.amount_cents }
+  });
+  await applyLedgerEvent(admin, {
+    amountCents: Number(data.amount_cents ?? 0),
+    campaignId: project.campaign_id ? String(project.campaign_id) : null,
+    counterAmountCents: Number(project.counter_amount_cents ?? 0) || null,
+    entityId: String(project.freelancer_id),
+    entityType: "freelancer",
+    eventName: accepted ? "counter_accepted" : "counter_declined",
+    freelancerProjectId: projectId,
+    outcomeLabel: accepted ? "accepted_after_counter" : "counter_declined",
+    responseStatus: accepted ? "accepted" : "changes_requested"
   });
   return NextResponse.json({ data });
 }

@@ -4,6 +4,7 @@ import { PageHeader } from "@/components/layout/page-header";
 import { PaymentActions } from "@/components/payments/payment-actions";
 import { ProtectionCalculator } from "@/components/payments/protection-calculator";
 import { PaymentStatusBadge } from "@/components/payments/payment-status-badge";
+import { DealProtectionTimeline } from "@/components/protection/deal-protection-timeline";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, Td, Th } from "@/components/ui/table";
@@ -11,7 +12,7 @@ import { getCurrentUser } from "@/lib/auth/session";
 import { getAgentlyData } from "@/lib/db/live-data";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { formatCurrency } from "@/lib/utils/format";
-import type { Deliverable, PaymentStatus } from "@/types";
+import type { Deliverable, PaymentStatus, RiskLevel } from "@/types";
 
 const statuses = ["unpaid", "pending", "funded", "release_ready", "released", "refunded", "disputed"];
 
@@ -31,6 +32,7 @@ export default async function PaymentsPage() {
     visibleDeals.map((deal) => ({ type: "deal" as const, id: deal.id })),
     projects.map((project) => ({ type: "freelancer_project" as const, id: String(project.id) }))
   );
+  const latestContractRisks = await getLatestContractRisks(visibleDeals.map((deal) => deal.id));
   const queue = [
     ...paymentDeals.map((deal) => ({
       id: deal.id,
@@ -42,6 +44,8 @@ export default async function PaymentsPage() {
       payout_cents: Math.max(0, deal.amount_cents - Math.round(deal.amount_cents * 0.1)),
       session: visiblePayments.find((payment) => payment.deal_id === deal.id)?.stripe_checkout_session_id ?? "not created",
       deliverable: latestDeliverables.get(`deal-${deal.id}`),
+      contractRisk: latestContractRisks.get(deal.id),
+      hasContract: latestContractRisks.has(deal.id),
       canFund: deal.offer_status === "accepted"
     })),
     ...projects.map((project) => ({
@@ -54,6 +58,8 @@ export default async function PaymentsPage() {
       payout_cents: Math.max(0, Number(project.amount_cents ?? 0) - Math.round(Number(project.amount_cents ?? 0) * 0.1)),
       session: projectPayments.find((payment) => payment.freelancer_project_id === String(project.id))?.stripe_checkout_session_id ?? "not created",
       deliverable: latestDeliverables.get(`freelancer_project-${project.id}`),
+      contractRisk: null,
+      hasContract: Boolean(project.usage_context || project.approval_terms),
       canFund: String(project.status ?? "") === "accepted"
     }))
   ];
@@ -89,7 +95,15 @@ export default async function PaymentsPage() {
                   <Td className="min-w-72">
                     <p className="font-medium">{item.title}</p>
                     <p className="mt-1 text-xs text-muted-foreground">{item.type === "deal" ? "Creator deal" : "Freelancer project"}</p>
-                    <PaymentWorkflowSteps status={item.status} hasDeliverable={Boolean(item.deliverable)} deliverableStatus={item.deliverable?.status} />
+                    <DealProtectionTimeline
+                      accepted
+                      contractRisk={item.contractRisk}
+                      deliverableStatus={item.deliverable?.status}
+                      hasContract={item.hasContract}
+                      hasDeliverable={Boolean(item.deliverable)}
+                      paymentStatus={item.status}
+                      variant="inline"
+                    />
                   </Td>
                   <Td className="min-w-64">
                     <PaymentStatusBadge status={item.status} />
@@ -187,30 +201,22 @@ async function getLatestDeliverables(
   return map;
 }
 
-function PaymentWorkflowSteps({ deliverableStatus, hasDeliverable, status }: { deliverableStatus?: string; hasDeliverable: boolean; status: string }) {
-  const funded = ["funded", "release_ready", "released"].includes(status);
-  const approved = deliverableStatus === "approved" || ["release_ready", "released"].includes(status);
-  const released = status === "released";
-  const steps = [
-    { label: "Accepted", done: true },
-    { label: funded ? "Funded" : "Awaiting funding", done: funded },
-    { label: hasDeliverable ? "Submitted" : "No deliverable", done: hasDeliverable },
-    { label: approved ? "Approved" : "Review pending", done: approved },
-    { label: released ? "Released" : "Release pending", done: released }
-  ];
+async function getLatestContractRisks(dealIds: string[]) {
+  const admin = createAdminClient();
+  const map = new Map<string, RiskLevel>();
+  if (!admin || dealIds.length === 0) return map;
 
-  return (
-    <div className="mt-3 flex flex-wrap gap-1.5">
-      {steps.map((step) => (
-        <span
-          className={`rounded-full px-2 py-1 text-[11px] font-semibold ${step.done ? "bg-emerald-100 text-emerald-800" : "bg-slate-100 text-slate-600"}`}
-          key={step.label}
-        >
-          {step.label}
-        </span>
-      ))}
-    </div>
-  );
+  const { data } = await admin
+    .from("contracts")
+    .select("deal_id, risk_level, created_at")
+    .in("deal_id", dealIds)
+    .order("created_at", { ascending: false });
+
+  (data ?? []).forEach((contract) => {
+    const dealId = String(contract.deal_id ?? "");
+    if (dealId && !map.has(dealId)) map.set(dealId, String(contract.risk_level ?? "caution") as RiskLevel);
+  });
+  return map;
 }
 
 function paymentGuidance(status: string, hasDeliverable: boolean, deliverableStatus?: string) {

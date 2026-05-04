@@ -54,10 +54,19 @@ export type CampaignRecommendation = {
   expected_outcome: string;
   risk_level: "low" | "medium" | "high";
   proof_points: string[];
+  marketplace_signals?: string[];
   score_breakdown: ScoreBreakdown;
   watchouts: string[];
   roi_estimate: RoiEstimate;
   trust_source: "api_synced" | "verified_profile" | "self_reported";
+};
+
+export type RecommendationEventSignal = {
+  event_name: string;
+  entity_type: string | null;
+  entity_id: string | null;
+  metadata: Record<string, unknown> | null;
+  created_at?: string | null;
 };
 
 type TrustSource = CampaignRecommendation["trust_source"];
@@ -154,6 +163,29 @@ export function rankFreelancers(campaign: Campaign, freelancers: FreelancerRecom
       trust_source: freelancer.verification_tier && freelancer.verification_tier !== "unverified" ? "verified_profile" as const : "self_reported" as const
     };
   }).sort((a, b) => b.score - a.score);
+}
+
+export function applyEventInformedRanking(
+  recommendations: CampaignRecommendation[],
+  type: "creator" | "freelancer",
+  events: RecommendationEventSignal[],
+  campaignId?: string
+) {
+  return recommendations
+    .map((recommendation) => {
+      const signals = eventsForRecommendation(events, type, recommendation.id);
+      const adjustment = eventAdjustment(signals, campaignId);
+      const score = Math.max(35, Math.min(98, recommendation.score + adjustment.points));
+      return {
+        ...recommendation,
+        score,
+        marketplace_signals: adjustment.labels,
+        proof_points: adjustment.labels.length
+          ? [...recommendation.proof_points, ...adjustment.labels.slice(0, 2)]
+          : recommendation.proof_points
+      };
+    })
+    .sort((a, b) => trustSortBoost(b.trust_source) + b.score - (trustSortBoost(a.trust_source) + a.score));
 }
 
 function estimateCreatorRoi(campaign: Campaign, platform?: CreatorPlatform): RoiEstimate {
@@ -317,6 +349,91 @@ function freelancerProofPoints(freelancer: FreelancerRecommendationInput, rates:
     freelancer.completed_project_count ? `${freelancer.completed_project_count} completed Agently project${freelancer.completed_project_count === 1 ? "" : "s"}` : "No completed Agently projects yet",
     freelancer.verification_tier ? `Trust tier: ${freelancer.verification_tier}` : "Trust tier: unverified"
   ];
+}
+
+function eventsForRecommendation(events: RecommendationEventSignal[], type: "creator" | "freelancer", id: string) {
+  const metadataKey = type === "creator" ? "creator_id" : "freelancer_id";
+  return events.filter((event) => {
+    if (event.entity_type === type && event.entity_id === id) return true;
+    return String(event.metadata?.[metadataKey] ?? "") === id;
+  });
+}
+
+function eventAdjustment(events: RecommendationEventSignal[], campaignId?: string) {
+  let points = 0;
+  const labels = new Set<string>();
+  const recentEvents = events.filter((event) => isRecentEnough(event.created_at));
+
+  for (const event of recentEvents) {
+    const sameCampaign = campaignId && String(event.metadata?.campaign_id ?? "") === campaignId;
+    switch (event.event_name) {
+      case "talent_shortlisted":
+        points += sameCampaign ? 5 : 3;
+        labels.add(sameCampaign ? "Shortlisted for this campaign" : "Previously shortlisted");
+        break;
+      case "talent_unshortlisted":
+        points -= sameCampaign ? 6 : 2;
+        labels.add("Recently unshortlisted");
+        break;
+      case "offer_sent":
+      case "freelancer_project_sent":
+        points += 2;
+        labels.add("Brand offer activity");
+        break;
+      case "offer_accepted":
+      case "freelancer_project_accepted":
+        points += 8;
+        labels.add("Accepted prior Agently offer");
+        break;
+      case "offer_countered":
+      case "freelancer_project_countered":
+        points += 1;
+        labels.add("Negotiation-active talent");
+        break;
+      case "offer_declined":
+      case "freelancer_project_declined":
+        points -= 7;
+        labels.add("Recent declined offer");
+        break;
+      case "counter_accepted":
+        points += 5;
+        labels.add("Counter terms accepted");
+        break;
+      case "counter_declined":
+        points -= 3;
+        labels.add("Counter friction");
+        break;
+      case "deliverable_approved":
+        points += 7;
+        labels.add("Approved delivery history");
+        break;
+      case "deliverable_revision_requested":
+        points -= 3;
+        labels.add("Recent revision request");
+        break;
+      case "payment_status_updated":
+        if (event.metadata?.status === "released" || event.metadata?.status === "release_ready") {
+          points += 8;
+          labels.add("Protected payout progressed");
+        } else if (event.metadata?.status === "funded") {
+          points += 4;
+          labels.add("Funded workflow history");
+        }
+        break;
+    }
+  }
+
+  return {
+    labels: Array.from(labels).slice(0, 4),
+    points: Math.max(-14, Math.min(18, points))
+  };
+}
+
+function isRecentEnough(value: string | null | undefined) {
+  if (!value) return true;
+  const created = new Date(value).getTime();
+  if (!Number.isFinite(created)) return true;
+  return Date.now() - created <= 180 * 24 * 60 * 60 * 1000;
 }
 
 function completedWorkTrustBoost(count: number) {
