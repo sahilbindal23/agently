@@ -1,6 +1,8 @@
 import type { Creator } from "@/types";
 
 export function getIndiaAudiencePercent(creator: Creator) {
+  const syncedPlatform = (creator as Creator & { platforms?: Array<{ india_audience_percent?: number }> }).platforms?.find((platform) => Number(platform.india_audience_percent ?? 0) > 0);
+  if (syncedPlatform?.india_audience_percent) return Number(syncedPlatform.india_audience_percent);
   if (creator.india_audience_percent > 0) return creator.india_audience_percent;
   if (creator.us_audience_percent > 0) return creator.us_audience_percent;
   if (creator.country.toLowerCase().includes("in")) return 72;

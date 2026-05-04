@@ -15,6 +15,7 @@ export type FreelancerRecommendationInput = {
   image_url?: string | null;
   verification_tier?: string;
   verification_status?: string;
+  completed_project_count?: number;
 };
 
 export type ServiceRateInput = {
@@ -56,7 +57,10 @@ export type CampaignRecommendation = {
   score_breakdown: ScoreBreakdown;
   watchouts: string[];
   roi_estimate: RoiEstimate;
+  trust_source: "api_synced" | "verified_profile" | "self_reported";
 };
+
+type TrustSource = CampaignRecommendation["trust_source"];
 
 export function rankCreators(campaign: Campaign, creators: Creator[], platforms: CreatorPlatform[]): CampaignRecommendation[] {
   const briefText = briefKeywords(campaign);
@@ -69,8 +73,10 @@ export function rankCreators(campaign: Campaign, creators: Creator[], platforms:
     const languageFit = campaign.languages.length && creator.languages.some((language) => includesAny(language, campaign.languages)) ? 86 : campaign.languages.length ? 42 : 68;
     const cityFit = getBangaloreFit(creator);
     const budgetFit = getCreatorBudgetFit(campaign.budget_cents, primary?.avg_views ?? 0);
-    const trustBoost = trustScore(creator.verification_tier, creator.verification_status);
-    const dataConfidence = Math.min(96, (primary?.avg_views ? 76 : 42) + trustBoost);
+    const trustBoost = trustScore(creator.verification_tier, creator.verification_status) + completedWorkTrustBoost(Number(creator.completed_deal_count ?? 0));
+    const syncedMetrics = Boolean(primary?.metric_source && primary.metric_source !== "self_reported");
+    const trustSource: TrustSource = syncedMetrics ? "api_synced" : creator.verification_tier && creator.verification_tier !== "unverified" ? "verified_profile" : "self_reported";
+    const dataConfidence = Math.min(96, Math.max(primary?.data_confidence ?? 0, primary?.avg_views ? 76 : 42) + trustBoost + (syncedMetrics ? 5 : 0));
     const scoreBreakdown = {
       category_fit: categoryFit,
       audience_fit: audienceFit,
@@ -91,7 +97,7 @@ export function rankCreators(campaign: Campaign, creators: Creator[], platforms:
       image_url: creator.image_url ?? null,
       subtitle: `${creator.primary_niche} - ${primary ? `${primary.platform}, ${compactNumber(primary.followers)} followers` : getCreatorLanguages(creator)}`,
       score,
-      reason: `${creator.display_name} fits through ${creator.primary_niche.toLowerCase()}, ${creator.home_city || "India"} relevance, and ${creator.content_style || "audience"} style.`,
+      reason: `${creator.display_name} fits through ${creator.primary_niche.toLowerCase()}, ${creator.home_city || "India"} relevance, and ${creator.content_style || "audience"} style${creator.completed_deal_count ? `, with ${creator.completed_deal_count} completed Agently deal${creator.completed_deal_count === 1 ? "" : "s"}` : ""}.`,
       match_type: matchType,
       best_use_case: creatorBestUseCase(matchType, campaign, creator),
       expected_outcome: creatorExpectedOutcome(campaign, primary, roi),
@@ -99,9 +105,10 @@ export function rankCreators(campaign: Campaign, creators: Creator[], platforms:
       proof_points: creatorProofPoints(creator, primary, scoreBreakdown),
       score_breakdown: scoreBreakdown,
       watchouts,
-      roi_estimate: roi
+      roi_estimate: roi,
+      trust_source: trustSource
     };
-  }).sort((a, b) => b.score - a.score);
+  }).sort((a, b) => trustSortBoost(b.trust_source) + b.score - (trustSortBoost(a.trust_source) + a.score));
 }
 
 export function rankFreelancers(campaign: Campaign, freelancers: FreelancerRecommendationInput[], serviceRates: ServiceRateInput[]): CampaignRecommendation[] {
@@ -113,7 +120,7 @@ export function rankFreelancers(campaign: Campaign, freelancers: FreelancerRecom
     const languageFit = campaign.languages.length && (freelancer.languages ?? []).some((language) => includesAny(language, campaign.languages)) ? 82 : campaign.languages.length ? 44 : 66;
     const portfolioFit = Math.min(90, Math.max(35, Number(freelancer.portfolio_score ?? 0)));
     const budgetFit = getFreelancerBudgetFit(campaign.budget_cents, freelancer.hourly_rate_cents ?? freelancer.day_rate_cents ?? 0);
-    const trustBoost = trustScore(freelancer.verification_tier, freelancer.verification_status);
+    const trustBoost = trustScore(freelancer.verification_tier, freelancer.verification_status) + completedWorkTrustBoost(Number(freelancer.completed_project_count ?? 0));
     const scoreBreakdown = {
       category_fit: skillFit,
       audience_fit: 55,
@@ -143,7 +150,8 @@ export function rankFreelancers(campaign: Campaign, freelancers: FreelancerRecom
       proof_points: freelancerProofPoints(freelancer, rates, scoreBreakdown),
       score_breakdown: scoreBreakdown,
       watchouts,
-      roi_estimate: roi
+      roi_estimate: roi,
+      trust_source: freelancer.verification_tier && freelancer.verification_tier !== "unverified" ? "verified_profile" as const : "self_reported" as const
     };
   }).sort((a, b) => b.score - a.score);
 }
@@ -153,12 +161,13 @@ function estimateCreatorRoi(campaign: Campaign, platform?: CreatorPlatform): Roi
   const engagementRate = Number(platform?.engagement_rate ?? 2.5) / 100;
   const expectedEngagements = Math.round(expectedReach * engagementRate);
   const budget = campaign.budget_cents || 1;
+  const syncedConfidence = Number(platform?.data_confidence ?? 0) / 100;
   return {
     expected_reach: expectedReach,
     expected_engagements: expectedEngagements,
     estimated_cpm_cents: expectedReach ? Math.round((budget / expectedReach) * 1000) : 0,
     estimated_cpe_cents: expectedEngagements ? Math.round(budget / expectedEngagements) : 0,
-    confidence_score: platform?.avg_views ? 0.62 : 0.32
+    confidence_score: platform?.avg_views ? Math.max(0.62, syncedConfidence) : 0.32
   };
 }
 
@@ -288,8 +297,16 @@ function creatorProofPoints(creator: Creator, platform: CreatorPlatform | undefi
     `${breakdown.category_fit}/100 category fit`,
     `${breakdown.city_fit}/100 city fit`,
     platform ? `${compactNumber(platform.avg_views)} avg views on ${platform.platform}` : "Platform metrics missing",
+    platform?.metric_source && platform.metric_source !== "self_reported" ? `Metrics source: ${platform.metric_source.replace("_", " ")}` : "Metrics source: self reported",
+    creator.completed_deal_count ? `${creator.completed_deal_count} completed Agently deal${creator.completed_deal_count === 1 ? "" : "s"}` : "No completed Agently deals yet",
     creator.verification_tier ? `Trust tier: ${creator.verification_tier}` : "Trust tier: unverified"
   ];
+}
+
+function trustSortBoost(source: CampaignRecommendation["trust_source"]) {
+  if (source === "api_synced") return 7;
+  if (source === "verified_profile") return 3;
+  return 0;
 }
 
 function freelancerProofPoints(freelancer: FreelancerRecommendationInput, rates: ServiceRateInput[], breakdown: ScoreBreakdown) {
@@ -297,8 +314,16 @@ function freelancerProofPoints(freelancer: FreelancerRecommendationInput, rates:
     `${breakdown.category_fit}/100 skill fit`,
     `${breakdown.city_fit}/100 city fit`,
     rates.length ? `${rates.length} service rate card${rates.length === 1 ? "" : "s"} listed` : "No service rates listed",
+    freelancer.completed_project_count ? `${freelancer.completed_project_count} completed Agently project${freelancer.completed_project_count === 1 ? "" : "s"}` : "No completed Agently projects yet",
     freelancer.verification_tier ? `Trust tier: ${freelancer.verification_tier}` : "Trust tier: unverified"
   ];
+}
+
+function completedWorkTrustBoost(count: number) {
+  if (count >= 5) return 10;
+  if (count >= 3) return 7;
+  if (count >= 1) return 4;
+  return 0;
 }
 
 function briefKeywords(campaign: Campaign) {

@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { getStripe } from "@/lib/stripe/client";
+import { createAdminClient } from "@/lib/supabase/admin";
 
 export async function POST(request: Request) {
   const stripe = getStripe();
@@ -14,10 +15,23 @@ export async function POST(request: Request) {
 
   if (event.type === "checkout.session.completed") {
     const session = event.data.object;
-    const dealId = session.metadata?.deal_id;
-    // Production path: update payments.status = funded and deals.payment_status = funded in Supabase.
-    return NextResponse.json({ received: true, action: "mark_funded", deal_id: dealId, session_id: session.id });
+    const entityType = session.metadata?.entity_type === "freelancer_project" ? "freelancer_project" : "deal";
+    const entityId = session.metadata?.entity_id || session.metadata?.deal_id;
+    if (entityId) await markFunded(entityType, entityId, session.id);
+    return NextResponse.json({ received: true, action: "mark_funded", entity_type: entityType, entity_id: entityId, session_id: session.id });
   }
 
   return NextResponse.json({ received: true });
+}
+
+async function markFunded(entityType: "deal" | "freelancer_project", entityId: string, sessionId: string) {
+  const admin = createAdminClient();
+  if (!admin) return;
+  const table = entityType === "deal" ? "deals" : "freelancer_projects";
+  await admin.from(table).update({ payment_status: "funded" }).eq("id", entityId);
+  await admin
+    .from("payments")
+    .update({ status: "funded", funded_at: new Date().toISOString() })
+    .eq(entityType === "deal" ? "deal_id" : "freelancer_project_id", entityId)
+    .eq("stripe_checkout_session_id", sessionId);
 }

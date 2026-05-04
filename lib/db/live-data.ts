@@ -49,7 +49,9 @@ export async function getAgentlyData(): Promise<AgentlyData> {
       paymentsResult,
       contractsResult,
       flagsResult,
-      valuationsResult
+      valuationsResult,
+      connectedAccountsResult,
+      socialSnapshotsResult
     ] = await Promise.all([
       supabase.from("creators").select("*").order("created_at", { ascending: false }),
       supabase.from("creator_platforms").select("*"),
@@ -59,7 +61,9 @@ export async function getAgentlyData(): Promise<AgentlyData> {
       supabase.from("payments").select("*").order("created_at", { ascending: false }),
       supabase.from("contracts").select("*").order("created_at", { ascending: false }),
       supabase.from("contract_flags").select("*"),
-      supabase.from("ai_valuations").select("*").order("created_at", { ascending: false })
+      supabase.from("ai_valuations").select("*").order("created_at", { ascending: false }),
+      supabase.from("connected_social_accounts").select("*"),
+      supabase.from("social_metric_snapshots").select("*").order("synced_at", { ascending: false })
     ]);
 
     if (creatorsResult.error || platformsResult.error || brandsResult.error || dealsResult.error) {
@@ -74,7 +78,11 @@ export async function getAgentlyData(): Promise<AgentlyData> {
 
     return {
       creators,
-      creatorPlatforms: (platformsResult.data ?? []).map(normalizeCreatorPlatform),
+      creatorPlatforms: mergeSyncedPlatforms(
+        (platformsResult.data ?? []).map(normalizeCreatorPlatform),
+        connectedAccountsResult.data ?? [],
+        socialSnapshotsResult.data ?? []
+      ),
       brands: (brandsResult.data ?? []).map(normalizeBrand),
       brandMatches: (matchesResult.data ?? []).map(normalizeBrandMatch),
       deals: (dealsResult.data ?? []).map(normalizeDeal),
@@ -154,8 +162,62 @@ function normalizeCreatorPlatform(row: Record<string, unknown>): CreatorPlatform
     followers: Number(row.followers ?? 0),
     avg_views: Number(row.avg_views ?? 0),
     engagement_rate: Number(row.engagement_rate ?? 0),
-    posting_frequency: String(row.posting_frequency ?? "")
+    posting_frequency: String(row.posting_frequency ?? ""),
+    metric_source: String(row.metric_source ?? "self_reported"),
+    data_confidence: Number(row.data_confidence ?? 46)
   };
+}
+
+function mergeSyncedPlatforms(
+  platforms: CreatorPlatform[],
+  accounts: Array<Record<string, unknown>>,
+  snapshots: Array<Record<string, unknown>>
+) {
+  const latestByAccount = new Map<string, Record<string, unknown>>();
+  snapshots.forEach((snapshot) => {
+    const accountId = String(snapshot.connected_account_id ?? "");
+    if (accountId && !latestByAccount.has(accountId)) latestByAccount.set(accountId, snapshot);
+  });
+
+  const merged = [...platforms];
+  accounts.forEach((account) => {
+    const snapshot = latestByAccount.get(String(account.id));
+    if (!snapshot) return;
+    const provider = String(account.provider ?? "platform");
+    const creatorId = String(account.creator_id);
+    const existingIndex = merged.findIndex((platform) => (
+      platform.creator_id === creatorId &&
+      platform.platform.toLowerCase().includes(provider === "youtube" ? "youtube" : provider)
+    ));
+    const syncedPlatform: CreatorPlatform = {
+      id: existingIndex >= 0 ? merged[existingIndex].id : `synced-${String(account.id)}`,
+      creator_id: creatorId,
+      platform: providerLabel(provider),
+      handle: String(account.handle ?? ""),
+      url: String(account.account_url ?? ""),
+      followers: Number(snapshot.followers ?? 0),
+      avg_views: Number(snapshot.avg_views_30d ?? snapshot.reach_30d ?? 0),
+      engagement_rate: Number(snapshot.engagement_rate_30d ?? 0),
+      posting_frequency: existingIndex >= 0 ? merged[existingIndex].posting_frequency : "Synced from API",
+      metric_source: String(snapshot.source ?? "provider_api"),
+      data_confidence: String(snapshot.source ?? "").includes("mock") ? 78 : 92,
+      india_audience_percent: Number(snapshot.india_audience_percent ?? 0),
+      bangalore_audience_percent: Number(snapshot.bangalore_audience_percent ?? 0),
+      synced_at: snapshot.synced_at ? String(snapshot.synced_at) : undefined
+    };
+
+    if (existingIndex >= 0) merged[existingIndex] = { ...merged[existingIndex], ...syncedPlatform };
+    else merged.push(syncedPlatform);
+  });
+
+  return merged;
+}
+
+function providerLabel(provider: string) {
+  if (provider === "youtube") return "YouTube";
+  if (provider === "instagram") return "Instagram";
+  if (provider === "facebook") return "Facebook";
+  return provider;
 }
 
 function normalizeBrand(row: Record<string, unknown>): Brand {
@@ -236,7 +298,8 @@ function normalizeContractFlag(row: Record<string, unknown>): ContractFlag {
 function normalizePayment(row: Record<string, unknown>): Payment {
   return {
     id: String(row.id),
-    deal_id: String(row.deal_id),
+    deal_id: row.deal_id ? String(row.deal_id) : null,
+    freelancer_project_id: row.freelancer_project_id ? String(row.freelancer_project_id) : null,
     stripe_payment_intent_id: row.stripe_payment_intent_id ? String(row.stripe_payment_intent_id) : null,
     stripe_checkout_session_id: row.stripe_checkout_session_id ? String(row.stripe_checkout_session_id) : null,
     stripe_payment_link_id: row.stripe_payment_link_id ? String(row.stripe_payment_link_id) : null,

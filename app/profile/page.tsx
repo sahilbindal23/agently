@@ -3,6 +3,8 @@ import { AppShell } from "@/components/layout/app-shell";
 import { PageHeader } from "@/components/layout/page-header";
 import { ProfileEditForm } from "@/components/profile/profile-edit-form";
 import { ProfileImageUpload } from "@/components/profile/profile-image-upload";
+import { ConnectedAccountsPanel, type ConnectedAccountRow, type SocialSnapshotRow } from "@/components/social/connected-accounts-panel";
+import { ScoreTransparencyCard } from "@/components/social/score-transparency-card";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardHeader, CardTitle } from "@/components/ui/card";
 import { VerificationBadge } from "@/components/verification/verification-badge";
@@ -54,8 +56,22 @@ export default async function ProfilePage() {
               <img alt="Profile" className="h-14 w-14 rounded-md object-cover" src={String(bundle.profile.image_url)} />
             ) : null}
           </div>
-          <ProfileImageUpload entityId={String(bundle.profile.id)} entityType={role as "creator" | "brand" | "freelancer"} />
+        <ProfileImageUpload entityId={String(bundle.profile.id)} entityType={role as "creator" | "brand" | "freelancer"} />
         </div>
+        {role === "creator" ? (
+          <>
+            <ConnectedAccountsPanel
+              accounts={bundle.connectedAccounts as ConnectedAccountRow[]}
+              oauthReadyProviders={oauthReadyProviders()}
+              snapshots={bundle.socialSnapshots as SocialSnapshotRow[]}
+            />
+            <ScoreTransparencyCard
+              accounts={bundle.connectedAccounts as ConnectedAccountRow[]}
+              profile={bundle.profile}
+              snapshots={bundle.socialSnapshots as SocialSnapshotRow[]}
+            />
+          </>
+        ) : null}
         <ProfileEditForm
           audit={bundle.audit}
           platforms={bundle.platforms}
@@ -80,7 +96,12 @@ async function getProfileBundle(role: string, userId: string, email: string) {
       admin.from("creator_platforms").select("*").eq("creator_id", creator.id).order("created_at", { ascending: true }),
       admin.from("creator_audits").select("*").eq("creator_id", creator.id).order("created_at", { ascending: false }).limit(1)
     ]);
-    return { profile: creator, platforms: platforms ?? [], audit: audits?.[0] ?? null, serviceRates: [], portfolio: [] };
+    const { data: connectedAccounts } = await admin.from("connected_social_accounts").select("*").eq("creator_id", creator.id).order("created_at", { ascending: true });
+    const accountIds = (connectedAccounts ?? []).map((account) => String(account.id));
+    const { data: socialSnapshots } = accountIds.length
+      ? await admin.from("social_metric_snapshots").select("*").in("connected_account_id", accountIds).order("synced_at", { ascending: false })
+      : { data: [] };
+    return { profile: creator, platforms: platforms ?? [], audit: audits?.[0] ?? null, serviceRates: [], portfolio: [], connectedAccounts: connectedAccounts ?? [], socialSnapshots: latestSnapshotsByProvider(socialSnapshots ?? []) };
   }
 
   if (role === "freelancer") {
@@ -90,25 +111,43 @@ async function getProfileBundle(role: string, userId: string, email: string) {
       admin.from("freelancer_service_rates").select("*").eq("freelancer_id", freelancer.id).order("created_at", { ascending: true }),
       admin.from("portfolio_items").select("*").eq("freelancer_id", freelancer.id).order("created_at", { ascending: true })
     ]);
-    return { profile: freelancer, platforms: [], audit: null, serviceRates: serviceRates ?? [], portfolio: portfolio ?? [] };
+    return { profile: freelancer, platforms: [], audit: null, serviceRates: serviceRates ?? [], portfolio: portfolio ?? [], connectedAccounts: [], socialSnapshots: [] };
   }
 
   if (role === "brand") {
     const { data: brand } = await admin.from("brands").select("*").eq("contact_email", email).maybeSingle();
     if (!brand) return emptyBundle();
     const { data: audits } = await admin.from("brand_audits").select("*").eq("brand_id", brand.id).order("created_at", { ascending: false }).limit(1);
-    return { profile: brand, platforms: [], audit: audits?.[0] ?? null, serviceRates: [], portfolio: [] };
+    return { profile: brand, platforms: [], audit: audits?.[0] ?? null, serviceRates: [], portfolio: [], connectedAccounts: [], socialSnapshots: [] };
   }
 
   return emptyBundle();
 }
 
 function emptyBundle() {
-  return { profile: null, platforms: [], audit: null, serviceRates: [], portfolio: [] };
+  return { profile: null, platforms: [], audit: null, serviceRates: [], portfolio: [], connectedAccounts: [], socialSnapshots: [] };
+}
+
+function latestSnapshotsByProvider(rows: Array<Record<string, unknown>>) {
+  const seen = new Set<string>();
+  return rows.filter((row) => {
+    const provider = String(row.provider ?? "");
+    if (seen.has(provider)) return false;
+    seen.add(provider);
+    return true;
+  });
 }
 
 function roleLabel(role: string) {
   if (role === "brand") return "Brand";
   if (role === "freelancer") return "Freelancer";
   return "Creator";
+}
+
+function oauthReadyProviders() {
+  return {
+    instagram: Boolean(process.env.META_APP_ID && process.env.META_APP_SECRET),
+    facebook: Boolean(process.env.META_APP_ID && process.env.META_APP_SECRET),
+    youtube: Boolean(process.env.GOOGLE_CLIENT_ID && process.env.GOOGLE_CLIENT_SECRET)
+  };
 }

@@ -16,6 +16,7 @@ export function OfferResponseActions({ dealId, projectId, kind = "deal" }: { dea
   const [counterDueDate, setCounterDueDate] = useState("");
   const [counterUsageRights, setCounterUsageRights] = useState("");
   const [counterApprovalTerms, setCounterApprovalTerms] = useState("");
+  const [acknowledgeHighRisk, setAcknowledgeHighRisk] = useState(false);
   const [status, setStatus] = useState<"idle" | "saving" | "error">("idle");
   const [message, setMessage] = useState("");
 
@@ -29,6 +30,7 @@ export function OfferResponseActions({ dealId, projectId, kind = "deal" }: { dea
         ...(kind === "project" ? { project_id: projectId } : { deal_id: dealId }),
         status: nextStatus,
         response,
+        acknowledge_high_risk: acknowledgeHighRisk,
         counter: nextStatus === "changes_requested" ? {
           amount_cents: counterAmountInr ? Math.round(Number(counterAmountInr) * 100) : null,
           scope: counterScope,
@@ -53,7 +55,18 @@ export function OfferResponseActions({ dealId, projectId, kind = "deal" }: { dea
   return (
     <div className="space-y-3">
       <Textarea value={response} onChange={(event) => setResponse(event.target.value)} placeholder="Short note to the brand, e.g. what you can accept or why you need changes" />
-      <div className="rounded-md border bg-white p-3">
+      {kind === "deal" ? (
+        <label className="flex items-start gap-2 rounded-md border bg-amber-50 p-3 text-sm leading-5 text-amber-900">
+          <input
+            checked={acknowledgeHighRisk}
+            className="mt-1"
+            onChange={(event) => setAcknowledgeHighRisk(event.target.checked)}
+            type="checkbox"
+          />
+          <span>I have reviewed the contract risk warning if one exists. High-risk contracts should be negotiated before accepting.</span>
+        </label>
+      ) : null}
+      <div className="scroll-mt-24 rounded-md border bg-white p-3" id={`counter-${dealId ?? projectId ?? "new"}`}>
         <div className="mb-3">
           <p className="text-sm font-semibold">Structured counter</p>
           <p className="mt-1 text-xs leading-5 text-muted-foreground">Use this when requesting changes so the brand receives clear commercial terms, not just a loose chat message.</p>

@@ -24,6 +24,7 @@ export type Creator = {
   image_url?: string | null;
   verification_status?: VerificationStatus | string;
   verification_tier?: string;
+  completed_deal_count?: number;
 };
 
 export type CreatorPlatform = {
@@ -36,6 +37,11 @@ export type CreatorPlatform = {
   avg_views: number;
   engagement_rate: number;
   posting_frequency: string;
+  metric_source?: "self_reported" | "mock_api" | "provider_api" | string;
+  data_confidence?: number;
+  india_audience_percent?: number;
+  bangalore_audience_percent?: number;
+  synced_at?: string;
 };
 
 export type Brand = {
@@ -49,6 +55,7 @@ export type Brand = {
   image_url?: string | null;
   verification_status?: VerificationStatus | string;
   verification_tier?: string;
+  completed_project_count?: number;
 };
 
 export type Freelancer = {
@@ -143,7 +150,8 @@ export type Contract = {
 
 export type Payment = {
   id: string;
-  deal_id: string;
+  deal_id?: string | null;
+  freelancer_project_id?: string | null;
   stripe_payment_intent_id?: string | null;
   stripe_checkout_session_id?: string | null;
   stripe_payment_link_id?: string | null;

@@ -13,28 +13,39 @@ import { getAgentlyData } from "@/lib/db/live-data";
 import { creatorAutomationDecision, freelancerAutomationDecision, isDiscoverable } from "@/lib/profile/automation";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { formatCurrency, formatNumber } from "@/lib/utils/format";
-import type { Campaign, CampaignInvite, CampaignShortlist } from "@/types";
+import type { Campaign, CampaignInvite, CampaignShortlist, Creator, Deal } from "@/types";
 
 export const dynamic = "force-dynamic";
 
-export default async function CampaignDetailPage({ params }: { params: Promise<{ id: string }> }) {
+export default async function CampaignDetailPage({
+  params,
+  searchParams
+}: {
+  params: Promise<{ id: string }>;
+  searchParams: Promise<Record<string, string | string[] | undefined>>;
+}) {
   const { id } = await params;
-  const [{ creators, creatorPlatforms }, campaignData] = await Promise.all([getAgentlyData(), getCampaignData(id)]);
+  const query = await searchParams;
+  const [{ creators, creatorPlatforms, deals }, campaignData] = await Promise.all([getAgentlyData(), getCampaignData(id)]);
   if (!campaignData.campaign) notFound();
 
   const campaign = campaignData.campaign;
+  const creatorsWithTrust = withCreatorCompletedWork(creators, deals);
+  const freelancersWithTrust = withFreelancerCompletedWork(campaignData.freelancers, campaignData.projects);
   const creatorPool = campaign.visibility === "invite_only" && campaignData.invites.length
-    ? creators.filter((creator) => campaignData.invites.some((invite) => invite.creator_id === creator.id))
-    : creators;
+    ? creatorsWithTrust.filter((creator) => campaignData.invites.some((invite) => invite.creator_id === creator.id))
+    : creatorsWithTrust;
   const eligibleCreators = creatorPool.filter((creator) => isDiscoverable(creatorAutomationDecision({
     creator: creator as unknown as Record<string, unknown>,
     platforms: creatorPlatforms.filter((platform) => platform.creator_id === creator.id) as unknown as Array<Record<string, unknown>>
   })));
-  const eligibleFreelancers = campaignData.freelancers.filter((freelancer) => isDiscoverable(freelancerAutomationDecision({
+  const eligibleFreelancers = freelancersWithTrust.filter((freelancer) => isDiscoverable(freelancerAutomationDecision({
     freelancer: freelancer as unknown as Record<string, unknown>,
     serviceRates: campaignData.serviceRates.filter((rate) => rate.freelancer_id === freelancer.id) as unknown as Array<Record<string, unknown>>
   })));
-  const creatorRecommendations = rankCreators(campaign, eligibleCreators, creatorPlatforms).slice(0, 8);
+  const creatorTrustFilter = ["verified", "api_synced"].includes(String(first(query.creatorTrust))) ? "verified" : "all";
+  const allCreatorRecommendations = rankCreators(campaign, eligibleCreators, creatorPlatforms);
+  const creatorRecommendations = filterCreatorRecommendations(allCreatorRecommendations, creatorTrustFilter).slice(0, 8);
   const freelancerRecommendations = rankFreelancers(campaign, eligibleFreelancers, campaignData.serviceRates).slice(0, 8);
   const creatorShortlist = campaignData.shortlists.filter((item) => item.entity_type === "creator");
   const freelancerShortlist = campaignData.shortlists.filter((item) => item.entity_type === "freelancer");
@@ -78,6 +89,25 @@ export default async function CampaignDetailPage({ params }: { params: Promise<{
       </Card>
 
       <Card className="mt-5">
+        <CardHeader>
+          <div>
+            <CardTitle>Discovery Preferences</CardTitle>
+            <p className="mt-1 text-sm text-muted-foreground">Keep recommendations broad, or show only creators with synced platform metrics when brand trust matters more than reach volume.</p>
+          </div>
+          <Badge tone={creatorTrustFilter === "verified" ? "green" : "blue"}>{creatorTrustFilter === "verified" ? "verified creators" : "all eligible creators"}</Badge>
+        </CardHeader>
+        <div className="flex flex-wrap gap-2">
+          <FilterLink active={creatorTrustFilter === "all"} href={`/campaigns/${campaign.id}`}>All eligible creators</FilterLink>
+          <FilterLink active={creatorTrustFilter === "verified"} href={`/campaigns/${campaign.id}?creatorTrust=verified`}>Verified creators only</FilterLink>
+        </div>
+        {creatorTrustFilter === "verified" && creatorRecommendations.length === 0 ? (
+          <p className="mt-3 rounded-md bg-amber-50 p-3 text-sm leading-6 text-amber-800">
+            No verified creators match this brief yet. Switch back to all eligible creators or ask shortlisted talent to connect their Instagram, Facebook, or YouTube account for verification.
+          </p>
+        ) : null}
+      </Card>
+
+      <Card className="mt-5">
         <CardHeader><CardTitle>Shortlist</CardTitle><Badge tone="blue">{campaignData.shortlists.length}</Badge></CardHeader>
         {campaignData.shortlists.length ? (
           <div className="grid gap-3 md:grid-cols-2">
@@ -107,6 +137,22 @@ export default async function CampaignDetailPage({ params }: { params: Promise<{
       </section>
     </AppShell>
   );
+}
+
+function FilterLink({ active, children, href }: { active: boolean; children: React.ReactNode; href: string }) {
+  return (
+    <Link
+      className={`inline-flex h-9 items-center rounded-md border px-3 text-sm font-medium transition ${active ? "border-primary bg-primary text-primary-foreground" : "bg-white hover:bg-muted"}`}
+      href={href}
+    >
+      {children}
+    </Link>
+  );
+}
+
+function filterCreatorRecommendations(recommendations: CampaignRecommendation[], filter: "all" | "verified") {
+  if (filter === "verified") return recommendations.filter((item) => item.trust_source === "api_synced");
+  return recommendations;
 }
 
 function ShortlistGroup({
@@ -248,15 +294,16 @@ function BriefItem({ label, value }: { label: string; value: string }) {
 async function getCampaignData(id: string) {
   const admin = createAdminClient();
   if (!admin) {
-    return { campaign: null, freelancers: [] as FreelancerRecommendationInput[], serviceRates: [] as ServiceRateInput[], shortlists: [] as CampaignShortlist[], invites: [] as CampaignInvite[] };
+    return { campaign: null, freelancers: [] as FreelancerRecommendationInput[], serviceRates: [] as ServiceRateInput[], shortlists: [] as CampaignShortlist[], invites: [] as CampaignInvite[], projects: [] as Array<Record<string, unknown>> };
   }
 
-  const [campaignResult, freelancersResult, serviceRatesResult, shortlistsResult, invitesResult] = await Promise.all([
+  const [campaignResult, freelancersResult, serviceRatesResult, shortlistsResult, invitesResult, projectsResult] = await Promise.all([
     admin.from("campaigns").select("*").eq("id", id).maybeSingle(),
     admin.from("freelancers").select("*").order("created_at", { ascending: false }),
     admin.from("freelancer_service_rates").select("*"),
     admin.from("campaign_shortlists").select("*").eq("campaign_id", id),
-    admin.from("campaign_invites").select("*").eq("campaign_id", id)
+    admin.from("campaign_invites").select("*").eq("campaign_id", id),
+    admin.from("freelancer_projects").select("id, freelancer_id, status, payment_status, deliverable_status")
   ]);
 
   return {
@@ -264,8 +311,33 @@ async function getCampaignData(id: string) {
     freelancers: (freelancersResult.data ?? []) as FreelancerRecommendationInput[],
     serviceRates: (serviceRatesResult.data ?? []) as ServiceRateInput[],
     shortlists: (shortlistsResult.data ?? []).map(normalizeShortlist),
-    invites: (invitesResult.data ?? []).map(normalizeInvite)
+    invites: (invitesResult.data ?? []).map(normalizeInvite),
+    projects: projectsResult.data ?? []
   };
+}
+
+function withCreatorCompletedWork(creators: Creator[], deals: Deal[]) {
+  return creators.map((creator) => ({
+    ...creator,
+    completed_deal_count: deals.filter((deal) => deal.creator_id === creator.id && isCompletedCreatorDeal(deal)).length
+  }));
+}
+
+function withFreelancerCompletedWork(freelancers: FreelancerRecommendationInput[], projects: Array<Record<string, unknown>>) {
+  return freelancers.map((freelancer) => ({
+    ...freelancer,
+    completed_project_count: projects.filter((project) => String(project.freelancer_id) === freelancer.id && isCompletedFreelancerProject(project)).length
+  }));
+}
+
+function isCompletedCreatorDeal(deal: Deal) {
+  return ["approved", "paid", "closed"].includes(deal.stage) || ["release_ready", "released"].includes(deal.payment_status);
+}
+
+function isCompletedFreelancerProject(project: Record<string, unknown>) {
+  return ["approved", "completed", "closed"].includes(String(project.status)) ||
+    ["release_ready", "released"].includes(String(project.payment_status)) ||
+    String(project.deliverable_status) === "approved";
 }
 
 function normalizeCampaign(row: Record<string, unknown>): Campaign {
@@ -314,6 +386,10 @@ function toStringArray(value: unknown) {
   if (Array.isArray(value)) return value.map(String);
   if (typeof value === "string" && value.trim()) return value.split(",").map((item) => item.trim()).filter(Boolean);
   return [];
+}
+
+function first(value: string | string[] | undefined) {
+  return Array.isArray(value) ? value[0] : value;
 }
 
 async function persistRecommendationSnapshots(campaignId: string, creators: CampaignRecommendation[], freelancers: CampaignRecommendation[]) {

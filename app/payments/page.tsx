@@ -22,14 +22,16 @@ export default async function PaymentsPage() {
   const { deals, payments } = await getAgentlyData();
   const scope = admin && user ? await getPaymentScope(admin, user) : { dealIds: [], brandIds: [], creatorIds: [], freelancerIds: [], projectIds: [] };
   const visibleDeals = filterDealsForUser(deals, user?.role, scope);
-  const visiblePayments = payments.filter((payment) => visibleDeals.some((deal) => deal.id === payment.deal_id));
-  const projects = await getFreelancerProjects(scope, user?.role);
+  const paymentDeals = visibleDeals.filter((deal) => deal.offer_status === "accepted" || user?.role === "admin");
+  const visiblePayments = payments.filter((payment) => paymentDeals.some((deal) => deal.id === payment.deal_id));
+  const projects = (await getFreelancerProjects(scope, user?.role)).filter((project) => String(project.status ?? "") === "accepted" || user?.role === "admin");
+  const projectPayments = payments.filter((payment) => projects.some((project) => String(project.id) === payment.freelancer_project_id));
   const latestDeliverables = await getLatestDeliverables(
     visibleDeals.map((deal) => ({ type: "deal" as const, id: deal.id })),
     projects.map((project) => ({ type: "freelancer_project" as const, id: String(project.id) }))
   );
   const queue = [
-    ...visibleDeals.map((deal) => ({
+    ...paymentDeals.map((deal) => ({
       id: deal.id,
       type: "deal" as const,
       title: deal.title,
@@ -38,7 +40,8 @@ export default async function PaymentsPage() {
       currency: deal.currency,
       payout_cents: Math.max(0, deal.amount_cents - Math.round(deal.amount_cents * 0.1)),
       session: visiblePayments.find((payment) => payment.deal_id === deal.id)?.stripe_checkout_session_id ?? "not created",
-      deliverable: latestDeliverables.get(`deal-${deal.id}`)
+      deliverable: latestDeliverables.get(`deal-${deal.id}`),
+      canFund: deal.offer_status === "accepted"
     })),
     ...projects.map((project) => ({
       id: project.id,
@@ -48,8 +51,9 @@ export default async function PaymentsPage() {
       amount_cents: Number(project.amount_cents ?? 0),
       currency: project.currency ?? "inr",
       payout_cents: Math.max(0, Number(project.amount_cents ?? 0) - Math.round(Number(project.amount_cents ?? 0) * 0.1)),
-      session: "manual project",
-      deliverable: latestDeliverables.get(`freelancer_project-${project.id}`)
+      session: projectPayments.find((payment) => payment.freelancer_project_id === String(project.id))?.stripe_checkout_session_id ?? "not created",
+      deliverable: latestDeliverables.get(`freelancer_project-${project.id}`),
+      canFund: String(project.status ?? "") === "accepted"
     }))
   ];
   const largestAmount = queue.reduce((max, item) => Math.max(max, item.amount_cents), 0);
@@ -88,7 +92,7 @@ export default async function PaymentsPage() {
                   <Td>{item.session}</Td>
                   <Td className="text-right">{formatCurrency(item.amount_cents, item.currency)}</Td>
                   <Td className="text-right font-semibold">{formatCurrency(item.payout_cents, item.currency)}</Td>
-                  <Td>{canManagePayments ? <PaymentActions entityId={item.id} entityType={item.type} /> : <Badge tone="neutral">view only</Badge>}</Td>
+                  <Td>{canManagePayments ? <PaymentActions canFund={item.canFund} entityId={item.id} entityType={item.type} /> : <Badge tone="neutral">view only</Badge>}</Td>
                 </tr>
               ))}
               {queue.length === 0 ? (

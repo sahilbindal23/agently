@@ -1,12 +1,12 @@
 import { notFound } from "next/navigation";
-import { ArrowUpRight, CreditCard } from "lucide-react";
+import { ShieldAlert } from "lucide-react";
 import { ContractSummaryCard } from "@/components/contracts/contract-summary-card";
 import { DealContractScanForm } from "@/components/contracts/deal-contract-scan-form";
 import { DeliverableCard } from "@/components/deliverables/deliverable-card";
 import { AppShell } from "@/components/layout/app-shell";
 import { PageHeader } from "@/components/layout/page-header";
+import { PaymentActions } from "@/components/payments/payment-actions";
 import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
 import { Card, CardHeader, CardTitle } from "@/components/ui/card";
 import { getDealBundle } from "@/lib/db/live-data";
 import { createAdminClient } from "@/lib/supabase/admin";
@@ -40,8 +40,13 @@ export default async function DealDetailPage({ params }: { params: Promise<{ id:
         <Card>
           <CardHeader><CardTitle>Actions</CardTitle></CardHeader>
           <div className="space-y-3">
-            <Button className="w-full" type="button"><CreditCard className="h-4 w-4" /> Generate payment link</Button>
-            <Button className="w-full" variant="secondary" type="button"><ArrowUpRight className="h-4 w-4" /> Mark deliverable approved</Button>
+            {contract?.risk_level === "high_risk" ? (
+              <div className="rounded-md border bg-red-50 p-3 text-sm leading-6 text-red-800">
+                <div className="mb-1 flex items-center gap-2 font-semibold"><ShieldAlert className="h-4 w-4" /> High-risk contract</div>
+                Negotiate flagged terms before funding or accepting broad usage rights.
+              </div>
+            ) : null}
+            <PaymentActions canFund={deal.offer_status === "accepted"} entityId={deal.id} entityType="deal" />
           </div>
         </Card>
       </section>

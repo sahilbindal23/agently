@@ -9,6 +9,7 @@ export async function POST(request: Request) {
   const dealId = String(body.deal_id ?? "").trim();
   const status = String(body.status ?? "").trim() as typeof allowedStatuses[number];
   const response = String(body.response ?? "").trim();
+  const acknowledgeHighRisk = Boolean(body.acknowledge_high_risk);
   const counter = body.counter && typeof body.counter === "object" ? body.counter as Record<string, unknown> : {};
   const counterAmountCents = Number(counter.amount_cents ?? 0) || null;
   const counterDeliverables = String(counter.scope ?? "").trim();
@@ -34,6 +35,21 @@ export async function POST(request: Request) {
   const { data: profile } = await admin.from("profiles").select("role").eq("id", authData.user.id).single();
   if (creator?.profile_id !== authData.user.id && profile?.role !== "admin") {
     return NextResponse.json({ error: "Not allowed to respond to this offer." }, { status: 403 });
+  }
+
+  if (status === "accepted" && !acknowledgeHighRisk) {
+    const { data: contract } = await admin
+      .from("contracts")
+      .select("risk_level")
+      .eq("deal_id", dealId)
+      .order("created_at", { ascending: false })
+      .limit(1)
+      .maybeSingle();
+    if (contract?.risk_level === "high_risk") {
+      return NextResponse.json({
+        error: "This contract is high risk. Acknowledge the contract warning before accepting."
+      }, { status: 409 });
+    }
   }
 
   const counterSummary = status === "changes_requested" ? formatCounterSummary({

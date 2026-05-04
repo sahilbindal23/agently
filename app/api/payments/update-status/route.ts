@@ -63,6 +63,7 @@ export async function POST(request: Request) {
     .single();
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+  await upsertPaymentForProject(admin, data, status);
   return NextResponse.json({ data });
 }
 
@@ -90,4 +91,19 @@ async function upsertPaymentForDeal(admin: NonNullable<ReturnType<typeof createA
     funded_at: status === "funded" ? new Date().toISOString() : null,
     released_at: status === "released" ? new Date().toISOString() : null
   }, { onConflict: "deal_id" });
+}
+
+async function upsertPaymentForProject(admin: NonNullable<ReturnType<typeof createAdminClient>>, project: Record<string, unknown>, status: string) {
+  const amount = Number(project.amount_cents ?? 0);
+  const platformFee = Math.round(amount * 0.1);
+  await admin.from("payments").upsert({
+    deal_id: null,
+    freelancer_project_id: String(project.id),
+    amount_cents: amount,
+    platform_fee_cents: platformFee,
+    creator_payout_cents: Math.max(0, amount - platformFee),
+    status,
+    funded_at: status === "funded" ? new Date().toISOString() : null,
+    released_at: status === "released" ? new Date().toISOString() : null
+  }, { onConflict: "freelancer_project_id" });
 }

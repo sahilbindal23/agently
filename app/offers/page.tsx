@@ -1,4 +1,3 @@
-import Link from "next/link";
 import { redirect } from "next/navigation";
 import { RiskBadge } from "@/components/contracts/risk-badge";
 import { DeliverableCard } from "@/components/deliverables/deliverable-card";
@@ -99,11 +98,6 @@ export default async function OffersPage() {
       .order("created_at", { ascending: false })
     : { data: [] };
   const freelancerProjects = (projects ?? []) as ProjectRow[];
-  const brandIds = Array.from(new Set([
-    ...offers.map((offer) => offer.brand_id).filter((id): id is string => Boolean(id)),
-    ...freelancerProjects.map((project) => project.brand_id).filter((id): id is string => Boolean(id))
-  ]));
-  const brandNames = await getBrandNames(admin, brandIds);
   const latestDeliverables = await getLatestDeliverables(admin, [
     ...offers.map((offer) => ({ type: "deal" as const, id: offer.id })),
     ...freelancerProjects.map((project) => ({ type: "freelancer_project" as const, id: project.id }))
@@ -156,15 +150,9 @@ export default async function OffersPage() {
                   </div>
                 ) : null}
                 <div className="flex flex-wrap gap-2">
-                  <Link href={negotiationHref({
-                    amountCents: offer.amount_cents,
-                    brand: brandNames.get(offer.brand_id ?? "") ?? "",
-                    deliverables: offer.deliverables,
-                    terms: [offer.notes, offerContracts.get(offer.id)?.summary].filter(Boolean).join("\n"),
-                    context: "Creator offer opened from Agently offer inbox."
-                  })}>
-                    <Button variant="secondary">Negotiate this offer</Button>
-                  </Link>
+                  <a href={`#counter-${offer.id}`}>
+                    <Button variant="secondary" type="button">Open structured counter</Button>
+                  </a>
                   {offer.brand_id ? (
                     <MessageRecipientButton contextId={offer.id} contextType="deal" entityId={offer.brand_id} entityType="brand" label="Ask brand a question" />
                   ) : null}
@@ -236,15 +224,9 @@ export default async function OffersPage() {
                   <p className="mt-1 whitespace-pre-wrap text-sm leading-6">{[project.usage_context, project.approval_terms, project.notes].filter(Boolean).join("\n") || "No extra terms added."}</p>
                 </div>
                 <div className="flex flex-wrap gap-2">
-                  <Link href={negotiationHref({
-                    amountCents: project.amount_cents,
-                    brand: brandNames.get(project.brand_id ?? "") ?? "",
-                    deliverables: project.scope,
-                    terms: [project.usage_context, project.approval_terms, project.notes].filter(Boolean).join("\n"),
-                    context: "Freelancer project opened from Agently offer inbox."
-                  })}>
-                    <Button variant="secondary">Negotiate this project</Button>
-                  </Link>
+                  <a href={`#counter-${project.id}`}>
+                    <Button variant="secondary" type="button">Open structured counter</Button>
+                  </a>
                   {project.brand_id ? (
                     <MessageRecipientButton contextId={project.id} contextType="freelancer_project" entityId={project.brand_id} entityType="brand" label="Ask brand a question" />
                   ) : null}
@@ -291,37 +273,6 @@ export default async function OffersPage() {
       )}
     </AppShell>
   );
-}
-
-async function getBrandNames(admin: NonNullable<ReturnType<typeof createAdminClient>>, brandIds: string[]) {
-  const map = new Map<string, string>();
-  if (!brandIds.length) return map;
-  const { data } = await admin.from("brands").select("id, name").in("id", brandIds);
-  (data ?? []).forEach((brand) => map.set(String(brand.id), String(brand.name ?? "")));
-  return map;
-}
-
-function negotiationHref({
-  amountCents,
-  brand,
-  deliverables,
-  terms,
-  context
-}: {
-  amountCents: number;
-  brand: string;
-  deliverables: string;
-  terms: string;
-  context: string;
-}) {
-  const params = new URLSearchParams({
-    amount: String(Math.round(amountCents / 100)),
-    brand,
-    deliverables,
-    terms,
-    context
-  });
-  return `/ai-insights?${params.toString()}#negotiation`;
 }
 
 function Metric({ label, value }: { label: string; value: string }) {

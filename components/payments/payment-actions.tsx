@@ -8,7 +8,15 @@ import { Button } from "@/components/ui/button";
 type EntityType = "deal" | "freelancer_project";
 type PaymentStatus = "pending" | "funded" | "release_ready" | "released";
 
-export function PaymentActions({ entityId, entityType }: { entityId: string; entityType: EntityType }) {
+export function PaymentActions({
+  canFund = true,
+  entityId,
+  entityType
+}: {
+  canFund?: boolean;
+  entityId: string;
+  entityType: EntityType;
+}) {
   const router = useRouter();
   const [status, setStatus] = useState<"idle" | "saving" | "error">("idle");
 
@@ -30,16 +38,11 @@ export function PaymentActions({ entityId, entityType }: { entityId: string; ent
   }
 
   async function createLink() {
-    if (entityType !== "deal") {
-      await update("pending");
-      return;
-    }
-
     setStatus("saving");
     const response = await fetch("/api/payments/create-link", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ deal_id: entityId })
+      body: JSON.stringify({ entity_id: entityId, entity_type: entityType })
     });
 
     if (!response.ok) {
@@ -53,9 +56,9 @@ export function PaymentActions({ entityId, entityType }: { entityId: string; ent
 
   return (
     <div className="flex flex-wrap justify-end gap-2">
-      <Button disabled={status === "saving"} onClick={createLink} size="sm" type="button" variant="secondary">
+      <Button disabled={status === "saving" || !canFund} onClick={createLink} size="sm" type="button" variant="secondary" title={canFund ? undefined : "Offer/project must be accepted before funding."}>
         <CreditCard className="h-4 w-4" />
-        {entityType === "deal" ? "Payment link" : "Mark pending"}
+        Payment link
       </Button>
       <Button disabled={status === "saving"} onClick={() => update("funded")} size="sm" type="button" variant="secondary">
         <ShieldCheck className="h-4 w-4" />

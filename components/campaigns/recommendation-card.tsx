@@ -31,7 +31,10 @@ export function RecommendationCard({
             <p className="mt-1 text-xs text-muted-foreground">{item.subtitle}</p>
           </div>
         </div>
-        <Badge tone={item.score >= 80 ? "green" : item.score >= 60 ? "amber" : "neutral"}>{item.score}</Badge>
+        <div className="flex flex-col items-end gap-2">
+          <Badge tone={item.score >= 80 ? "green" : item.score >= 60 ? "amber" : "neutral"}>{item.score}</Badge>
+          {type === "creator" ? <Badge tone={item.trust_source === "api_synced" ? "green" : item.trust_source === "verified_profile" ? "blue" : "neutral"}>{trustLabel(item.trust_source)}</Badge> : null}
+        </div>
       </div>
       <div className="rounded-md border bg-slate-50 p-3">
         <p className="text-xs font-semibold uppercase text-muted-foreground">Fit explanation</p>
@@ -156,6 +159,12 @@ function scoreLabel(score: number) {
   if (score >= 82) return "strong match";
   if (score >= 65) return "usable match";
   return "needs review";
+}
+
+function trustLabel(source: CampaignRecommendation["trust_source"]) {
+  if (source === "api_synced") return "verified";
+  if (source === "verified_profile") return "reviewed";
+  return "profile data";
 }
 
 function scoreHighlights(score: CampaignRecommendation["score_breakdown"]) {
