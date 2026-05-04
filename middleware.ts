@@ -12,6 +12,7 @@ const adminRoutes = [
   "/analytics",
   "/engine-room",
   "/outcome-ledger",
+  "/rate-benchmarks",
   "/activity",
   "/notifications",
   "/creators",

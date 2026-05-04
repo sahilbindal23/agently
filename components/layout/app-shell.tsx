@@ -16,6 +16,7 @@ const adminNav = [
   { href: "/analytics", label: "Analytics", icon: BarChart3, tour: "insights" },
   { href: "/engine-room", label: "Engine Room", icon: BrainCircuit, tour: "ai" },
   { href: "/outcome-ledger", label: "Outcome Ledger", icon: ClipboardList, tour: "insights" },
+  { href: "/rate-benchmarks", label: "Rate Benchmarks", icon: BarChart3, tour: "insights" },
   { href: "/creators", label: "Creators", icon: Users, tour: "creators" },
   { href: "/freelancers", label: "Freelancers", icon: Palette, tour: "freelancers" },
   { href: "/campaigns", label: "Campaigns", icon: ClipboardList, tour: "campaigns" },

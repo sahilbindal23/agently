@@ -20,6 +20,24 @@ type ValuationResult = {
   adjustments: string[];
   rationale: string;
   source: string;
+  blended_low_estimate_cents?: number;
+  blended_base_estimate_cents?: number;
+  blended_high_estimate_cents?: number;
+  benchmark_confidence_score?: number;
+  benchmark_match_count?: number;
+  benchmark_summary?: string;
+  matched_benchmarks?: Array<{
+    id: string;
+    platform: string;
+    niche: string;
+    deliverable_type: string;
+    city: string;
+    low_cents: number;
+    base_cents: number;
+    high_cents: number;
+    confidence_score: number;
+    source_label: string | null;
+  }>;
 };
 
 export function ValuationEngine() {
@@ -125,6 +143,29 @@ export function ValuationEngine() {
               <Rate label="Base" value={result.base_estimate_cents} currency={result.currency} />
               <Rate label="High" value={result.high_estimate_cents} currency={result.currency} />
             </div>
+            {result.benchmark_match_count ? (
+              <div className="rounded-md border bg-emerald-50 p-4">
+                <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
+                  <div>
+                    <p className="text-xs font-semibold uppercase text-emerald-800">Benchmark-calibrated range</p>
+                    <p className="mt-1 text-sm leading-5 text-emerald-900">{result.benchmark_summary}</p>
+                  </div>
+                  <Badge tone="green">{Math.round(Number(result.benchmark_confidence_score ?? 0) * 100)}% confidence</Badge>
+                </div>
+                <div className="grid gap-3 md:grid-cols-3">
+                  <Rate label="Blended low" value={result.blended_low_estimate_cents ?? result.low_estimate_cents} currency={result.currency} />
+                  <Rate label="Blended base" value={result.blended_base_estimate_cents ?? result.base_estimate_cents} currency={result.currency} />
+                  <Rate label="Blended high" value={result.blended_high_estimate_cents ?? result.high_estimate_cents} currency={result.currency} />
+                </div>
+                <div className="mt-3 grid gap-2">
+                  {(result.matched_benchmarks ?? []).slice(0, 3).map((benchmark) => (
+                    <p className="rounded-md bg-white p-2 text-xs leading-5 text-emerald-950" key={benchmark.id}>
+                      {benchmark.platform} / {benchmark.niche} / {benchmark.deliverable_type} in {benchmark.city}: {formatCurrency(benchmark.low_cents, "inr")} - {formatCurrency(benchmark.high_cents, "inr")} ({Math.round(benchmark.confidence_score * 100)}% confidence)
+                    </p>
+                  ))}
+                </div>
+              </div>
+            ) : null}
             <div className="rounded-md border bg-white p-4">
               <p className="text-sm text-muted-foreground">Negotiation floor</p>
               <p className="mt-1 text-xl font-bold">{formatCurrency(result.negotiation_floor_cents, result.currency)}</p>
