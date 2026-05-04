@@ -20,6 +20,24 @@
   --ring: 172 72% 28%;
 }
 
+.dark {
+  --background: 222 47% 6%;
+  --foreground: 210 40% 96%;
+  --card: 222 40% 10%;
+  --card-foreground: 210 40% 96%;
+  --primary: 172 55% 42%;
+  --primary-foreground: 0 0% 100%;
+  --muted: 222 40% 14%;
+  --muted-foreground: 215 20% 58%;
+  --accent: 38 85% 54%;
+  --accent-foreground: 222 47% 11%;
+  --destructive: 0 65% 55%;
+  --destructive-foreground: 0 0% 100%;
+  --border: 214 28% 18%;
+  --input: 214 28% 18%;
+  --ring: 172 55% 42%;
+}
+
 * {
   border-color: hsl(var(--border));
 }
@@ -30,6 +48,12 @@ body {
     radial-gradient(circle at top left, rgba(20, 184, 166, 0.13), transparent 32rem),
     linear-gradient(180deg, #f8fafc 0%, #eef4f3 100%);
   color: hsl(var(--foreground));
+}
+
+.dark body {
+  background:
+    radial-gradient(circle at top left, rgba(20, 184, 166, 0.07), transparent 32rem),
+    linear-gradient(180deg, #0d1117 0%, #090d14 100%);
 }
 
 a {

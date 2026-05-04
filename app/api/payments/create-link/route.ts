@@ -1,17 +1,23 @@
 import { NextResponse } from "next/server";
+import { z } from "zod";
 import { trackEvent, userEventBase } from "@/lib/analytics/track";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
 import { getStripe } from "@/lib/stripe/client";
 
-export async function POST(request: Request) {
-  const body = await request.json();
-  const entityType = String(body.entity_type ?? "deal") as "deal" | "freelancer_project";
-  const entityId = String(body.entity_id ?? body.deal_id ?? "").trim();
+const schema = z.object({
+  entity_type: z.enum(["deal", "freelancer_project"]).default("deal"),
+  entity_id: z.string().trim().optional(),
+  deal_id: z.string().trim().optional()
+}).transform(d => ({ ...d, entity_id: (d.entity_id || d.deal_id || "").trim() }))
+  .refine(d => d.entity_id.length > 0, { message: "Valid payment target is required." });
 
-  if (!entityId || (entityType !== "deal" && entityType !== "freelancer_project")) {
-    return NextResponse.json({ error: "Valid payment target is required." }, { status: 400 });
+export async function POST(request: Request) {
+  const parsed = schema.safeParse(await request.json());
+  if (!parsed.success) {
+    return NextResponse.json({ error: parsed.error.issues[0]?.message ?? "Invalid request." }, { status: 400 });
   }
+  const { entity_type: entityType, entity_id: entityId } = parsed.data;
 
   const auth = await createClient();
   const { data: authData } = await auth.auth.getUser();
@@ -39,23 +45,11 @@ export async function POST(request: Request) {
   }
 
   const stripe = getStripe();
-  const appUrl = process.env.APP_URL ?? "http://localhost:3000";
-
   if (!stripe) {
-    await markPending(admin, entityType, entityId, `cs_demo_${entityType}_${entityId}`);
-    await trackEvent(admin, {
-      ...userEventBase(authData.user, profile),
-      eventName: "payment_link_created",
-      entityType,
-      entityId,
-      metadata: { source: "demo_fallback", amount_cents: target.amountCents, currency: target.currency }
-    });
-    return NextResponse.json({
-      checkout_url: `${appUrl}/payments?demo_checkout=${entityId}`,
-      stripe_checkout_session_id: `cs_demo_${entityType}_${entityId}`,
-      source: "demo_fallback"
-    });
+    return NextResponse.json({ error: "Payment processing is not configured. Contact the platform admin." }, { status: 503 });
   }
+
+  const appUrl = process.env.APP_URL ?? "http://localhost:3000";
 
   const session = await stripe.checkout.sessions.create({
     mode: "payment",

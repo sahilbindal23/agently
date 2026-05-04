@@ -1,21 +1,22 @@
 import { NextResponse } from "next/server";
+import { z } from "zod";
 import { trackEvent, userEventBase } from "@/lib/analytics/track";
 import { applyLedgerEvent } from "@/lib/engines/outcome-ledger";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
 
-const allowedStatuses = ["unpaid", "pending", "funded", "release_ready", "released", "refunded", "disputed"] as const;
-type EntityType = "deal" | "freelancer_project";
+const schema = z.object({
+  entity_type: z.enum(["deal", "freelancer_project"]).default("deal"),
+  entity_id: z.string().trim().min(1, "Entity ID is required."),
+  status: z.enum(["unpaid", "pending", "funded", "release_ready", "released", "refunded", "disputed"])
+});
 
 export async function POST(request: Request) {
-  const body = await request.json();
-  const entityType = String(body.entity_type ?? "deal") as EntityType;
-  const entityId = String(body.entity_id ?? "").trim();
-  const status = String(body.status ?? "").trim() as typeof allowedStatuses[number];
-
-  if (!entityId || (entityType !== "deal" && entityType !== "freelancer_project") || !allowedStatuses.includes(status)) {
-    return NextResponse.json({ error: "Entity, entity type, and valid payment status are required." }, { status: 400 });
+  const parsed = schema.safeParse(await request.json());
+  if (!parsed.success) {
+    return NextResponse.json({ error: parsed.error.issues[0]?.message ?? "Invalid request." }, { status: 400 });
   }
+  const { entity_type: entityType, entity_id: entityId, status } = parsed.data;
 
   const auth = await createClient();
   const { data: authData } = await auth.auth.getUser();

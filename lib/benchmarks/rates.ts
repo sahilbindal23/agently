@@ -117,7 +117,7 @@ function benchmarkMatchScore(benchmark: RateBenchmark, input: ValuationInput) {
   const platform = normalize(input.platform);
   const niche = normalize(input.niche);
   const deliverable = normalize(input.deliverable_type ?? "");
-  const city = normalize(String(input.bangalore_fit ?? 0) ? "bengaluru" : "");
+  const city = Number(input.bangalore_fit ?? 0) > 0 ? "bengaluru" : "";
   const benchmarkPlatform = normalize(benchmark.platform);
   const benchmarkNiche = normalize(benchmark.niche);
   const benchmarkDeliverable = normalize(benchmark.deliverable_type);

@@ -1,26 +1,36 @@
 import { NextResponse } from "next/server";
+import { z } from "zod";
 import { trackEvent, userEventBase } from "@/lib/analytics/track";
 import { applyLedgerEvent } from "@/lib/engines/outcome-ledger";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
 
-const allowedStatuses = ["accepted", "changes_requested", "declined"] as const;
+const counterSchema = z.object({
+  amount_cents: z.coerce.number().int().min(0).optional(),
+  scope: z.string().trim().max(2000).optional(),
+  due_date: z.string().trim().max(50).optional(),
+  usage_rights: z.string().trim().max(500).optional(),
+  approval_terms: z.string().trim().max(500).optional()
+}).optional();
+
+const schema = z.object({
+  project_id: z.string().trim().min(1, "Project ID is required."),
+  status: z.enum(["accepted", "changes_requested", "declined"]),
+  response: z.string().trim().max(2000).optional().default(""),
+  counter: counterSchema
+});
 
 export async function POST(request: Request) {
-  const body = await request.json();
-  const projectId = String(body.project_id ?? "").trim();
-  const status = String(body.status ?? "").trim() as typeof allowedStatuses[number];
-  const response = String(body.response ?? "").trim();
-  const counter = body.counter && typeof body.counter === "object" ? body.counter as Record<string, unknown> : {};
-  const counterAmountCents = Number(counter.amount_cents ?? 0) || null;
-  const counterScope = String(counter.scope ?? "").trim();
-  const counterDueDate = String(counter.due_date ?? "").trim() || null;
-  const counterUsageRights = String(counter.usage_rights ?? "").trim();
-  const counterApprovalTerms = String(counter.approval_terms ?? "").trim();
-
-  if (!projectId || !allowedStatuses.includes(status)) {
-    return NextResponse.json({ error: "Project and valid response status are required." }, { status: 400 });
+  const parsed = schema.safeParse(await request.json());
+  if (!parsed.success) {
+    return NextResponse.json({ error: parsed.error.issues[0]?.message ?? "Invalid request." }, { status: 400 });
   }
+  const { project_id: projectId, status, response, counter } = parsed.data;
+  const counterAmountCents = Number(counter?.amount_cents ?? 0) || null;
+  const counterScope = counter?.scope ?? "";
+  const counterDueDate = counter?.due_date || null;
+  const counterUsageRights = counter?.usage_rights ?? "";
+  const counterApprovalTerms = counter?.approval_terms ?? "";
 
   const auth = await createClient();
   const { data: authData } = await auth.auth.getUser();

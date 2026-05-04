@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { z } from "zod";
 import { trackEvent, userEventBase } from "@/lib/analytics/track";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
@@ -9,6 +10,17 @@ const tableByType = {
   brand: "brands"
 } as const;
 
+const schema = z.object({
+  body: z.string().trim().min(1, "Message is required.").max(4000, "Message is too long."),
+  thread_id: z.string().trim().optional().default(""),
+  to_type: z.enum(["creator", "freelancer", "brand"]).optional(),
+  to_id: z.string().trim().optional().default(""),
+  context_type: z.string().trim().max(80).optional().default("general"),
+  context_id: z.string().trim().optional().default("")
+}).refine(d => d.thread_id || (d.to_type && d.to_id), {
+  message: "Recipient is required for a new thread."
+});
+
 export async function POST(request: Request) {
   const auth = await createClient();
   const { data: authData } = await auth.auth.getUser();
@@ -17,21 +29,13 @@ export async function POST(request: Request) {
   const admin = createAdminClient();
   if (!admin) return NextResponse.json({ error: "Supabase service role key is not configured." }, { status: 500 });
 
-  const body = await request.json();
-  const message = String(body.body ?? "").trim();
-  const threadId = String(body.thread_id ?? "").trim();
-  const toType = String(body.to_type ?? "") as keyof typeof tableByType;
-  const toId = String(body.to_id ?? "").trim();
-  const contextType = String(body.context_type ?? "general").trim();
-  const contextId = String(body.context_id ?? "").trim();
-
-  if (!message) return NextResponse.json({ error: "Message is required." }, { status: 400 });
-  if (message.length > 4000) return NextResponse.json({ error: "Message is too long." }, { status: 400 });
-  if (!threadId && (!tableByType[toType] || !toId)) {
-    return NextResponse.json({ error: "Recipient is required for a new thread." }, { status: 400 });
+  const parsed = schema.safeParse(await request.json());
+  if (!parsed.success) {
+    return NextResponse.json({ error: parsed.error.issues[0]?.message ?? "Invalid request." }, { status: 400 });
   }
+  const { body: message, thread_id: threadId, to_type: toType, to_id: toId, context_type: contextType, context_id: contextId } = parsed.data;
 
-  const finalThreadId = threadId || await createThread(admin, authData.user.id, toType, toId, contextType, contextId);
+  const finalThreadId = threadId || await createThread(admin, authData.user.id, toType as keyof typeof tableByType, toId, contextType, contextId);
   if (!finalThreadId) return NextResponse.json({ error: "Recipient could not be resolved." }, { status: 400 });
 
   const allowed = await isParticipant(admin, finalThreadId, authData.user.id);

@@ -3,6 +3,7 @@ import { Activity, BarChart3, Bell, Bot, BrainCircuit, BriefcaseBusiness, Clipbo
 import { LogoutButton } from "@/components/auth/logout-button";
 import { HomeLogo } from "@/components/layout/home-logo";
 import { NotificationBell } from "@/components/notifications/notification-bell";
+import { ThemeToggle } from "@/components/layout/theme-toggle";
 import { GuidedWalkthrough } from "@/components/onboarding/guided-walkthrough";
 import { WalkthroughLaunchButton } from "@/components/onboarding/walkthrough-launch-button";
 import { Badge } from "@/components/ui/badge";
@@ -87,7 +88,7 @@ export async function AppShell({ children }: { children: React.ReactNode }) {
 
   return (
     <div className="min-h-screen lg:grid lg:grid-cols-[260px_1fr]">
-      <aside className="border-b bg-white/85 backdrop-blur lg:min-h-screen lg:border-b-0 lg:border-r">
+      <aside className="border-b bg-white/85 backdrop-blur dark:bg-card/80 lg:min-h-screen lg:border-b-0 lg:border-r">
         <div className="px-3 py-3"><HomeLogo className="w-full px-2" /></div>
         <nav className="flex gap-1 overflow-x-auto px-3 pb-3 lg:flex-col lg:overflow-visible lg:pb-0">
           {nav.map((item) => {
@@ -130,7 +131,10 @@ export async function AppShell({ children }: { children: React.ReactNode }) {
         </div>
       </aside>
       <main className="px-4 py-6 sm:px-6 lg:px-8">
-        {user && admin ? <NotificationBell notifications={notifications} unreadCount={unreadNotifications} /> : null}
+        <div className="mb-4 flex items-center justify-end gap-2">
+          <ThemeToggle />
+          {user && admin ? <NotificationBell notifications={notifications} unreadCount={unreadNotifications} /> : null}
+        </div>
         <div className="mb-4 space-y-2">
           {unreadMessages > 0 ? (
             <Link className="flex items-center justify-between gap-3 rounded-md border border-blue-200 bg-blue-50 px-4 py-3 text-sm text-blue-900" href="/messages">

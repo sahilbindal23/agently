@@ -1,137 +1,181 @@
 import Link from "next/link";
 import { MessageRecipientButton } from "@/components/messages/message-recipient-button";
-import { Badge } from "@/components/ui/badge";
 import { VerificationBadge } from "@/components/verification/verification-badge";
 import { getBangaloreFit, getIndiaAudiencePercent } from "@/lib/utils/creator-metrics";
 import { formatCurrency, formatNumber } from "@/lib/utils/format";
 
-type CreatorCardProps = {
-  creator: Record<string, unknown>;
-  platform?: Record<string, unknown>;
-};
+const GRADIENTS = [
+  "from-violet-600 to-indigo-700",
+  "from-emerald-500 to-teal-700",
+  "from-rose-500 to-pink-700",
+  "from-orange-500 to-amber-600",
+  "from-sky-500 to-blue-700",
+  "from-fuchsia-500 to-purple-700",
+];
 
-type FreelancerCardProps = {
-  freelancer: Record<string, unknown>;
-};
+function gradientFor(name: string) {
+  return GRADIENTS[(name.charCodeAt(0) || 0) % GRADIENTS.length];
+}
 
-type BrandCardProps = {
-  brand: Record<string, unknown>;
-};
+function HeroImage({ src, label }: { src: string; label: string }) {
+  return (
+    <div className="relative aspect-[4/5] w-full overflow-hidden bg-muted">
+      {src ? (
+        // eslint-disable-next-line @next/next/no-img-element
+        <img
+          alt={label}
+          className="h-full w-full object-cover transition duration-500 group-hover:scale-105"
+          src={src}
+        />
+      ) : (
+        <div className={`flex h-full w-full items-center justify-center bg-gradient-to-br ${gradientFor(label)}`}>
+          <span className="select-none text-8xl font-black text-white/60">
+            {label.slice(0, 1).toUpperCase() || "A"}
+          </span>
+        </div>
+      )}
+      {/* Bottom scrim so overlaid text is always readable */}
+      <div className="absolute inset-x-0 bottom-0 h-1/2 bg-gradient-to-t from-black/80 via-black/30 to-transparent" />
+    </div>
+  );
+}
 
-export function CreatorMarketCard({ creator, platform }: CreatorCardProps) {
+function StatPill({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="flex flex-col items-center gap-0.5 px-2 py-2.5">
+      <span className="text-sm font-bold tabular-nums text-foreground">{value}</span>
+      <span className="text-[10px] font-medium uppercase tracking-wide text-muted-foreground">{label}</span>
+    </div>
+  );
+}
+
+export function CreatorMarketCard({ creator, platform }: { creator: Record<string, unknown>; platform?: Record<string, unknown> }) {
   const href = `/creators/${stringValue(creator.id)}`;
+  const name = stringValue(creator.display_name);
+  const niche = stringValue(creator.primary_niche) || "Creator";
+  const bangaloreFit = getBangaloreFit(creator as never);
+
   return (
-    <div className="rounded-md border bg-white p-4">
-      <div className="grid gap-3 sm:grid-cols-[116px_1fr]">
-        <Link href={href} aria-label={`Open ${stringValue(creator.display_name)} profile`}>
-          <ProfileImage src={stringValue(creator.image_url)} label={stringValue(creator.display_name)} />
-        </Link>
-        <div className="flex items-start justify-between gap-3">
-          <div>
-            <Link className="font-semibold transition hover:text-primary" href={href}>
-              {stringValue(creator.display_name)}
-            </Link>
-            <p className="mt-1 text-xs text-muted-foreground">{stringValue(creator.primary_niche)}</p>
-          </div>
-          <div className="flex flex-col items-end gap-2">
-            <VerificationBadge status={creator.verification_status} tier={creator.verification_tier} />
-            <Badge tone="blue">{getBangaloreFit(creator as never)}/100</Badge>
-          </div>
+    <div className="group flex flex-col overflow-hidden rounded-2xl border border-border/60 bg-card shadow-soft transition duration-300 hover:-translate-y-1 hover:shadow-xl dark:border-white/8 dark:bg-card/90">
+      {/* Hero image — clicking navigates to profile */}
+      <Link href={href} className="relative block shrink-0">
+        <HeroImage src={stringValue(creator.image_url)} label={name} />
+        {/* Verification badge — top right */}
+        <div className="absolute right-3 top-3">
+          <VerificationBadge status={creator.verification_status} tier={creator.verification_tier} />
         </div>
+        {/* Name + niche — overlaid on image */}
+        <div className="absolute inset-x-0 bottom-0 p-4">
+          <p className="truncate text-base font-bold leading-tight text-white drop-shadow">{name}</p>
+          <p className="mt-0.5 text-xs font-medium text-white/70">{niche}</p>
+        </div>
+        {/* Bangalore fit pill — bottom right */}
+        {bangaloreFit >= 45 && (
+          <div className="absolute bottom-3 right-4">
+            <span className="rounded-full bg-white/15 px-2 py-0.5 text-[11px] font-semibold text-white backdrop-blur-sm">
+              📍 {bangaloreFit}
+            </span>
+          </div>
+        )}
+      </Link>
+
+      {/* Stats row */}
+      <div className="grid grid-cols-3 divide-x divide-border/60 border-y border-border/60 dark:divide-white/8 dark:border-white/8">
+        <StatPill label="Followers" value={formatNumber(numberValue(platform?.followers))} />
+        <StatPill label="Avg views" value={formatNumber(numberValue(platform?.avg_views))} />
+        <StatPill label="India" value={`${getIndiaAudiencePercent(creator as never)}%`} />
       </div>
-      <div className="mt-3 grid grid-cols-2 gap-2 text-sm">
-        <Mini label="Platform" value={stringValue(platform?.platform) || "Linked soon"} />
-        <Mini label="Followers" value={formatNumber(numberValue(platform?.followers))} />
-        <Mini label="Avg views" value={formatNumber(numberValue(platform?.avg_views))} />
-        <Mini label="India audience" value={`${getIndiaAudiencePercent(creator as never)}%`} />
-      </div>
-      <div className="mt-3 flex flex-wrap gap-2">
+
+      {/* Actions */}
+      <div className="flex items-center gap-2 p-3">
         <MessageRecipientButton entityId={stringValue(creator.id)} entityType="creator" />
-        <Link className="inline-flex h-9 items-center rounded-md border bg-white px-3 text-sm font-medium transition hover:bg-muted" href={href}>View profile</Link>
+        <Link
+          href={href}
+          className="ml-auto text-xs font-semibold text-primary transition hover:opacity-70"
+        >
+          View profile →
+        </Link>
       </div>
     </div>
   );
 }
 
-export function FreelancerMarketCard({ freelancer }: FreelancerCardProps) {
+export function FreelancerMarketCard({ freelancer }: { freelancer: Record<string, unknown> }) {
   const href = `/freelancers/${stringValue(freelancer.id)}`;
+  const name = stringValue(freelancer.display_name);
+  const service = stringValue(freelancer.service_category) || "Creative services";
+  const rate = numberValue(freelancer.hourly_rate_cents) || numberValue(freelancer.day_rate_cents);
+  const availability = stringValue(freelancer.availability_status) || "available";
+
   return (
-    <div className="rounded-md border bg-white p-4">
-      <div className="grid gap-3 sm:grid-cols-[116px_1fr]">
-        <Link href={href} aria-label={`Open ${stringValue(freelancer.display_name)} profile`}>
-          <ProfileImage src={stringValue(freelancer.image_url)} label={stringValue(freelancer.display_name)} />
-        </Link>
-        <div className="flex items-start justify-between gap-3">
-          <div>
-            <Link className="font-semibold transition hover:text-primary" href={href}>
-              {stringValue(freelancer.display_name)}
-            </Link>
-            <p className="mt-1 text-xs text-muted-foreground">{stringValue(freelancer.service_category) || "Creative services"}</p>
-          </div>
-          <div className="flex flex-col items-end gap-2">
-            <VerificationBadge status={freelancer.verification_status} tier={freelancer.verification_tier} />
-            <Badge tone="green">{stringValue(freelancer.availability_status) || "available"}</Badge>
-          </div>
+    <div className="group flex flex-col overflow-hidden rounded-2xl border border-border/60 bg-card shadow-soft transition duration-300 hover:-translate-y-1 hover:shadow-xl dark:border-white/8 dark:bg-card/90">
+      <Link href={href} className="relative block shrink-0">
+        <HeroImage src={stringValue(freelancer.image_url)} label={name} />
+        <div className="absolute right-3 top-3">
+          <VerificationBadge status={freelancer.verification_status} tier={freelancer.verification_tier} />
         </div>
+        <div className="absolute inset-x-0 bottom-0 p-4">
+          <p className="truncate text-base font-bold leading-tight text-white drop-shadow">{name}</p>
+          <p className="mt-0.5 text-xs font-medium text-white/70">{service}</p>
+        </div>
+        <div className="absolute bottom-3 right-4">
+          <span className={`rounded-full px-2 py-0.5 text-[11px] font-semibold backdrop-blur-sm ${availability === "available" ? "bg-emerald-500/80 text-white" : "bg-white/15 text-white"}`}>
+            {availability}
+          </span>
+        </div>
+      </Link>
+
+      <div className="grid grid-cols-3 divide-x divide-border/60 border-y border-border/60 dark:divide-white/8 dark:border-white/8">
+        <StatPill label="Hourly" value={rate ? formatCurrency(rate, "inr") : "–"} />
+        <StatPill label="Portfolio" value={`${numberValue(freelancer.portfolio_score)}/100`} />
+        <StatPill label="City" value={stringValue(freelancer.home_city) || "Flexible"} />
       </div>
-      <div className="mt-3 grid grid-cols-2 gap-2 text-sm">
-        <Mini label="City" value={stringValue(freelancer.home_city) || "Flexible"} />
-        <Mini label="Hourly" value={formatCurrency(numberValue(freelancer.hourly_rate_cents) || numberValue(freelancer.day_rate_cents), "inr")} />
-        <Mini label="Portfolio" value={`${numberValue(freelancer.portfolio_score)}/100`} />
-        <Mini label="Skills" value={arrayValue(freelancer.skills).slice(0, 2).join(", ") || "Not listed"} />
-      </div>
-      <div className="mt-3 flex flex-wrap gap-2">
+
+      <div className="flex items-center gap-2 p-3">
         <MessageRecipientButton entityId={stringValue(freelancer.id)} entityType="freelancer" />
-        <Link className="inline-flex h-9 items-center rounded-md border bg-white px-3 text-sm font-medium transition hover:bg-muted" href={href}>View profile</Link>
+        <Link href={href} className="ml-auto text-xs font-semibold text-primary transition hover:opacity-70">
+          View profile →
+        </Link>
       </div>
     </div>
   );
 }
 
-export function BrandMarketCard({ brand }: BrandCardProps) {
+export function BrandMarketCard({ brand }: { brand: Record<string, unknown> }) {
   const href = `/brands/${stringValue(brand.id)}`;
+  const name = stringValue(brand.name);
+  const industry = stringValue(brand.industry) || "Brand";
+  const status = stringValue(brand.status) || "active";
+
   return (
-    <div className="rounded-md border bg-white p-4">
-      <div className="grid gap-3 sm:grid-cols-[116px_1fr]">
-        <Link href={href} aria-label={`Open ${stringValue(brand.name)} profile`}>
-          <ProfileImage src={stringValue(brand.image_url)} label={stringValue(brand.name)} />
-        </Link>
-        <div className="flex items-start justify-between gap-3">
-          <div>
-            <Link className="font-semibold transition hover:text-primary" href={href}>{stringValue(brand.name)}</Link>
-            <p className="mt-1 text-xs text-muted-foreground">{stringValue(brand.industry) || "Campaign partner"}</p>
-          </div>
-          <div className="flex flex-col items-end gap-2">
-            <VerificationBadge status={brand.verification_status} tier={brand.verification_tier} />
-            <Badge tone={stringValue(brand.status) === "active" ? "green" : "blue"}>{stringValue(brand.status) || "target"}</Badge>
-          </div>
+    <div className="group flex flex-col overflow-hidden rounded-2xl border border-border/60 bg-card shadow-soft transition duration-300 hover:-translate-y-1 hover:shadow-xl dark:border-white/8 dark:bg-card/90">
+      <Link href={href} className="relative block shrink-0">
+        <HeroImage src={stringValue(brand.image_url)} label={name} />
+        <div className="absolute right-3 top-3">
+          <VerificationBadge status={brand.verification_status} tier={brand.verification_tier} />
+        </div>
+        <div className="absolute inset-x-0 bottom-0 p-4">
+          <p className="truncate text-base font-bold leading-tight text-white drop-shadow">{name}</p>
+          <p className="mt-0.5 text-xs font-medium text-white/70">{industry}</p>
+        </div>
+        <div className="absolute bottom-3 right-4">
+          <span className={`rounded-full px-2 py-0.5 text-[11px] font-semibold backdrop-blur-sm ${status === "active" ? "bg-emerald-500/80 text-white" : "bg-white/15 text-white"}`}>
+            {status}
+          </span>
+        </div>
+      </Link>
+
+      <div className="flex flex-1 flex-col justify-between p-4">
+        <p className="line-clamp-2 text-sm leading-6 text-muted-foreground">
+          {stringValue(brand.website) || "No website listed yet"}
+        </p>
+        <div className="mt-3 flex items-center gap-2">
+          <MessageRecipientButton entityId={stringValue(brand.id)} entityType="brand" />
+          <Link href={href} className="ml-auto text-xs font-semibold text-primary transition hover:opacity-70">
+            View profile →
+          </Link>
         </div>
       </div>
-      <p className="mt-3 line-clamp-2 text-sm leading-6 text-muted-foreground">{stringValue(brand.website) || "Website not listed yet"}</p>
-      <div className="mt-3 flex flex-wrap gap-2">
-        <MessageRecipientButton entityId={stringValue(brand.id)} entityType="brand" />
-        <Link className="inline-flex h-9 items-center rounded-md border bg-white px-3 text-sm font-medium transition hover:bg-muted" href={href}>View profile</Link>
-      </div>
-    </div>
-  );
-}
-
-function ProfileImage({ src, label }: { src: string; label: string }) {
-  return src ? (
-    // eslint-disable-next-line @next/next/no-img-element
-    <img alt={label} className="aspect-[4/5] w-full rounded-md object-cover" src={src} />
-  ) : (
-    <div className="flex aspect-[4/5] w-full items-center justify-center rounded-md bg-muted text-2xl font-bold text-muted-foreground">
-      {label.slice(0, 1) || "A"}
-    </div>
-  );
-}
-
-function Mini({ label, value }: { label: string; value: string }) {
-  return (
-    <div>
-      <p className="text-xs text-muted-foreground">{label}</p>
-      <p className="truncate font-semibold">{value}</p>
     </div>
   );
 }
@@ -142,8 +186,4 @@ function stringValue(value: unknown) {
 
 function numberValue(value: unknown) {
   return Number(value ?? 0);
-}
-
-function arrayValue(value: unknown) {
-  return Array.isArray(value) ? value.map(String) : [];
 }

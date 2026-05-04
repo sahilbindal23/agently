@@ -1,21 +1,22 @@
 import { NextResponse } from "next/server";
+import { z } from "zod";
 import { trackEvent } from "@/lib/analytics/track";
 import { applyLedgerEvent } from "@/lib/engines/outcome-ledger";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
 
-const allowedKinds = ["deal", "project"] as const;
-const allowedActions = ["accept", "decline"] as const;
+const schema = z.object({
+  kind: z.enum(["deal", "project"]),
+  id: z.string().trim().min(1, "Counter target ID is required."),
+  action: z.enum(["accept", "decline"])
+});
 
 export async function POST(request: Request) {
-  const body = await request.json();
-  const kind = String(body.kind ?? "").trim() as typeof allowedKinds[number];
-  const id = String(body.id ?? "").trim();
-  const action = String(body.action ?? "").trim() as typeof allowedActions[number];
-
-  if (!id || !allowedKinds.includes(kind) || !allowedActions.includes(action)) {
-    return NextResponse.json({ error: "Valid counter target and action are required." }, { status: 400 });
+  const parsed = schema.safeParse(await request.json());
+  if (!parsed.success) {
+    return NextResponse.json({ error: parsed.error.issues[0]?.message ?? "Valid counter target and action are required." }, { status: 400 });
   }
+  const { kind, id, action } = parsed.data;
 
   const auth = await createClient();
   const { data: authData } = await auth.auth.getUser();

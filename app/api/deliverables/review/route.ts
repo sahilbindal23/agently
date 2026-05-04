@@ -1,20 +1,22 @@
 import { NextResponse } from "next/server";
+import { z } from "zod";
 import { trackEvent, userEventBase } from "@/lib/analytics/track";
 import { applyLedgerEvent } from "@/lib/engines/outcome-ledger";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
 
-const allowedStatuses = ["approved", "revision_requested"] as const;
+const schema = z.object({
+  deliverable_id: z.string().trim().min(1, "Deliverable ID is required."),
+  status: z.enum(["approved", "revision_requested"]),
+  review_notes: z.string().trim().max(2000).optional().default("")
+});
 
 export async function POST(request: Request) {
-  const body = await request.json();
-  const deliverableId = String(body.deliverable_id ?? "").trim();
-  const status = String(body.status ?? "").trim() as typeof allowedStatuses[number];
-  const reviewNotes = String(body.review_notes ?? "").trim();
-
-  if (!deliverableId || !allowedStatuses.includes(status)) {
-    return NextResponse.json({ error: "Deliverable and valid review status are required." }, { status: 400 });
+  const parsed = schema.safeParse(await request.json());
+  if (!parsed.success) {
+    return NextResponse.json({ error: parsed.error.issues[0]?.message ?? "Invalid request." }, { status: 400 });
   }
+  const { deliverable_id: deliverableId, status, review_notes: reviewNotes } = parsed.data;
 
   const auth = await createClient();
   const { data: authData } = await auth.auth.getUser();
@@ -121,9 +123,13 @@ async function updateDealAfterReview(admin: NonNullable<ReturnType<typeof create
       amount_cents: Number(deal.amount_cents ?? 0),
       platform_fee_cents: Math.round(Number(deal.amount_cents ?? 0) * 0.1),
       creator_payout_cents: Math.max(0, Number(deal.amount_cents ?? 0) - Math.round(Number(deal.amount_cents ?? 0) * 0.1)),
-      status: "release_ready",
-      funded_at: new Date().toISOString()
+      status: "release_ready"
     }, { onConflict: "deal_id" });
+    // Preserve the real Stripe funding timestamp — only set if not already recorded
+    await admin.from("payments")
+      .update({ funded_at: new Date().toISOString() })
+      .eq("deal_id", dealId)
+      .is("funded_at", null);
   }
 }
 

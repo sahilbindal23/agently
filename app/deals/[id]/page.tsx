@@ -9,6 +9,7 @@ import { PaymentActions } from "@/components/payments/payment-actions";
 import { DealProtectionTimeline } from "@/components/protection/deal-protection-timeline";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardHeader, CardTitle } from "@/components/ui/card";
+import { getCurrentUser } from "@/lib/auth/session";
 import { getDealBundle } from "@/lib/db/live-data";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { formatCurrency } from "@/lib/utils/format";
@@ -16,8 +17,12 @@ import type { Deliverable } from "@/types";
 
 export default async function DealDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
-  const { deal, creator, brand, payment, contract } = await getDealBundle(id);
+  const [{ deal, creator, brand, payment, contract }, user] = await Promise.all([
+    getDealBundle(id),
+    getCurrentUser()
+  ]);
   if (!deal) notFound();
+  const isAdmin = user?.role === "admin";
   const deliverable = await getLatestDeliverable(id);
 
   return (
@@ -57,7 +62,7 @@ export default async function DealDetailPage({ params }: { params: Promise<{ id:
                 Negotiate flagged terms before funding or accepting broad usage rights.
               </div>
             ) : null}
-            <PaymentActions canFund={deal.offer_status === "accepted"} entityId={deal.id} entityType="deal" />
+            <PaymentActions canFund={deal.offer_status === "accepted"} canRelease={isAdmin} entityId={deal.id} entityType="deal" isAdmin={isAdmin} paymentStatus={deal.payment_status} />
           </div>
         </Card>
       </section>

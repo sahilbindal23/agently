@@ -113,7 +113,7 @@ export default async function PaymentsPage() {
                   <Td>{item.session}</Td>
                   <Td className="text-right">{formatCurrency(item.amount_cents, item.currency)}</Td>
                   <Td className="text-right font-semibold">{formatCurrency(item.payout_cents, item.currency)}</Td>
-                  <Td>{canManagePayments ? <PaymentActions canFund={item.canFund} canRelease={user?.role === "admin"} entityId={item.id} entityType={item.type} /> : <Badge tone="neutral">view only</Badge>}</Td>
+                  <Td>{canManagePayments ? <PaymentActions canFund={item.canFund} canRelease={user?.role === "admin"} entityId={item.id} entityType={item.type} isAdmin={user?.role === "admin"} paymentStatus={item.status} /> : <Badge tone="neutral">view only</Badge>}</Td>
                 </tr>
               ))}
               {queue.length === 0 ? (
