@@ -110,6 +110,15 @@ export type Deal = {
   offer_status?: string;
   talent_response?: string | null;
   responded_at?: string | null;
+  counter_status?: string | null;
+  counter_amount_cents?: number | null;
+  counter_deliverables?: string | null;
+  counter_due_date?: string | null;
+  counter_usage_rights?: string | null;
+  counter_approval_terms?: string | null;
+  counter_reason?: string | null;
+  counter_created_at?: string | null;
+  counter_responded_at?: string | null;
 };
 
 export type ContractFlag = {
@@ -222,6 +231,15 @@ export type FreelancerProject = {
   deliverable_status?: string;
   talent_response?: string | null;
   responded_at?: string | null;
+  counter_status?: string | null;
+  counter_amount_cents?: number | null;
+  counter_scope?: string | null;
+  counter_due_date?: string | null;
+  counter_usage_rights?: string | null;
+  counter_approval_terms?: string | null;
+  counter_reason?: string | null;
+  counter_created_at?: string | null;
+  counter_responded_at?: string | null;
   notes?: string | null;
 };
 

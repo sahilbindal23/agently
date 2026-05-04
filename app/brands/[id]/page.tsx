@@ -1,10 +1,11 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import type { ReactNode } from "react";
-import { ArrowLeft, BriefcaseBusiness, ClipboardList, Globe2, Sparkles, Target } from "lucide-react";
+import { ArrowLeft, BriefcaseBusiness, ClipboardList, Globe2, ShieldCheck, Sparkles, Target } from "lucide-react";
 import { AppShell } from "@/components/layout/app-shell";
 import { PageHeader } from "@/components/layout/page-header";
 import { MessageRecipientButton } from "@/components/messages/message-recipient-button";
+import { AgentlySignalCard } from "@/components/profile/agently-signal-card";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, Td, Th } from "@/components/ui/table";
@@ -111,6 +112,21 @@ export default async function BrandProfilePage({ params }: { params: Promise<{ i
           icon={<BriefcaseBusiness className="h-4 w-4" />}
           title="Production Needs"
           items={productionNeeds(campaigns ?? [], projects ?? [])}
+        />
+      </section>
+
+      <section className="mt-5">
+        <AgentlySignalCard
+          title="Public Trust Signals"
+          description="This keeps the profile useful for creators and freelancers without exposing private commercial details from past negotiations."
+          icon={<div className="rounded-md bg-muted p-2 text-primary"><ShieldCheck className="h-4 w-4" /></div>}
+          signals={[
+            brand.website ? "Website attached for brand identity review" : "Website still needs to be added",
+            brand.contact_email ? "Contact email available for platform-side verification" : "Contact email still needs to be added",
+            `${campaigns?.length ?? 0} campaign brief${(campaigns?.length ?? 0) === 1 ? "" : "s"} created on Agently`,
+            `${(deals?.length ?? 0) + (projects?.length ?? 0)} creator or freelancer workflow${((deals?.length ?? 0) + (projects?.length ?? 0)) === 1 ? "" : "s"} recorded`,
+            brand.verification_tier ? `Verification tier: ${String(brand.verification_tier).replaceAll("_", " ")}` : "Verification tier still needs review"
+          ]}
         />
       </section>
 

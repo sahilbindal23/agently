@@ -28,6 +28,13 @@ type OfferRow = {
   due_date?: string;
   notes?: string;
   talent_response?: string | null;
+  counter_status?: string | null;
+  counter_amount_cents?: number | null;
+  counter_deliverables?: string | null;
+  counter_due_date?: string | null;
+  counter_usage_rights?: string | null;
+  counter_approval_terms?: string | null;
+  counter_reason?: string | null;
 };
 
 type ContractRow = {
@@ -52,6 +59,13 @@ type ProjectRow = {
   approval_terms?: string;
   notes?: string;
   talent_response?: string | null;
+  counter_status?: string | null;
+  counter_amount_cents?: number | null;
+  counter_scope?: string | null;
+  counter_due_date?: string | null;
+  counter_usage_rights?: string | null;
+  counter_approval_terms?: string | null;
+  counter_reason?: string | null;
 };
 
 export default async function OffersPage() {
@@ -123,6 +137,13 @@ export default async function OffersPage() {
                   <Metric label="Stage" value={offer.stage} />
                   <Metric label="Payment" value={offer.payment_status} />
                 </div>
+                <OfferDecisionPanel
+                  accepted={offer.offer_status === "accepted"}
+                  hasContract={offerContracts.has(offer.id)}
+                  paymentStatus={offer.payment_status}
+                  responded={Boolean(offer.talent_response) || ["accepted", "declined", "changes_requested"].includes(String(offer.offer_status))}
+                  status={offer.offer_status ?? "submitted"}
+                />
                 <div className="rounded-md border bg-white p-3">
                   <p className="text-xs font-semibold uppercase text-muted-foreground">Deliverables</p>
                   <p className="mt-1 text-sm leading-6">{offer.deliverables}</p>
@@ -145,7 +166,7 @@ export default async function OffersPage() {
                     <Button variant="secondary">Negotiate this offer</Button>
                   </Link>
                   {offer.brand_id ? (
-                    <MessageRecipientButton contextId={offer.id} contextType="deal" entityId={offer.brand_id} entityType="brand" label="Message about offer" />
+                    <MessageRecipientButton contextId={offer.id} contextType="deal" entityId={offer.brand_id} entityType="brand" label="Ask brand a question" />
                   ) : null}
                 </div>
                 <OfferTimeline
@@ -160,6 +181,17 @@ export default async function OffersPage() {
                     <p className="text-xs font-semibold uppercase text-muted-foreground">Your response</p>
                     <p className="mt-1 text-sm leading-6">{offer.talent_response}</p>
                   </div>
+                ) : null}
+                {offer.counter_status && offer.counter_status !== "none" ? (
+                  <CounterStatusCard
+                    amountCents={offer.counter_amount_cents}
+                    approvalTerms={offer.counter_approval_terms}
+                    dueDate={offer.counter_due_date}
+                    reason={offer.counter_reason}
+                    scope={offer.counter_deliverables}
+                    status={offer.counter_status}
+                    usageRights={offer.counter_usage_rights}
+                  />
                 ) : null}
                 {offer.offer_status === "accepted" ? (
                   <div className="space-y-3">
@@ -187,6 +219,14 @@ export default async function OffersPage() {
                   <Metric label="Type" value="Freelancer project" />
                   <Metric label="Payment" value={project.payment_status} />
                 </div>
+                <OfferDecisionPanel
+                  accepted={project.status === "accepted"}
+                  hasContract={Boolean(project.usage_context || project.approval_terms)}
+                  paymentStatus={project.payment_status}
+                  responded={Boolean(project.talent_response) || ["accepted", "declined", "changes_requested"].includes(String(project.status))}
+                  status={project.status}
+                  type="project"
+                />
                 <div className="rounded-md border bg-white p-3">
                   <p className="text-xs font-semibold uppercase text-muted-foreground">Scope</p>
                   <p className="mt-1 text-sm leading-6">{project.scope}</p>
@@ -206,7 +246,7 @@ export default async function OffersPage() {
                     <Button variant="secondary">Negotiate this project</Button>
                   </Link>
                   {project.brand_id ? (
-                    <MessageRecipientButton contextId={project.id} contextType="freelancer_project" entityId={project.brand_id} entityType="brand" label="Message about project" />
+                    <MessageRecipientButton contextId={project.id} contextType="freelancer_project" entityId={project.brand_id} entityType="brand" label="Ask brand a question" />
                   ) : null}
                 </div>
                 <OfferTimeline
@@ -221,6 +261,17 @@ export default async function OffersPage() {
                     <p className="text-xs font-semibold uppercase text-muted-foreground">Your response</p>
                     <p className="mt-1 text-sm leading-6">{project.talent_response}</p>
                   </div>
+                ) : null}
+                {project.counter_status && project.counter_status !== "none" ? (
+                  <CounterStatusCard
+                    amountCents={project.counter_amount_cents}
+                    approvalTerms={project.counter_approval_terms}
+                    dueDate={project.counter_due_date}
+                    reason={project.counter_reason}
+                    scope={project.counter_scope}
+                    status={project.counter_status}
+                    usageRights={project.counter_usage_rights}
+                  />
                 ) : null}
                 {project.status === "accepted" ? (
                   <div className="space-y-3">
@@ -282,6 +333,135 @@ function Metric({ label, value }: { label: string; value: string }) {
   );
 }
 
+function CounterStatusCard({
+  amountCents,
+  approvalTerms,
+  dueDate,
+  reason,
+  scope,
+  status,
+  usageRights
+}: {
+  amountCents?: number | null;
+  approvalTerms?: string | null;
+  dueDate?: string | null;
+  reason?: string | null;
+  scope?: string | null;
+  status: string;
+  usageRights?: string | null;
+}) {
+  return (
+    <div className="rounded-md border bg-blue-50/60 p-3">
+      <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
+        <p className="text-xs font-semibold uppercase text-blue-800">Structured counter</p>
+        <Badge tone={status === "accepted" ? "green" : status === "declined" ? "red" : "amber"}>{status.replaceAll("_", " ")}</Badge>
+      </div>
+      <div className="grid gap-2 sm:grid-cols-2">
+        <MiniTerm label="Amount" value={amountCents ? formatCurrency(amountCents, "inr") : "No amount change"} />
+        <MiniTerm label="Due date" value={dueDate || "No date change"} />
+        <MiniTerm label="Scope" value={scope || "No scope change"} wide />
+        <MiniTerm label="Usage" value={usageRights || "No usage change"} />
+        <MiniTerm label="Approval" value={approvalTerms || "No approval change"} />
+        <MiniTerm label="Reason" value={reason || "No reason added"} wide />
+      </div>
+    </div>
+  );
+}
+
+function MiniTerm({ label, value, wide = false }: { label: string; value: string; wide?: boolean }) {
+  return (
+    <div className={`rounded-md bg-white px-3 py-2 ${wide ? "sm:col-span-2" : ""}`}>
+      <p className="text-[11px] font-semibold uppercase text-muted-foreground">{label}</p>
+      <p className="mt-1 text-sm leading-5">{value}</p>
+    </div>
+  );
+}
+
+function OfferDecisionPanel({
+  accepted,
+  hasContract,
+  paymentStatus,
+  responded,
+  status,
+  type = "offer"
+}: {
+  accepted: boolean;
+  hasContract: boolean;
+  paymentStatus: string;
+  responded: boolean;
+  status: string;
+  type?: "offer" | "project";
+}) {
+  const nextAction = getNextAction({ accepted, hasContract, paymentStatus, responded, status, type });
+  const checks = [
+    { label: type === "offer" ? "Scope is captured" : "Project scope is captured", done: true },
+    { label: hasContract ? "Terms are attached" : "Terms need review", done: hasContract },
+    { label: responded ? responseLabel(status) : "Talent response pending", done: responded },
+    { label: ["funded", "release_ready", "released"].includes(paymentStatus) ? "Payment protected" : "Funding pending", done: ["funded", "release_ready", "released"].includes(paymentStatus) }
+  ];
+
+  return (
+    <div className="rounded-md border bg-emerald-50/60 p-3">
+      <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
+        <div>
+          <p className="text-xs font-semibold uppercase text-emerald-800">Next best action</p>
+          <p className="mt-1 text-sm font-semibold text-emerald-950">{nextAction.title}</p>
+          <p className="mt-1 text-sm leading-6 text-emerald-900">{nextAction.copy}</p>
+        </div>
+        <Badge tone={nextAction.tone}>{nextAction.label}</Badge>
+      </div>
+      <div className="mt-3 grid gap-2 sm:grid-cols-2">
+        {checks.map((check) => (
+          <div className="flex items-center justify-between gap-3 rounded-md bg-white px-3 py-2 text-sm" key={check.label}>
+            <span>{check.label}</span>
+            <Badge tone={check.done ? "green" : "amber"}>{check.done ? "ready" : "review"}</Badge>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function getNextAction({
+  accepted,
+  hasContract,
+  paymentStatus,
+  responded,
+  status,
+  type
+}: {
+  accepted: boolean;
+  hasContract: boolean;
+  paymentStatus: string;
+  responded: boolean;
+  status: string;
+  type: "offer" | "project";
+}) {
+  if (status === "declined") {
+    return { title: "Offer closed", copy: "No delivery or payment actions are needed unless the brand sends a revised offer.", label: "closed", tone: "neutral" as const };
+  }
+  if (!responded) {
+    return {
+      title: "Review before accepting",
+      copy: hasContract
+        ? "Use negotiation support or message the brand before you commit to the scope."
+        : "Ask for terms, usage, revisions, and payment timing before accepting.",
+      label: "action needed",
+      tone: "amber" as const
+    };
+  }
+  if (!accepted) {
+    return { title: "Waiting on revised terms", copy: "Keep the conversation tied to this offer so changes stay attached to the workflow.", label: "negotiating", tone: "blue" as const };
+  }
+  if (!["funded", "release_ready", "released"].includes(paymentStatus)) {
+    return { title: "Wait for funding before delivery", copy: `The ${type} is accepted, but payment protection should be in place before final delivery.`, label: "funding", tone: "amber" as const };
+  }
+  if (paymentStatus === "released") {
+    return { title: "Payment released", copy: "This workflow is complete. Keep final files and approvals attached for history.", label: "complete", tone: "green" as const };
+  }
+  return { title: "Submit deliverable when ready", copy: "Payment is protected. Upload the agreed deliverable URL for approval and release.", label: "ready", tone: "green" as const };
+}
+
 function OfferTimeline({
   accepted,
   funded,
@@ -304,7 +484,7 @@ function OfferTimeline({
 
   return (
     <div className="rounded-md border bg-muted/50 p-3">
-      <p className="text-xs font-semibold uppercase text-muted-foreground">Offer workflow</p>
+      <p className="text-xs font-semibold uppercase text-muted-foreground">Deal workflow</p>
       <div className="mt-3 grid gap-2 sm:grid-cols-4">
         {steps.map((step, index) => (
           <div className="flex items-center gap-2" key={step.label}>

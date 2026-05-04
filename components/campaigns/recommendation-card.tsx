@@ -18,6 +18,9 @@ export function RecommendationCard({
   isShortlisted: boolean;
   type: "creator" | "freelancer";
 }) {
+  const strongestSignals = scoreHighlights(item.score_breakdown).slice(0, 2);
+  const reviewSignals = scoreLows(item.score_breakdown).slice(0, 2);
+
   return (
     <div className="rounded-md border bg-white p-4">
       <div className="mb-2 flex flex-wrap items-start justify-between gap-3">
@@ -30,43 +33,39 @@ export function RecommendationCard({
         </div>
         <Badge tone={item.score >= 80 ? "green" : item.score >= 60 ? "amber" : "neutral"}>{item.score}</Badge>
       </div>
-      <p className="text-sm leading-6 text-muted-foreground">{item.reason}</p>
+      <div className="rounded-md border bg-slate-50 p-3">
+        <p className="text-xs font-semibold uppercase text-muted-foreground">Fit explanation</p>
+        <p className="mt-1 text-sm leading-6">{item.reason}</p>
+      </div>
 
       <div className="mt-3 grid gap-2 sm:grid-cols-3">
-        <DecisionBlock label="Match type" value={item.match_type} />
+        <DecisionBlock label="Match" value={item.match_type} />
         <DecisionBlock label="Risk" value={item.risk_level} tone={item.risk_level === "low" ? "green" : item.risk_level === "medium" ? "amber" : "red"} />
         <DecisionBlock label="Best use" value={item.best_use_case} />
       </div>
 
-      <div className="mt-3 rounded-md border bg-sky-50/60 p-3">
-        <p className="text-xs font-semibold uppercase text-sky-800">Expected outcome</p>
-        <p className="mt-1 text-sm leading-6 text-sky-950">{item.expected_outcome}</p>
-      </div>
-
       <div className="mt-3 rounded-md border bg-white p-3">
         <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
-          <p className="text-xs font-semibold uppercase text-muted-foreground">Score composition</p>
+          <p className="text-xs font-semibold uppercase text-muted-foreground">Decision signals</p>
           <Badge tone="blue">{scoreLabel(item.score)}</Badge>
         </div>
-        <div className="grid gap-2 sm:grid-cols-2">
-          {scoreHighlights(item.score_breakdown).map((metric) => (
-            <div className="rounded-md bg-muted px-3 py-2" key={metric.key}>
-              <div className="flex items-center justify-between gap-3">
-                <p className="text-sm font-medium">{metric.label}</p>
-                <Badge tone={metric.value >= 75 ? "green" : metric.value >= 55 ? "amber" : "neutral"}>{metric.value}</Badge>
-              </div>
-              <p className="mt-1 text-xs leading-5 text-muted-foreground">{metric.copy}</p>
-            </div>
-          ))}
+        <div className="grid gap-3 sm:grid-cols-2">
+          <SignalGroup title="Strongest signals" tone="green" metrics={strongestSignals} />
+          <SignalGroup title="Needs review" tone="amber" metrics={reviewSignals} />
         </div>
       </div>
 
-      <div className="mt-3 rounded-md border bg-white p-3">
-        <p className="text-xs font-semibold uppercase text-muted-foreground">{type === "creator" ? "Early ROI estimate" : "Production value estimate"}</p>
-        <div className="mt-2 grid gap-2 sm:grid-cols-3">
-          <MiniMetric label={type === "creator" ? "Reach" : "Reach"} value={type === "creator" ? formatNumber(item.roi_estimate.expected_reach) : "N/A"} />
-          <MiniMetric label={type === "creator" ? "Engagements" : "Est. unit cost"} value={type === "creator" ? formatNumber(item.roi_estimate.expected_engagements) : formatCurrency(item.roi_estimate.estimated_cpe_cents, "inr")} />
-          <MiniMetric label={type === "creator" ? "CPM" : "Confidence"} value={type === "creator" ? formatCurrency(item.roi_estimate.estimated_cpm_cents, "inr") : `${Math.round(item.roi_estimate.confidence_score * 100)}%`} />
+      <div className="mt-3 grid gap-3 lg:grid-cols-[1.1fr_0.9fr]">
+        <div className="rounded-md border bg-sky-50/60 p-3">
+          <p className="text-xs font-semibold uppercase text-sky-800">Expected outcome</p>
+          <p className="mt-1 text-sm leading-6 text-sky-950">{item.expected_outcome}</p>
+        </div>
+        <div className="rounded-md border bg-white p-3">
+          <p className="text-xs font-semibold uppercase text-muted-foreground">{type === "creator" ? "Projected efficiency" : "Production value"}</p>
+          <div className="mt-2 grid gap-2">
+            <MiniMetric label={type === "creator" ? "Reach" : "Unit cost"} value={type === "creator" ? formatNumber(item.roi_estimate.expected_reach) : formatCurrency(item.roi_estimate.estimated_cpe_cents, "inr")} />
+            <MiniMetric label={type === "creator" ? "CPM" : "Confidence"} value={type === "creator" ? formatCurrency(item.roi_estimate.estimated_cpm_cents, "inr") : `${Math.round(item.roi_estimate.confidence_score * 100)}%`} />
+          </div>
         </div>
       </div>
 
@@ -77,7 +76,7 @@ export function RecommendationCard({
       ) : null}
 
       <div className="mt-3 rounded-md bg-muted p-3">
-        <p className="text-xs font-semibold uppercase text-muted-foreground">Proof Agently used</p>
+        <p className="text-xs font-semibold uppercase text-muted-foreground">Verified signals</p>
         <div className="mt-2 flex flex-wrap gap-2">
           {item.proof_points.map((point) => <Badge key={point} tone="blue">{point}</Badge>)}
         </div>
@@ -126,6 +125,33 @@ function MiniMetric({ label, value }: { label: string; value: string }) {
   );
 }
 
+function SignalGroup({
+  title,
+  metrics,
+  tone
+}: {
+  title: string;
+  metrics: ReturnType<typeof scoreHighlights>;
+  tone: "green" | "amber";
+}) {
+  return (
+    <div className="rounded-md bg-muted p-3">
+      <p className="text-xs font-semibold uppercase text-muted-foreground">{title}</p>
+      <div className="mt-2 space-y-2">
+        {metrics.map((metric) => (
+          <div className="flex items-start justify-between gap-3" key={`${title}-${metric.key}`}>
+            <div>
+              <p className="text-sm font-medium">{metric.label}</p>
+              <p className="text-xs leading-5 text-muted-foreground">{metric.copy}</p>
+            </div>
+            <Badge tone={tone}>{metric.value}</Badge>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 function scoreLabel(score: number) {
   if (score >= 82) return "strong match";
   if (score >= 65) return "usable match";
@@ -133,7 +159,15 @@ function scoreLabel(score: number) {
 }
 
 function scoreHighlights(score: CampaignRecommendation["score_breakdown"]) {
-  const entries = [
+  return scoreEntries(score).sort((a, b) => b.value - a.value);
+}
+
+function scoreLows(score: CampaignRecommendation["score_breakdown"]) {
+  return scoreEntries(score).sort((a, b) => a.value - b.value);
+}
+
+function scoreEntries(score: CampaignRecommendation["score_breakdown"]) {
+  return [
     { key: "category_fit", label: "Category", value: score.category_fit, copy: "How closely the niche or service maps to the brief." },
     { key: "audience_fit", label: "Audience", value: score.audience_fit, copy: "How well the talent can reach the requested audience." },
     { key: "city_fit", label: "City", value: score.city_fit, copy: "Bangalore and India relevance for this campaign." },
@@ -142,8 +176,4 @@ function scoreHighlights(score: CampaignRecommendation["score_breakdown"]) {
     { key: "platform_fit", label: "Platform", value: score.platform_fit, copy: "Fit against requested creator channels or production format." },
     { key: "language_fit", label: "Language", value: score.language_fit, copy: "Language overlap with the campaign market." }
   ];
-
-  const strongest = [...entries].sort((a, b) => b.value - a.value).slice(0, 2);
-  const weakest = [...entries].sort((a, b) => a.value - b.value).slice(0, 2);
-  return [...strongest, ...weakest].filter((item, index, list) => list.findIndex((entry) => entry.key === item.key) === index).slice(0, 4);
 }

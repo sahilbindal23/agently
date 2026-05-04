@@ -5,6 +5,7 @@ import { ArrowLeft, Clock3, ExternalLink, Layers3, PenTool, ShieldCheck, Wrench 
 import { AppShell } from "@/components/layout/app-shell";
 import { PageHeader } from "@/components/layout/page-header";
 import { MessageRecipientButton } from "@/components/messages/message-recipient-button";
+import { AgentlySignalCard } from "@/components/profile/agently-signal-card";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, Td, Th } from "@/components/ui/table";
@@ -124,12 +125,17 @@ export default async function FreelancerDetailPage({ params }: { params: Promise
             {pastClients.length ? pastClients.map((client) => <Badge key={client} tone="blue">{client}</Badge>) : <p className="text-sm text-muted-foreground">No client names listed yet.</p>}
           </div>
         </Card>
-        <Card className="xl:col-span-2">
-          <CardHeader><CardTitle>Production Fit</CardTitle><Badge tone="green">brand-ready</Badge></CardHeader>
-          <p className="text-sm leading-6 text-muted-foreground">
-            Best used when a brand needs creative output without asking the freelancer to post to their own audience. Confirm scope, file formats, revision count, usage, and approval timing before project acceptance.
-          </p>
-        </Card>
+        <AgentlySignalCard
+          title="Production Trust Signals"
+          description="Freelancer profiles should help brands judge execution risk, not audience reach. These signals focus on proof of work, service clarity, and delivery readiness."
+          signals={[
+            `${data.portfolio.length} portfolio item${data.portfolio.length === 1 ? "" : "s"} attached`,
+            `${data.serviceRates.length} service package${data.serviceRates.length === 1 ? "" : "s"} listed for clearer quoting`,
+            skills.length ? `Core skills: ${skills.slice(0, 4).join(", ")}` : "Core skills still need to be added",
+            serviceRegions.length ? `Available in ${serviceRegions.slice(0, 4).join(", ")}` : "Remote or city coverage still needs review",
+            "Scope, file formats, revision count, usage, and approval timing should be confirmed before acceptance"
+          ]}
+        />
       </section>
     </AppShell>
   );
