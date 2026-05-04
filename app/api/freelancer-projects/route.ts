@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { trackEvent, userEventBase } from "@/lib/analytics/track";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
 
@@ -49,5 +50,17 @@ export async function POST(request: Request) {
     .single();
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+  await trackEvent(admin, {
+    ...userEventBase(authData.user, profile?.role),
+    eventName: "freelancer_project_sent",
+    entityType: "freelancer_project",
+    entityId: data.id,
+    metadata: {
+      campaign_id: campaignId,
+      freelancer_id: freelancerId,
+      brand_id: campaign.brand_id,
+      amount_cents: amountCents
+    }
+  });
   return NextResponse.json({ data }, { status: 201 });
 }

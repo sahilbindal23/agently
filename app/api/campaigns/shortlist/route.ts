@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { trackEvent, userEventBase } from "@/lib/analytics/track";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
 
@@ -41,5 +42,16 @@ export async function POST(request: Request) {
     .single();
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+  await trackEvent(admin, {
+    ...userEventBase(authData.user, profile?.role),
+    eventName: "talent_shortlisted",
+    entityType,
+    entityId,
+    metadata: {
+      campaign_id: campaignId,
+      fit_score: Number(body.fit_score ?? 0),
+      reason: String(body.reason ?? "").trim()
+    }
+  });
   return NextResponse.json({ data }, { status: 201 });
 }

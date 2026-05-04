@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { trackEvent, userEventBase } from "@/lib/analytics/track";
 import { getOpenAI } from "@/lib/openai/client";
 import { contractScanPrompt } from "@/prompts/contract-scan";
 import { createAdminClient } from "@/lib/supabase/admin";
@@ -27,11 +28,9 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Contract text is required." }, { status: 400 });
   }
 
-  if (process.env.NEXT_PUBLIC_SUPABASE_URL && process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY) {
-    const auth = await createClient();
-    const { data } = await auth.auth.getUser();
-    if (!data.user) return NextResponse.json({ error: "Login required." }, { status: 401 });
-  }
+  const auth = await createClient();
+  const { data: authData } = await auth.auth.getUser();
+  if (!authData.user) return NextResponse.json({ error: "Login required." }, { status: 401 });
 
   const fallback = scanFallback(text);
   const openai = getOpenAI();
@@ -54,6 +53,8 @@ export async function POST(request: Request) {
 
   const supabase = createAdminClient();
   if (!supabase) return NextResponse.json(scan);
+  const allowed = await canScanDealContract(supabase, dealId, authData.user.id, authData.user.email ?? "");
+  if (!allowed) return NextResponse.json({ error: "Not allowed to scan a contract for this deal." }, { status: 403 });
 
   const { data: contract, error: contractError } = await supabase
     .from("contracts")
@@ -91,6 +92,19 @@ export async function POST(request: Request) {
     .from("deals")
     .update({ risk_score: riskScoreFor(scan.risk_level) })
     .eq("id", dealId);
+
+  await trackEvent(supabase, {
+    ...userEventBase(authData.user),
+    eventName: "contract_scanned",
+    entityType: "contract",
+    entityId: contract.id,
+    metadata: {
+      deal_id: dealId,
+      risk_level: scan.risk_level,
+      flag_count: scan.flags.length,
+      source: scan.source ?? "openai"
+    }
+  });
 
   return NextResponse.json({ ...scan, contract_id: contract.id, source: scan.source ?? "openai" });
 }
@@ -131,4 +145,29 @@ function riskScoreFor(risk: RiskLevel) {
   if (risk === "high_risk") return 82;
   if (risk === "caution") return 45;
   return 12;
+}
+
+async function canScanDealContract(admin: NonNullable<ReturnType<typeof createAdminClient>>, dealId: string, profileId: string, email: string) {
+  const [{ data: profile }, { data: deal }] = await Promise.all([
+    admin.from("profiles").select("role").eq("id", profileId).maybeSingle(),
+    admin.from("deals").select("creator_id, brand_id, campaign_id").eq("id", dealId).maybeSingle()
+  ]);
+  if (!deal) return false;
+  if (profile?.role === "admin") return true;
+
+  const { data: creator } = await admin.from("creators").select("profile_id").eq("id", deal.creator_id).maybeSingle();
+  if (creator?.profile_id === profileId) return true;
+
+  const [{ data: brand }, { data: audit }, { data: campaign }] = await Promise.all([
+    admin.from("brands").select("contact_email").eq("id", deal.brand_id).maybeSingle(),
+    admin.from("brand_audits").select("id").eq("profile_id", profileId).eq("brand_id", deal.brand_id).maybeSingle(),
+    deal.campaign_id
+      ? admin.from("campaigns").select("profile_id").eq("id", deal.campaign_id).maybeSingle()
+      : Promise.resolve({ data: null })
+  ]);
+  return Boolean(
+    brand?.contact_email && String(brand.contact_email).toLowerCase() === email.toLowerCase() ||
+    audit ||
+    campaign?.profile_id === profileId
+  );
 }

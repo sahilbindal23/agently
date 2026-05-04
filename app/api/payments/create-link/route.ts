@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { trackEvent, userEventBase } from "@/lib/analytics/track";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
 import { getStripe } from "@/lib/stripe/client";
@@ -42,6 +43,13 @@ export async function POST(request: Request) {
 
   if (!stripe) {
     await markPending(admin, entityType, entityId, `cs_demo_${entityType}_${entityId}`);
+    await trackEvent(admin, {
+      ...userEventBase(authData.user, profile),
+      eventName: "payment_link_created",
+      entityType,
+      entityId,
+      metadata: { source: "demo_fallback", amount_cents: target.amountCents, currency: target.currency }
+    });
     return NextResponse.json({
       checkout_url: `${appUrl}/payments?demo_checkout=${entityId}`,
       stripe_checkout_session_id: `cs_demo_${entityType}_${entityId}`,
@@ -67,6 +75,13 @@ export async function POST(request: Request) {
   });
 
   await markPending(admin, entityType, entityId, session.id);
+  await trackEvent(admin, {
+    ...userEventBase(authData.user, profile),
+    eventName: "payment_link_created",
+    entityType,
+    entityId,
+    metadata: { source: "stripe", stripe_checkout_session_id: session.id, amount_cents: target.amountCents, currency: target.currency }
+  });
 
   return NextResponse.json({
     checkout_url: session.url,
@@ -126,13 +141,15 @@ async function getProjectTarget(admin: NonNullable<ReturnType<typeof createAdmin
 }
 
 async function getBrandIdsForUser(admin: NonNullable<ReturnType<typeof createAdminClient>>, profileId: string, email: string) {
-  const [{ data: brands }, { data: audits }] = await Promise.all([
+  const [{ data: brands }, { data: audits }, { data: campaigns }] = await Promise.all([
     admin.from("brands").select("id").eq("contact_email", email),
-    admin.from("brand_audits").select("brand_id").eq("profile_id", profileId)
+    admin.from("brand_audits").select("brand_id").eq("profile_id", profileId),
+    admin.from("campaigns").select("brand_id").eq("profile_id", profileId)
   ]);
 
   return Array.from(new Set([
     ...((brands ?? []).map((brand) => String(brand.id))),
-    ...((audits ?? []).map((audit) => String(audit.brand_id)).filter(Boolean))
+    ...((audits ?? []).map((audit) => String(audit.brand_id)).filter(Boolean)),
+    ...((campaigns ?? []).map((campaign) => String(campaign.brand_id)).filter(Boolean))
   ]));
 }

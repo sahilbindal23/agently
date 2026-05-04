@@ -17,7 +17,7 @@ test.describe("synthetic tester agents", () => {
     await expectPageReady(page, "/campaigns", /Campaigns|Campaign brief engine/i);
     await expect(page.getByText(/Recommended Creators|Recent Campaigns|Create Campaign Brief/i).first()).toBeVisible();
 
-    const firstCampaign = page.locator('a[href^="/campaigns/"]').first();
+    const firstCampaign = page.locator('a[href^="/campaigns/"]:visible').first();
     if (await firstCampaign.count()) {
       await firstCampaign.click();
       await page.waitForLoadState("networkidle");

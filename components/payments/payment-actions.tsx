@@ -10,10 +10,12 @@ type PaymentStatus = "pending" | "funded" | "release_ready" | "released";
 
 export function PaymentActions({
   canFund = true,
+  canRelease = false,
   entityId,
   entityType
 }: {
   canFund?: boolean;
+  canRelease?: boolean;
   entityId: string;
   entityType: EntityType;
 }) {
@@ -64,14 +66,18 @@ export function PaymentActions({
         <ShieldCheck className="h-4 w-4" />
         Funded
       </Button>
-      <Button disabled={status === "saving"} onClick={() => update("release_ready")} size="sm" type="button" variant="secondary">
-        <CheckCircle2 className="h-4 w-4" />
-        Ready
-      </Button>
-      <Button disabled={status === "saving"} onClick={() => update("released")} size="sm" type="button">
-        <Send className="h-4 w-4" />
-        Released
-      </Button>
+      {canRelease ? (
+        <>
+          <Button disabled={status === "saving"} onClick={() => update("release_ready")} size="sm" type="button" variant="secondary">
+            <CheckCircle2 className="h-4 w-4" />
+            Ready
+          </Button>
+          <Button disabled={status === "saving"} onClick={() => update("released")} size="sm" type="button">
+            <Send className="h-4 w-4" />
+            Released
+          </Button>
+        </>
+      ) : null}
     </div>
   );
 }

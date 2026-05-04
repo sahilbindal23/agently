@@ -10,6 +10,19 @@ export async function POST(request: Request) {
 
   const admin = createAdminClient();
   if (!admin) return NextResponse.json({ error: "Supabase service role key is not configured." }, { status: 500 });
+  const { data: profile } = await admin.from("profiles").select("role").eq("id", data.user.id).maybeSingle();
+  if (profile?.role === "brand") {
+    return NextResponse.json({ error: "Brand accounts cannot create freelancer profiles." }, { status: 403 });
+  }
+
+  const { data: existingFreelancer } = await admin
+    .from("freelancers")
+    .select("*")
+    .eq("profile_id", data.user.id)
+    .maybeSingle();
+  if (existingFreelancer) {
+    return NextResponse.json({ data: existingFreelancer, next_url: "/freelancer-home" }, { status: 200 });
+  }
 
   const skills = splitList(body.skills);
   const serviceCategory = String(body.service_category ?? "creative services").trim();

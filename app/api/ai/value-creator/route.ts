@@ -1,9 +1,13 @@
 import { NextResponse } from "next/server";
+import { getCurrentUser } from "@/lib/auth/session";
 import { getOpenAI } from "@/lib/openai/client";
 import { rulesBasedValuation, type ValuationInput } from "@/lib/ai/valuation";
 import { valuationPrompt } from "@/prompts/valuation";
 
 export async function POST(request: Request) {
+  const user = await getCurrentUser();
+  if (!user) return NextResponse.json({ error: "Login required." }, { status: 401 });
+
   const input = (await request.json()) as ValuationInput;
   const fallback = rulesBasedValuation(input);
   const openai = getOpenAI();

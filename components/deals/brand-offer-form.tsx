@@ -45,7 +45,7 @@ export function BrandOfferForm({ creators }: { creators: Creator[] }) {
   return (
     <form className="grid gap-3 md:grid-cols-2" onSubmit={onSubmit}>
       <Input name="brand_name" placeholder="Brand name" required />
-      <Input name="brand_contact_email" placeholder="Brand contact email" type="email" />
+      <Input name="brand_contact_email" placeholder="Brand contact email" type="email" required />
       <Input name="brand_website" placeholder="Brand website" />
       <Input name="brand_industry" placeholder="Brand industry" />
       <select name="creator_id" className="h-10 rounded-md border bg-white px-3 text-sm" required defaultValue="">

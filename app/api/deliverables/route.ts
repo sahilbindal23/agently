@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { trackEvent, userEventBase } from "@/lib/analytics/track";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
 
@@ -52,20 +53,30 @@ export async function POST(request: Request) {
     await admin.from("freelancer_projects").update({ deliverable_status: "submitted" }).eq("id", entityId);
   }
 
+  await trackEvent(admin, {
+    ...userEventBase(authData.user),
+    eventName: "deliverable_submitted",
+    entityType,
+    entityId,
+    metadata: { deliverable_id: data.id, platform, has_notes: Boolean(notes) }
+  });
+
   return NextResponse.json({ data }, { status: 201 });
 }
 
 async function canSubmitDeal(admin: NonNullable<ReturnType<typeof createAdminClient>>, dealId: string, userId: string) {
-  const { data: deal } = await admin.from("deals").select("creator_id").eq("id", dealId).single();
+  const { data: deal } = await admin.from("deals").select("creator_id, offer_status, payment_status").eq("id", dealId).single();
   if (!deal) return false;
+  if (String(deal.offer_status ?? "") !== "accepted" && String(deal.payment_status ?? "") !== "funded") return false;
   const { data: creator } = await admin.from("creators").select("profile_id").eq("id", deal.creator_id).single();
   const { data: profile } = await admin.from("profiles").select("role").eq("id", userId).single();
   return creator?.profile_id === userId || profile?.role === "admin";
 }
 
 async function canSubmitProject(admin: NonNullable<ReturnType<typeof createAdminClient>>, projectId: string, userId: string) {
-  const { data: project } = await admin.from("freelancer_projects").select("freelancer_id").eq("id", projectId).single();
+  const { data: project } = await admin.from("freelancer_projects").select("freelancer_id, status, payment_status").eq("id", projectId).single();
   if (!project) return false;
+  if (String(project.status ?? "") !== "accepted" && String(project.payment_status ?? "") !== "funded") return false;
   const { data: freelancer } = await admin.from("freelancers").select("profile_id").eq("id", project.freelancer_id).single();
   const { data: profile } = await admin.from("profiles").select("role").eq("id", userId).single();
   return freelancer?.profile_id === userId || profile?.role === "admin";

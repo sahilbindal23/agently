@@ -184,7 +184,11 @@ export default async function OffersPage() {
                 {offer.offer_status === "accepted" ? (
                   <div className="space-y-3">
                     <DeliverableCard deliverable={latestDeliverables.get(`deal-${offer.id}`)} />
-                    <DeliverableSubmitForm entityId={offer.id} entityType="deal" />
+                    {["funded", "release_ready", "released"].includes(offer.payment_status) ? (
+                      <DeliverableSubmitForm entityId={offer.id} entityType="deal" />
+                    ) : (
+                      <FundingHoldNotice />
+                    )}
                   </div>
                 ) : offer.offer_status === "declined" ? null : <OfferResponseActions dealId={offer.id} />}
               </div>
@@ -258,7 +262,11 @@ export default async function OffersPage() {
                 {project.status === "accepted" ? (
                   <div className="space-y-3">
                     <DeliverableCard deliverable={latestDeliverables.get(`freelancer_project-${project.id}`)} />
-                    <DeliverableSubmitForm entityId={project.id} entityType="freelancer_project" />
+                    {["funded", "release_ready", "released"].includes(project.payment_status) ? (
+                      <DeliverableSubmitForm entityId={project.id} entityType="freelancer_project" />
+                    ) : (
+                      <FundingHoldNotice />
+                    )}
                   </div>
                 ) : project.status === "declined" ? null : <OfferResponseActions kind="project" projectId={project.id} />}
               </div>
@@ -280,6 +288,17 @@ function Metric({ label, value }: { label: string; value: string }) {
     <div className="rounded-md border bg-white p-3">
       <p className="text-xs font-semibold uppercase text-muted-foreground">{label}</p>
       <p className="mt-1 text-sm font-semibold">{value}</p>
+    </div>
+  );
+}
+
+function FundingHoldNotice() {
+  return (
+    <div className="rounded-md border border-amber-200 bg-amber-50 p-3">
+      <p className="text-sm font-semibold text-amber-950">Wait for funding before final delivery</p>
+      <p className="mt-1 text-sm leading-6 text-amber-800">
+        This offer is accepted, but the protected payment workflow is not funded yet. Use messages for clarification, but do not submit final work until funding is marked protected.
+      </p>
     </div>
   );
 }

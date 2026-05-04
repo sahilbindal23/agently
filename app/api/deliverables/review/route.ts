@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { trackEvent, userEventBase } from "@/lib/analytics/track";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
 
@@ -28,6 +29,10 @@ export async function POST(request: Request) {
 
   const { data: deliverable } = await admin.from("deliverables").select("*").eq("id", deliverableId).single();
   if (!deliverable) return NextResponse.json({ error: "Deliverable not found." }, { status: 404 });
+  const canReview = profile?.role === "admin" || await ownsDeliverableWork(admin, deliverable, authData.user.id, authData.user.email ?? "");
+  if (!canReview) {
+    return NextResponse.json({ error: "Not allowed to review this deliverable." }, { status: 403 });
+  }
 
   const { data, error } = await admin
     .from("deliverables")
@@ -49,6 +54,14 @@ export async function POST(request: Request) {
   if (deliverable.freelancer_project_id) {
     await updateProjectAfterReview(admin, String(deliverable.freelancer_project_id), status);
   }
+
+  await trackEvent(admin, {
+    ...userEventBase(authData.user, profile?.role),
+    eventName: status === "approved" ? "deliverable_approved" : "deliverable_revision_requested",
+    entityType: deliverable.deal_id ? "deal" : "freelancer_project",
+    entityId: String(deliverable.deal_id ?? deliverable.freelancer_project_id),
+    metadata: { deliverable_id: deliverableId, has_review_notes: Boolean(reviewNotes) }
+  });
 
   return NextResponse.json({ data });
 }
@@ -83,4 +96,44 @@ async function updateProjectAfterReview(admin: NonNullable<ReturnType<typeof cre
       ? { deliverable_status: "approved", payment_status: "release_ready" }
       : { deliverable_status: "revision_requested" })
     .eq("id", projectId);
+}
+
+async function ownsDeliverableWork(
+  admin: NonNullable<ReturnType<typeof createAdminClient>>,
+  deliverable: Record<string, unknown>,
+  profileId: string,
+  email: string
+) {
+  const brandIds = await getBrandIdsForUser(admin, profileId, email);
+  if (deliverable.deal_id) {
+    const { data: deal } = await admin.from("deals").select("brand_id, campaign_id").eq("id", deliverable.deal_id).maybeSingle();
+    if (deal?.brand_id && brandIds.includes(String(deal.brand_id))) return true;
+    if (deal?.campaign_id) {
+      const { data: campaign } = await admin.from("campaigns").select("profile_id").eq("id", deal.campaign_id).maybeSingle();
+      return campaign?.profile_id === profileId;
+    }
+  }
+  if (deliverable.freelancer_project_id) {
+    const { data: project } = await admin.from("freelancer_projects").select("brand_id, campaign_id").eq("id", deliverable.freelancer_project_id).maybeSingle();
+    if (project?.brand_id && brandIds.includes(String(project.brand_id))) return true;
+    if (project?.campaign_id) {
+      const { data: campaign } = await admin.from("campaigns").select("profile_id").eq("id", project.campaign_id).maybeSingle();
+      return campaign?.profile_id === profileId;
+    }
+  }
+  return false;
+}
+
+async function getBrandIdsForUser(admin: NonNullable<ReturnType<typeof createAdminClient>>, profileId: string, email: string) {
+  const [{ data: brands }, { data: audits }, { data: campaigns }] = await Promise.all([
+    admin.from("brands").select("id").eq("contact_email", email),
+    admin.from("brand_audits").select("brand_id").eq("profile_id", profileId),
+    admin.from("campaigns").select("brand_id").eq("profile_id", profileId)
+  ]);
+
+  return Array.from(new Set([
+    ...((brands ?? []).map((brand) => String(brand.id))),
+    ...((audits ?? []).map((audit) => String(audit.brand_id)).filter(Boolean)),
+    ...((campaigns ?? []).map((campaign) => String(campaign.brand_id)).filter(Boolean))
+  ]));
 }

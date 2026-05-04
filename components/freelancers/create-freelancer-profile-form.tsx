@@ -6,7 +6,7 @@ import { BriefcaseBusiness } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input, Textarea } from "@/components/ui/input";
 
-export function CreateFreelancerProfileForm() {
+export function CreateFreelancerProfileForm({ defaultDisplayName = "" }: { defaultDisplayName?: string }) {
   const router = useRouter();
   const [status, setStatus] = useState<"idle" | "loading" | "error">("idle");
   const [error, setError] = useState("");
@@ -35,7 +35,7 @@ export function CreateFreelancerProfileForm() {
 
   return (
     <form className="grid gap-3 md:grid-cols-2" onSubmit={onSubmit}>
-      <Input name="display_name" placeholder="Freelancer/studio name" required />
+      <Input name="display_name" placeholder="Freelancer/studio name" defaultValue={defaultDisplayName} required />
       <Input name="service_category" placeholder="Service category, e.g. editor, videographer, designer" required />
       <Input name="home_city" placeholder="Home city" />
       <Input name="hourly_rate_inr" placeholder="Hourly rate INR" type="number" />

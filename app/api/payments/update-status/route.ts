@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { trackEvent, userEventBase } from "@/lib/analytics/track";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
 
@@ -26,6 +27,9 @@ export async function POST(request: Request) {
   if (profile?.role !== "admin" && profile?.role !== "brand") {
     return NextResponse.json({ error: "Only brands or admins can update payment status in this prototype." }, { status: 403 });
   }
+  if (profile?.role === "brand" && !["pending", "funded"].includes(status)) {
+    return NextResponse.json({ error: "Brands can only mark owned work as pending or funded. Release, refund, and dispute states require admin review." }, { status: 403 });
+  }
   const brandIds = profile?.role === "brand" ? await getBrandIdsForUser(admin, authData.user.id, authData.user.email ?? "") : [];
 
   if (entityType === "deal") {
@@ -45,6 +49,13 @@ export async function POST(request: Request) {
 
     if (error) return NextResponse.json({ error: error.message }, { status: 500 });
     await upsertPaymentForDeal(admin, data, status);
+    await trackEvent(admin, {
+      ...userEventBase(authData.user, profile?.role),
+      eventName: "payment_status_updated",
+      entityType,
+      entityId,
+      metadata: { status, amount_cents: data.amount_cents, brand_id: data.brand_id }
+    });
     return NextResponse.json({ data });
   }
 
@@ -64,18 +75,27 @@ export async function POST(request: Request) {
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
   await upsertPaymentForProject(admin, data, status);
+  await trackEvent(admin, {
+    ...userEventBase(authData.user, profile?.role),
+    eventName: "payment_status_updated",
+    entityType,
+    entityId,
+    metadata: { status, amount_cents: data.amount_cents, brand_id: data.brand_id }
+  });
   return NextResponse.json({ data });
 }
 
 async function getBrandIdsForUser(admin: NonNullable<ReturnType<typeof createAdminClient>>, profileId: string, email: string) {
-  const [{ data: brands }, { data: audits }] = await Promise.all([
+  const [{ data: brands }, { data: audits }, { data: campaigns }] = await Promise.all([
     admin.from("brands").select("id").eq("contact_email", email),
-    admin.from("brand_audits").select("brand_id").eq("profile_id", profileId)
+    admin.from("brand_audits").select("brand_id").eq("profile_id", profileId),
+    admin.from("campaigns").select("brand_id").eq("profile_id", profileId)
   ]);
 
   return Array.from(new Set([
     ...((brands ?? []).map((brand) => String(brand.id))),
-    ...((audits ?? []).map((audit) => String(audit.brand_id)).filter(Boolean))
+    ...((audits ?? []).map((audit) => String(audit.brand_id)).filter(Boolean)),
+    ...((campaigns ?? []).map((campaign) => String(campaign.brand_id)).filter(Boolean))
   ]));
 }
 

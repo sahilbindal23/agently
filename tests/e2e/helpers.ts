@@ -44,11 +44,11 @@ export async function expectPageReady(page: Page, path: string, text: RegExp | s
   await page.goto(path);
   await page.waitForLoadState("networkidle");
   await checkNoAppError(page);
-  await expect(page.getByText(text).first()).toBeVisible();
+  await expect(page.getByText(text).filter({ visible: true }).first()).toBeVisible();
 }
 
 export async function clickFirstVisible(page: Page, locatorText: RegExp | string) {
-  const target = page.getByText(locatorText).first();
+  const target = page.getByText(locatorText).filter({ visible: true }).first();
   await expect(target).toBeVisible();
   await target.click();
   await page.waitForLoadState("networkidle");

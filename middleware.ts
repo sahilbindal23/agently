@@ -3,12 +3,15 @@ import { NextResponse } from "next/server";
 import { createServerClient } from "@supabase/ssr";
 
 const publicRoutes = new Set(["/", "/login", "/signup"]);
-const creatorRoutes = ["/creator-home", "/activity", "/messages", "/profile", "/intake", "/demo-guide", "/feedback", "/creators", "/freelancers", "/brands", "/offers", "/freelancer-home", "/ai-insights", "/payments"];
-const freelancerRoutes = ["/freelancer-home", "/activity", "/messages", "/profile", "/intake", "/demo-guide", "/feedback", "/creators", "/freelancers", "/brands", "/offers", "/ai-insights", "/payments"];
-const brandRoutes = ["/brand-home", "/activity", "/messages", "/profile", "/intake", "/demo-guide", "/feedback", "/brand-insights", "/campaigns", "/deals", "/creators", "/freelancers", "/brands", "/payments"];
+const creatorRoutes = ["/creator-home", "/activity", "/notifications", "/messages", "/profile", "/intake", "/demo-guide", "/feedback", "/creators", "/freelancers", "/brands", "/offers", "/freelancer-home", "/ai-insights", "/payments"];
+const freelancerRoutes = ["/freelancer-home", "/activity", "/notifications", "/messages", "/profile", "/intake", "/demo-guide", "/feedback", "/creators", "/freelancers", "/brands", "/offers", "/ai-insights", "/payments"];
+const brandRoutes = ["/brand-home", "/activity", "/notifications", "/messages", "/profile", "/intake", "/demo-guide", "/feedback", "/brand-insights", "/campaigns", "/deals", "/creators", "/freelancers", "/brands", "/payments"];
 const adminRoutes = [
   "/dashboard",
+  "/ops",
+  "/analytics",
   "/activity",
+  "/notifications",
   "/creators",
   "/freelancers",
   "/brands",

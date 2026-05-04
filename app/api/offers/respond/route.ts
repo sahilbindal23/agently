@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { trackEvent, userEventBase } from "@/lib/analytics/track";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
 
@@ -83,6 +84,19 @@ export async function POST(request: Request) {
     .single();
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+  await trackEvent(admin, {
+    ...userEventBase(authData.user, profile?.role),
+    eventName: status === "accepted" ? "offer_accepted" : status === "changes_requested" ? "offer_countered" : "offer_declined",
+    entityType: "deal",
+    entityId: dealId,
+    metadata: {
+      creator_id: deal.creator_id,
+      brand_id: deal.brand_id,
+      original_amount_cents: deal.amount_cents,
+      counter_amount_cents: status === "changes_requested" ? counterAmountCents : null,
+      has_response: Boolean(response)
+    }
+  });
   return NextResponse.json({ data });
 }
 

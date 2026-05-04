@@ -2,20 +2,25 @@ import Link from "next/link";
 import { Activity, BarChart3, Bell, Bot, BriefcaseBusiness, ClipboardList, CreditCard, FileText, HelpCircle, Home, LayoutDashboard, MessageSquare, MessageSquareText, Palette, Users } from "lucide-react";
 import { LogoutButton } from "@/components/auth/logout-button";
 import { HomeLogo } from "@/components/layout/home-logo";
+import { WorkflowNotificationLink } from "@/components/layout/workflow-notification-link";
+import { NotificationBell } from "@/components/notifications/notification-bell";
 import { GuidedWalkthrough } from "@/components/onboarding/guided-walkthrough";
 import { WalkthroughLaunchButton } from "@/components/onboarding/walkthrough-launch-button";
 import { Badge } from "@/components/ui/badge";
 import { getCurrentUser } from "@/lib/auth/session";
+import { ensureNotificationsForUser, getUnreadNotificationCount, getUserNotifications } from "@/lib/notifications/workflow-notifications";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { getWorkflowNudges } from "@/lib/workflow/nudges";
 
 const adminNav = [
   { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard, tour: "dashboard" },
+  { href: "/ops", label: "Ops Center", icon: Activity, tour: "activity" },
+  { href: "/analytics", label: "Analytics", icon: BarChart3, tour: "insights" },
   { href: "/creators", label: "Creators", icon: Users, tour: "creators" },
   { href: "/freelancers", label: "Freelancers", icon: Palette, tour: "freelancers" },
   { href: "/campaigns", label: "Campaigns", icon: ClipboardList, tour: "campaigns" },
   { href: "/deals", label: "Deals", icon: BriefcaseBusiness, tour: "offers" },
   { href: "/messages", label: "Messages", icon: MessageSquare, tour: "messages" },
+  { href: "/notifications", label: "Notifications", icon: Bell, tour: "activity" },
   { href: "/activity", label: "Activity", icon: Activity, tour: "activity" },
   { href: "/contracts", label: "Contracts", icon: FileText, tour: "contracts" },
   { href: "/payments", label: "Payments", icon: CreditCard, tour: "payments" },
@@ -29,6 +34,7 @@ const creatorNav = [
   { href: "/profile", label: "Edit Profile", icon: Users, tour: "profile" },
   { href: "/offers", label: "Offers", icon: BriefcaseBusiness, tour: "offers" },
   { href: "/messages", label: "Messages", icon: MessageSquare, tour: "messages" },
+  { href: "/notifications", label: "Notifications", icon: Bell, tour: "activity" },
   { href: "/activity", label: "Activity", icon: Activity, tour: "activity" },
   { href: "/freelancer-home", label: "Freelancer Profile", icon: Palette, tour: "freelancers" },
   { href: "/ai-insights", label: "AI Tools", icon: Bot, tour: "ai" },
@@ -44,6 +50,7 @@ const brandNav = [
   { href: "/brand-insights", label: "Insights", icon: BarChart3, tour: "insights" },
   { href: "/deals", label: "Offers", icon: BriefcaseBusiness, tour: "offers" },
   { href: "/messages", label: "Messages", icon: MessageSquare, tour: "messages" },
+  { href: "/notifications", label: "Notifications", icon: Bell, tour: "activity" },
   { href: "/activity", label: "Activity", icon: Activity, tour: "activity" },
   { href: "/payments", label: "Payments", icon: CreditCard, tour: "payments" },
   { href: "/demo-guide", label: "Walkthrough", icon: HelpCircle, tour: "walkthrough" },
@@ -55,6 +62,7 @@ const freelancerNav = [
   { href: "/profile", label: "Edit Profile", icon: Users, tour: "profile" },
   { href: "/offers", label: "Offers", icon: BriefcaseBusiness, tour: "offers" },
   { href: "/messages", label: "Messages", icon: MessageSquare, tour: "messages" },
+  { href: "/notifications", label: "Notifications", icon: Bell, tour: "activity" },
   { href: "/activity", label: "Activity", icon: Activity, tour: "activity" },
   { href: "/ai-insights", label: "AI Tools", icon: Bot, tour: "ai" },
   { href: "/payments", label: "Payments", icon: CreditCard, tour: "payments" },
@@ -65,7 +73,14 @@ const freelancerNav = [
 export async function AppShell({ children }: { children: React.ReactNode }) {
   const user = await getCurrentUser();
   const admin = createAdminClient();
-  const [nudges, unreadMessages] = user && admin ? await Promise.all([getWorkflowNudges(admin, user), getUnreadMessageCount(user.id)]) : [[], 0];
+  const [nudges, unreadMessages, notifications, unreadNotifications] = user && admin
+    ? await Promise.all([
+      ensureNotificationsForUser(admin, user),
+      getUnreadMessageCount(user.id),
+      getUserNotifications(admin, user, 6),
+      getUnreadNotificationCount(admin, user.id)
+    ])
+    : [[], 0, [], 0];
   const notification = nudges[0] ?? null;
   const nav = user?.role === "creator" ? creatorNav : user?.role === "brand" ? brandNav : user?.role === "freelancer" ? freelancerNav : adminNav;
 
@@ -89,8 +104,10 @@ export async function AppShell({ children }: { children: React.ReactNode }) {
                   {item.href === "/messages" && unreadMessages > 0 ? (
                     <span className="rounded-full bg-amber-100 px-2 py-0.5 text-xs font-semibold text-amber-800">{unreadMessages}</span>
                   ) : null}
-                  {item.href === "/activity" && nudges.length > 0 ? (
-                    <span className="rounded-full bg-blue-100 px-2 py-0.5 text-xs font-semibold text-blue-800">{nudges.length}</span>
+                  {(item.href === "/activity" || item.href === "/notifications") && (unreadNotifications > 0 || nudges.length > 0) ? (
+                    <span className={`rounded-full px-2 py-0.5 text-xs font-semibold ${unreadNotifications > 0 ? "bg-red-100 text-red-800" : "bg-blue-100 text-blue-800"}`}>
+                      {unreadNotifications || nudges.length}
+                    </span>
                   ) : null}
                 </span>
               </Link>
@@ -112,6 +129,7 @@ export async function AppShell({ children }: { children: React.ReactNode }) {
         </div>
       </aside>
       <main className="px-4 py-6 sm:px-6 lg:px-8">
+        {user && admin ? <NotificationBell notifications={notifications} unreadCount={unreadNotifications} /> : null}
         <div className="mb-4 space-y-2">
           {unreadMessages > 0 ? (
             <Link className="flex items-center justify-between gap-3 rounded-md border border-blue-200 bg-blue-50 px-4 py-3 text-sm text-blue-900" href="/messages">
@@ -119,12 +137,7 @@ export async function AppShell({ children }: { children: React.ReactNode }) {
               <span className="font-semibold">Open</span>
             </Link>
           ) : null}
-          {notification ? (
-            <Link className="flex items-center justify-between gap-3 rounded-md border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900" href={notification.href}>
-              <span className="inline-flex items-center gap-2"><Bell className="h-4 w-4" /> {notification.title}: {notification.description}</span>
-              <span className="font-semibold">{notification.cta}</span>
-            </Link>
-          ) : null}
+          {notification ? <WorkflowNotificationLink notification={notification} /> : null}
         </div>
         {children}
       </main>

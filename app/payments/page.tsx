@@ -3,6 +3,7 @@ import { DeliverableCard } from "@/components/deliverables/deliverable-card";
 import { PageHeader } from "@/components/layout/page-header";
 import { PaymentActions } from "@/components/payments/payment-actions";
 import { ProtectionCalculator } from "@/components/payments/protection-calculator";
+import { PaymentStatusBadge } from "@/components/payments/payment-status-badge";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, Td, Th } from "@/components/ui/table";
@@ -10,7 +11,7 @@ import { getCurrentUser } from "@/lib/auth/session";
 import { getAgentlyData } from "@/lib/db/live-data";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { formatCurrency } from "@/lib/utils/format";
-import type { Deliverable } from "@/types";
+import type { Deliverable, PaymentStatus } from "@/types";
 
 const statuses = ["unpaid", "pending", "funded", "release_ready", "released", "refunded", "disputed"];
 
@@ -35,7 +36,7 @@ export default async function PaymentsPage() {
       id: deal.id,
       type: "deal" as const,
       title: deal.title,
-      status: deal.payment_status,
+      status: deal.payment_status as PaymentStatus,
       amount_cents: deal.amount_cents,
       currency: deal.currency,
       payout_cents: Math.max(0, deal.amount_cents - Math.round(deal.amount_cents * 0.1)),
@@ -47,7 +48,7 @@ export default async function PaymentsPage() {
       id: project.id,
       type: "freelancer_project" as const,
       title: project.title,
-      status: project.payment_status,
+      status: String(project.payment_status ?? "unpaid") as PaymentStatus,
       amount_cents: Number(project.amount_cents ?? 0),
       currency: project.currency ?? "inr",
       payout_cents: Math.max(0, Number(project.amount_cents ?? 0) - Math.round(Number(project.amount_cents ?? 0) * 0.1)),
@@ -81,18 +82,24 @@ export default async function PaymentsPage() {
         <CardHeader><CardTitle>Payment Queue</CardTitle><Badge tone="green">creator deals + freelancer projects</Badge></CardHeader>
         <div className="overflow-x-auto">
           <Table>
-            <thead><tr><Th>Item</Th><Th>Type</Th><Th>Status</Th><Th>Deliverable</Th><Th>Session</Th><Th className="text-right">Amount</Th><Th className="text-right">Talent payout</Th><Th></Th></tr></thead>
+            <thead><tr><Th>Item</Th><Th>Protection state</Th><Th>Deliverable</Th><Th>Session</Th><Th className="text-right">Amount</Th><Th className="text-right">Talent payout</Th><Th></Th></tr></thead>
             <tbody>
               {queue.map((item) => (
                 <tr key={`${item.type}-${item.id}`}>
-                  <Td className="font-medium">{item.title}</Td>
-                  <Td>{item.type === "deal" ? "Creator deal" : "Freelancer project"}</Td>
-                  <Td><Badge tone={item.status === "release_ready" || item.status === "released" ? "green" : item.status === "pending" ? "amber" : "blue"}>{item.status}</Badge></Td>
-                  <Td className="min-w-80"><DeliverableCard deliverable={item.deliverable} canReview /></Td>
+                  <Td className="min-w-72">
+                    <p className="font-medium">{item.title}</p>
+                    <p className="mt-1 text-xs text-muted-foreground">{item.type === "deal" ? "Creator deal" : "Freelancer project"}</p>
+                    <PaymentWorkflowSteps status={item.status} hasDeliverable={Boolean(item.deliverable)} deliverableStatus={item.deliverable?.status} />
+                  </Td>
+                  <Td className="min-w-64">
+                    <PaymentStatusBadge status={item.status} />
+                    <p className="mt-2 text-sm leading-5 text-muted-foreground">{paymentGuidance(item.status, Boolean(item.deliverable), item.deliverable?.status)}</p>
+                  </Td>
+                  <Td className="min-w-80"><DeliverableCard deliverable={item.deliverable} canReview={canManagePayments} /></Td>
                   <Td>{item.session}</Td>
                   <Td className="text-right">{formatCurrency(item.amount_cents, item.currency)}</Td>
                   <Td className="text-right font-semibold">{formatCurrency(item.payout_cents, item.currency)}</Td>
-                  <Td>{canManagePayments ? <PaymentActions canFund={item.canFund} entityId={item.id} entityType={item.type} /> : <Badge tone="neutral">view only</Badge>}</Td>
+                  <Td>{canManagePayments ? <PaymentActions canFund={item.canFund} canRelease={user?.role === "admin"} entityId={item.id} entityType={item.type} /> : <Badge tone="neutral">view only</Badge>}</Td>
                 </tr>
               ))}
               {queue.length === 0 ? (
@@ -178,4 +185,42 @@ async function getLatestDeliverables(
   });
 
   return map;
+}
+
+function PaymentWorkflowSteps({ deliverableStatus, hasDeliverable, status }: { deliverableStatus?: string; hasDeliverable: boolean; status: string }) {
+  const funded = ["funded", "release_ready", "released"].includes(status);
+  const approved = deliverableStatus === "approved" || ["release_ready", "released"].includes(status);
+  const released = status === "released";
+  const steps = [
+    { label: "Accepted", done: true },
+    { label: funded ? "Funded" : "Awaiting funding", done: funded },
+    { label: hasDeliverable ? "Submitted" : "No deliverable", done: hasDeliverable },
+    { label: approved ? "Approved" : "Review pending", done: approved },
+    { label: released ? "Released" : "Release pending", done: released }
+  ];
+
+  return (
+    <div className="mt-3 flex flex-wrap gap-1.5">
+      {steps.map((step) => (
+        <span
+          className={`rounded-full px-2 py-1 text-[11px] font-semibold ${step.done ? "bg-emerald-100 text-emerald-800" : "bg-slate-100 text-slate-600"}`}
+          key={step.label}
+        >
+          {step.label}
+        </span>
+      ))}
+    </div>
+  );
+}
+
+function paymentGuidance(status: string, hasDeliverable: boolean, deliverableStatus?: string) {
+  if (status === "unpaid") return "Accepted work is waiting for brand funding. Talent should not start final delivery yet.";
+  if (status === "pending") return "Checkout has been created or marked pending. Confirm funds before delivery starts.";
+  if (status === "funded" && !hasDeliverable) return "Funds are protected. Talent can submit the agreed deliverable.";
+  if (status === "funded" && deliverableStatus === "submitted") return "Deliverable is waiting for brand/admin review.";
+  if (status === "release_ready") return "Deliverable is approved. Admin can release the payout.";
+  if (status === "released") return "Payout is marked released and the workflow is complete.";
+  if (status === "disputed") return "Hold release while scope, delivery, or approval is reviewed.";
+  if (status === "refunded") return "Payment was refunded. This work item should not proceed without a new agreement.";
+  return "Track funding, delivery, approval, and payout release from here.";
 }

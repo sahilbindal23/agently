@@ -126,8 +126,8 @@ async function getActivityItems(admin: AdminClient, user: NonNullable<Awaited<Re
           : getAdminActivity(admin)
   ]);
   return dedupeItems([
-    ...nudges.map((item) => ({ ...item, id: `nudge-${item.id}` })),
-    ...items
+    ...items,
+    ...nudges.map((item) => ({ ...item, id: `nudge-${item.id}` }))
   ]);
 }
 
@@ -563,11 +563,21 @@ function limitItems(items: ActivityItem[], limit = 25) {
 function dedupeItems(items: ActivityItem[]) {
   const seen = new Set<string>();
   return items.filter((item) => {
-    const key = `${item.group}:${item.title}:${item.href}`;
+    const key = semanticActivityKey(item);
     if (seen.has(key)) return false;
     seen.add(key);
     return true;
   });
+}
+
+function semanticActivityKey(item: ActivityItem) {
+  const entityId = item.id.match(/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/i)?.[0];
+  if (entityId && item.group === "Offers needing response") return `${item.group}:${item.href}:${entityId}`;
+  if (entityId && ["Payment status", "Payment workflow", "Delivery workflow"].includes(item.group)) return `${item.group}:${item.href}:${entityId}`;
+  if (item.group === "Profile readiness" && /audit/i.test(`${item.id} ${item.title} ${item.description}`)) {
+    return `${item.group}:profile-audit`;
+  }
+  return `${item.group}:${item.href}:${item.title.toLowerCase().trim()}`;
 }
 
 function groupItems(items: ActivityItem[]) {

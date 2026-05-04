@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { trackEvent, userEventBase } from "@/lib/analytics/track";
 import { socialProviders, type SocialProvider } from "@/lib/social/platforms";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
@@ -40,5 +41,12 @@ export async function POST(request: Request) {
     .single();
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+  await trackEvent(admin, {
+    ...userEventBase(authData.user, "creator"),
+    eventName: "social_connected",
+    entityType: "connected_social_account",
+    entityId: data.id,
+    metadata: { provider, creator_id: creator.id, status: data.status }
+  });
   return NextResponse.json({ data });
 }

@@ -93,7 +93,7 @@ async function updateBrand(admin: NonNullable<ReturnType<typeof createAdminClien
     name: text(body.name),
     website: text(body.website),
     industry: text(body.industry),
-    contact_email: text(body.contact_email) || email,
+    contact_email: email,
     status: text(body.status) || "enrolled"
   };
 
@@ -122,7 +122,7 @@ async function updateBrand(admin: NonNullable<ReturnType<typeof createAdminClien
       outreach_brief: auditInput.campaign_goal || "Brand profile updated for campaign matching.",
       ideal_creator_archetypes: list(body.ideal_creator_archetypes),
       creator_size_band: text(body.creator_size_band) || "micro to mid-market creators",
-      bangalore_launch_fit_score: number(body.bangalore_launch_fit_score) || 70
+      bangalore_launch_fit_score: 70
     },
     source: "profile_edit"
   });

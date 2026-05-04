@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { trackEvent, userEventBase } from "@/lib/analytics/track";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
 
@@ -25,6 +26,10 @@ export async function POST(request: Request) {
   const contextId = String(body.context_id ?? "").trim();
 
   if (!message) return NextResponse.json({ error: "Message is required." }, { status: 400 });
+  if (message.length > 4000) return NextResponse.json({ error: "Message is too long." }, { status: 400 });
+  if (!threadId && (!tableByType[toType] || !toId)) {
+    return NextResponse.json({ error: "Recipient is required for a new thread." }, { status: 400 });
+  }
 
   const finalThreadId = threadId || await createThread(admin, authData.user.id, toType, toId, contextType, contextId);
   if (!finalThreadId) return NextResponse.json({ error: "Recipient could not be resolved." }, { status: 400 });
@@ -48,6 +53,18 @@ export async function POST(request: Request) {
       .eq("thread_id", finalThreadId)
       .eq("profile_id", authData.user.id)
   ]);
+
+  await trackEvent(admin, {
+    ...userEventBase(authData.user),
+    eventName: "message_sent",
+    entityType: "message_thread",
+    entityId: finalThreadId,
+    metadata: {
+      context_type: contextType,
+      context_id: contextId || null,
+      message_length: message.length
+    }
+  });
 
   return NextResponse.json({ data, thread_id: finalThreadId }, { status: 201 });
 }

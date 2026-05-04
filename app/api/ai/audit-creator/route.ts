@@ -1,9 +1,13 @@
 import { NextResponse } from "next/server";
 import { auditCreator, type CreatorAuditInput } from "@/lib/ai/audits";
+import { getCurrentUser } from "@/lib/auth/session";
 import { getOpenAI } from "@/lib/openai/client";
 import { creatorAuditPrompt } from "@/prompts/audits";
 
 export async function POST(request: Request) {
+  const user = await getCurrentUser();
+  if (!user) return NextResponse.json({ error: "Login required." }, { status: 401 });
+
   const input = (await request.json()) as CreatorAuditInput;
   const fallback = auditCreator(input);
   const openai = getOpenAI();

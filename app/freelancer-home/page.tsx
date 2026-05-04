@@ -3,6 +3,7 @@ import Link from "next/link";
 import { AppShell } from "@/components/layout/app-shell";
 import { MarketplaceTabs } from "@/components/marketplace/marketplace-tabs";
 import { PageHeader } from "@/components/layout/page-header";
+import { CreateFreelancerProfileForm } from "@/components/freelancers/create-freelancer-profile-form";
 import { MarketplaceEligibilityCard } from "@/components/profile/marketplace-eligibility-card";
 import { ProfileCompletenessCard } from "@/components/profile/profile-completeness-card";
 import { Badge } from "@/components/ui/badge";
@@ -28,16 +29,19 @@ export default async function FreelancerHomePage() {
     return (
       <AppShell>
         <PageHeader
-          title="Complete freelancer intake"
-          eyebrow="Production talent"
-          description="Your account exists, but Agently still needs your freelancer intake to build the production profile brands will see. Intake powers project matching, service-rate clarity, portfolio verification, and protected payout workflows."
-          action={<Link href="/intake"><Button>Run freelancer intake</Button></Link>}
+          title="Add your freelancer profile"
+          eyebrow="Production talent add-on"
+          description="You already have an Agently account. Add a freelancer profile here so brands can discover your editing, shooting, design, production, and project-rate services without making another account."
         />
-        <Card>
-          <CardHeader><CardTitle>Why this is required</CardTitle><Badge tone="blue">setup step</Badge></CardHeader>
+        <Card className="mb-5 border-blue-200 bg-blue-50/50">
+          <CardHeader><CardTitle>Why this add-on matters</CardTitle><Badge tone="blue">same account</Badge></CardHeader>
           <p className="text-sm leading-6 text-muted-foreground">
-            Without intake, Agently does not know your service category, skills, portfolio links, hourly/project rates, city coverage, or availability. Complete it once, then you can customize your profile later.
+            Creator work means you post to your audience. Freelancer work means you produce the asset, edit, shoot, design, or manage production without needing to publish it. This profile keeps those two workflows separate while letting brands find both sides of your talent.
           </p>
+        </Card>
+        <Card>
+          <CardHeader><CardTitle>Freelancer profile details</CardTitle><Badge tone="green">discoverable after save</Badge></CardHeader>
+          <CreateFreelancerProfileForm defaultDisplayName={data.user.user_metadata?.full_name ?? ""} />
         </Card>
       </AppShell>
     );
