@@ -88,7 +88,7 @@ export async function AppShell({ children }: { children: React.ReactNode }) {
 
   return (
     <div className="min-h-screen lg:grid lg:grid-cols-[260px_1fr]">
-      <aside className="border-b bg-white/85 backdrop-blur dark:bg-card/80 lg:min-h-screen lg:border-b-0 lg:border-r">
+      <aside className="border-b bg-white/85 backdrop-blur dark:border-white/8 dark:bg-card/80 lg:min-h-screen lg:border-b-0 lg:border-r">
         <div className="px-3 py-3"><HomeLogo className="w-full px-2" /></div>
         <nav className="flex gap-1 overflow-x-auto px-3 pb-3 lg:flex-col lg:overflow-visible lg:pb-0">
           {nav.map((item) => {
@@ -98,16 +98,16 @@ export async function AppShell({ children }: { children: React.ReactNode }) {
                 key={item.href}
                 href={item.href}
                 data-tour={`nav-${item.tour}`}
-                className="flex min-w-fit items-center gap-3 rounded-md px-3 py-2.5 text-sm font-medium text-muted-foreground transition hover:bg-muted hover:text-foreground"
+                className="flex min-w-fit items-center gap-3 rounded-md px-3 py-2.5 text-sm font-medium text-muted-foreground transition hover:bg-muted hover:text-foreground dark:hover:bg-white/6 dark:hover:text-foreground"
               >
                 <Icon className="h-4 w-4" />
                 <span className="flex flex-1 items-center justify-between gap-2">
                   {item.label}
                   {item.href === "/messages" && unreadMessages > 0 ? (
-                    <span className="rounded-full bg-amber-100 px-2 py-0.5 text-xs font-semibold text-amber-800">{unreadMessages}</span>
+                    <span className="rounded-full bg-amber-100 px-2 py-0.5 text-xs font-semibold text-amber-800 dark:bg-amber-950/60 dark:text-amber-400">{unreadMessages}</span>
                   ) : null}
                   {(item.href === "/activity" || item.href === "/notifications") && (unreadNotifications > 0 || nudges.length > 0) ? (
-                    <span className={`rounded-full px-2 py-0.5 text-xs font-semibold ${unreadNotifications > 0 ? "bg-red-100 text-red-800" : "bg-blue-100 text-blue-800"}`}>
+                    <span className={`rounded-full px-2 py-0.5 text-xs font-semibold ${unreadNotifications > 0 ? "bg-red-100 text-red-800 dark:bg-red-950/60 dark:text-red-400" : "bg-blue-100 text-blue-800 dark:bg-sky-950/60 dark:text-sky-400"}`}>
                       {unreadNotifications || nudges.length}
                     </span>
                   ) : null}
@@ -117,7 +117,7 @@ export async function AppShell({ children }: { children: React.ReactNode }) {
           })}
         </nav>
         <div className="mt-auto hidden p-3 lg:block">
-          <div className="rounded-lg border bg-white p-3">
+          <div className="rounded-lg border bg-white p-3 dark:border-white/8 dark:bg-card">
             <div className="mb-3">
               <p className="truncate text-sm font-semibold">{user?.full_name ?? "Prototype user"}</p>
               <p className="truncate text-xs text-muted-foreground">{user?.email ?? "Not signed in"}</p>
@@ -137,7 +137,7 @@ export async function AppShell({ children }: { children: React.ReactNode }) {
         </div>
         <div className="mb-4 space-y-2">
           {unreadMessages > 0 ? (
-            <Link className="flex items-center justify-between gap-3 rounded-md border border-blue-200 bg-blue-50 px-4 py-3 text-sm text-blue-900" href="/messages">
+            <Link className="flex items-center justify-between gap-3 rounded-md border border-blue-200 bg-blue-50 px-4 py-3 text-sm text-blue-900 dark:border-sky-800 dark:bg-sky-950/40 dark:text-sky-300" href="/messages">
               <span className="inline-flex items-center gap-2"><MessageSquare className="h-4 w-4" /> {unreadMessages} unread message{unreadMessages === 1 ? "" : "s"} in campaign conversations.</span>
               <span className="font-semibold">Open</span>
             </Link>
