@@ -38,7 +38,7 @@ export function ScoreTransparencyCard({
       </div>
 
       <div className="mt-4 grid gap-4 xl:grid-cols-[1fr_1fr]">
-        <div className="rounded-md border bg-white p-4">
+        <div className="rounded-md border bg-white p-4 dark:border-white/8 dark:bg-card">
           <div className="mb-3 flex items-center gap-2">
             <BarChart3 className="h-4 w-4 text-primary" />
             <p className="text-sm font-semibold">What Agently Uses</p>
@@ -53,7 +53,7 @@ export function ScoreTransparencyCard({
           </div>
         </div>
 
-        <div className="rounded-md border bg-white p-4">
+        <div className="rounded-md border bg-white p-4 dark:border-white/8 dark:bg-card">
           <div className="mb-3 flex items-center gap-2">
             <TrendingUp className="h-4 w-4 text-primary" />
             <p className="text-sm font-semibold">How To Improve Scores</p>
@@ -66,7 +66,7 @@ export function ScoreTransparencyCard({
         </div>
       </div>
 
-      <div className="mt-4 flex gap-2 rounded-md border bg-slate-50 p-3 text-sm leading-6 text-muted-foreground">
+      <div className="mt-4 flex gap-2 rounded-md border bg-slate-50 p-3 dark:border-white/8 dark:bg-white/4 text-sm leading-6 text-muted-foreground">
         <LockKeyhole className="mt-0.5 h-4 w-4 shrink-0 text-primary" />
         <p>
           Creator-editable fields like niche, languages, content style, and profile links help Agently understand context. Core trust scores stay platform-controlled so brands are not relying on manually inflated claims.
@@ -78,7 +78,7 @@ export function ScoreTransparencyCard({
 
 function ScoreSignal({ label, source, value }: { label: string; source: string; value: string }) {
   return (
-    <div className="rounded-md border bg-white p-3">
+    <div className="rounded-md border bg-white p-3 dark:border-white/8 dark:bg-card">
       <p className="text-xs font-semibold uppercase text-muted-foreground">{label}</p>
       <p className="mt-1 text-xl font-bold">{value}</p>
       <p className="mt-1 text-xs text-muted-foreground">{source}</p>

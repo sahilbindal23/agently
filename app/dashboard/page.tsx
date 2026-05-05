@@ -87,7 +87,7 @@ export default async function DashboardPage() {
             </CardHeader>
             <div className="space-y-3">
               {contracts.flatMap((contract) => contract.flags).map((flag) => (
-                <div key={flag.id} className="rounded-md border bg-white p-3">
+                <div key={flag.id} className="rounded-md border bg-white p-3 dark:border-white/8 dark:bg-card">
                   <div className="mb-1 flex items-center justify-between gap-3">
                     <p className="text-sm font-semibold">{flag.flag_type.replace("_", " ")}</p>
                     <Badge tone={flag.severity === "high" ? "red" : "amber"}>{flag.severity}</Badge>
@@ -223,7 +223,7 @@ function Metric({ title, value, icon }: { title: string; value: string; icon: Re
 
 function Insight({ icon, title, copy }: { icon: React.ReactNode; title: string; copy: string }) {
   return (
-    <div className="flex gap-3 rounded-md border bg-white p-3">
+    <div className="flex gap-3 rounded-md border bg-white p-3 dark:border-white/8 dark:bg-card">
       <div className="mt-0.5 text-primary">{icon}</div>
       <div>
         <p className="font-semibold">{title}</p>

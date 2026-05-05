@@ -1,8 +1,10 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { trackEvent, userEventBase } from "@/lib/analytics/track";
+import { offerSentEmail, sendEmail } from "@/lib/email/send";
 import { applyLedgerEvent } from "@/lib/engines/outcome-ledger";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { formatCurrency } from "@/lib/utils/format";
 import { createClient } from "@/lib/supabase/server";
 
 type Row = Record<string, unknown>;
@@ -174,6 +176,26 @@ export async function POST(request: Request) {
     offerId: deal.id,
     outcomeLabel: "offer_sent"
   });
+
+  const { data: creatorProfile } = await admin
+    .from("profiles")
+    .select("email, full_name")
+    .eq("id", (await admin.from("creators").select("profile_id").eq("id", body.creator_id).maybeSingle()).data?.profile_id ?? "")
+    .maybeSingle();
+  if (creatorProfile?.email) {
+    sendEmail({
+      to: creatorProfile.email,
+      subject: `New offer from ${brandResult.brand.name}: ${body.title}`,
+      html: offerSentEmail({
+        creatorName: creatorProfile.full_name ?? "Creator",
+        brandName: String(brandResult.brand.name),
+        dealTitle: body.title,
+        amountFormatted: formatCurrency(body.amount_cents, "inr"),
+        dueDate: body.due_date || undefined,
+        deliverables: body.deliverables
+      })
+    });
+  }
 
   return NextResponse.json({ data: deal, source: "supabase" }, { status: 201 });
 }

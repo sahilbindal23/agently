@@ -189,7 +189,7 @@ function CounterCard({
   usageRights?: string | null;
 }) {
   return (
-    <div className="rounded-md border bg-white p-4">
+    <div className="rounded-md border bg-white p-4 dark:border-white/8 dark:bg-card">
       <div className="mb-3 flex flex-wrap items-start justify-between gap-3">
         <div>
           <p className="font-semibold">{title}</p>

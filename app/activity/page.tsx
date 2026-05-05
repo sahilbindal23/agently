@@ -618,7 +618,7 @@ function ActivityRow({ item }: { item: ActivityItem }) {
       </div>
       <Link
         href={item.href}
-        className="inline-flex h-9 shrink-0 items-center justify-center gap-2 rounded-md border bg-white px-3 text-sm font-medium transition hover:bg-muted"
+        className="inline-flex h-9 shrink-0 items-center justify-center gap-2 rounded-md border bg-white px-3 text-sm font-medium transition hover:bg-muted dark:border-white/8 dark:bg-card dark:hover:bg-muted"
       >
         {item.cta}
         <ArrowRight className="h-4 w-4" />

@@ -109,7 +109,7 @@ export default async function BrandHomePage() {
           <p className="text-sm leading-6 text-muted-foreground">{String(result?.outreach_brief ?? "Run brand intake to generate a campaign profile.")}</p>
           <div className="mt-4 space-y-2">
             {(Array.isArray(result?.ideal_creator_archetypes) ? result?.ideal_creator_archetypes : []).map((item) => (
-              <p key={String(item)} className="rounded-md border bg-white p-3 text-sm">{String(item)}</p>
+              <p key={String(item)} className="rounded-md border bg-white p-3 text-sm dark:border-white/8 dark:bg-card">{String(item)}</p>
             ))}
           </div>
         </Card>

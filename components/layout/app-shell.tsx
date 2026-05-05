@@ -2,6 +2,7 @@ import Link from "next/link";
 import { Activity, BarChart3, Bell, Bot, BrainCircuit, BriefcaseBusiness, ClipboardList, CreditCard, FileText, HelpCircle, Home, LayoutDashboard, MessageSquare, MessageSquareText, Palette, Users } from "lucide-react";
 import { LogoutButton } from "@/components/auth/logout-button";
 import { HomeLogo } from "@/components/layout/home-logo";
+import { MobileNav } from "@/components/layout/mobile-nav";
 import { NotificationBell } from "@/components/notifications/notification-bell";
 import { ThemeToggle } from "@/components/layout/theme-toggle";
 import { FirstVisitPopup } from "@/components/onboarding/first-visit-popup";
@@ -89,9 +90,9 @@ export async function AppShell({ children }: { children: React.ReactNode }) {
 
   return (
     <div className="min-h-screen lg:grid lg:grid-cols-[260px_1fr]">
-      <aside className="border-b bg-white/85 backdrop-blur dark:border-white/8 dark:bg-card/80 lg:min-h-screen lg:border-b-0 lg:border-r">
+      <aside className="hidden border-r bg-white/85 backdrop-blur dark:border-white/8 dark:bg-card/80 lg:flex lg:min-h-screen lg:flex-col">
         <div className="px-3 py-3"><HomeLogo className="w-full px-2" /></div>
-        <nav className="flex gap-1 overflow-x-auto px-3 pb-3 lg:flex-col lg:overflow-visible lg:pb-0">
+        <nav className="flex flex-col gap-1 overflow-y-auto px-3 pb-3">
           {nav.map((item) => {
             const Icon = item.icon;
             return (
@@ -99,7 +100,7 @@ export async function AppShell({ children }: { children: React.ReactNode }) {
                 key={item.href}
                 href={item.href}
                 data-tour={`nav-${item.tour}`}
-                className="flex min-w-fit items-center gap-3 rounded-md px-3 py-2.5 text-sm font-medium text-muted-foreground transition hover:bg-muted hover:text-foreground dark:hover:bg-white/6 dark:hover:text-foreground"
+                className="flex items-center gap-3 rounded-md px-3 py-2.5 text-sm font-medium text-muted-foreground transition hover:bg-muted hover:text-foreground dark:hover:bg-white/6 dark:hover:text-foreground"
               >
                 <Icon className="h-4 w-4" />
                 <span className="flex flex-1 items-center justify-between gap-2">
@@ -117,7 +118,7 @@ export async function AppShell({ children }: { children: React.ReactNode }) {
             );
           })}
         </nav>
-        <div className="mt-auto hidden p-3 lg:block">
+        <div className="mt-auto p-3">
           <div className="rounded-lg border bg-white p-3 dark:border-white/8 dark:bg-card">
             <div className="mb-3">
               <p className="truncate text-sm font-semibold">{user?.full_name ?? "Prototype user"}</p>
@@ -132,9 +133,19 @@ export async function AppShell({ children }: { children: React.ReactNode }) {
         </div>
       </aside>
       <main className="px-4 py-6 sm:px-6 lg:px-8">
-        <div className="mb-4 flex items-center justify-end gap-2">
-          <ThemeToggle />
-          {user && admin ? <NotificationBell notifications={notifications} unreadCount={unreadNotifications} /> : null}
+        <div className="mb-4 flex items-center justify-between gap-2 lg:justify-end">
+          <MobileNav
+            nav={nav}
+            userName={user?.full_name}
+            userEmail={user?.email}
+            userRole={user?.role}
+            unreadMessages={unreadMessages}
+            unreadNotifications={unreadNotifications}
+          />
+          <div className="flex items-center gap-2">
+            <ThemeToggle />
+            {user && admin ? <NotificationBell notifications={notifications} unreadCount={unreadNotifications} /> : null}
+          </div>
         </div>
         <div className="mb-4 space-y-2">
           {unreadMessages > 0 ? (

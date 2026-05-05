@@ -52,7 +52,7 @@ export default async function CreatorDetailPage({ params }: { params: Promise<{ 
             <Score label="India audience" value={getIndiaAudiencePercent(bundle.creator)} suffix="%" />
             <Score label="Bangalore fit" value={getBangaloreFit(bundle.creator)} />
           </div>
-          <div className="mt-4 rounded-md border bg-white p-4 text-sm leading-6 text-muted-foreground">
+          <div className="mt-4 rounded-md border bg-white p-4 dark:border-white/8 dark:bg-card text-sm leading-6 text-muted-foreground">
             <p><span className="font-semibold text-foreground">Home city:</span> {bundle.creator.home_city || "Not captured"}</p>
             <p><span className="font-semibold text-foreground">Languages:</span> {getCreatorLanguages(bundle.creator)}</p>
             <p><span className="font-semibold text-foreground">Top Indian cities:</span> {bundle.creator.top_indian_cities.join(", ") || "Not captured"}</p>
@@ -125,7 +125,7 @@ export default async function CreatorDetailPage({ params }: { params: Promise<{ 
         </CardHeader>
         <div className="grid gap-3 md:grid-cols-3">
           {bundle.platforms.slice(0, 3).map((platform) => (
-            <div className="rounded-md border bg-white p-4" key={platform.id}>
+            <div className="rounded-md border bg-white p-4 dark:border-white/8 dark:bg-card" key={platform.id}>
               <div className="mb-3 flex items-center justify-between gap-2">
                 <div className="flex items-center gap-2">
                   <PlaySquare className="h-4 w-4 text-primary" />
@@ -149,7 +149,7 @@ export default async function CreatorDetailPage({ params }: { params: Promise<{ 
           <CardHeader><CardTitle>Past Brand Work</CardTitle><Badge tone="green">{pastBrandDeals.length || bundle.deals.length}</Badge></CardHeader>
           <div className="space-y-3">
             {(pastBrandDeals.length ? pastBrandDeals : bundle.deals).slice(0, 5).map((deal) => (
-              <div key={deal.id} className="flex flex-col gap-2 rounded-md border bg-white p-3 sm:flex-row sm:items-center sm:justify-between">
+              <div key={deal.id} className="flex flex-col gap-2 rounded-md border bg-white p-3 sm:flex-row dark:border-white/8 dark:bg-card sm:items-center sm:justify-between">
                 <div>
                   <p className="font-semibold">{deal.title}</p>
                   <p className="text-sm text-muted-foreground">{deal.deliverables}</p>
@@ -189,7 +189,7 @@ export default async function CreatorDetailPage({ params }: { params: Promise<{ 
           {bundle.matches.map((match) => {
             const brand = bundle.brands.find((item) => item.id === match.brand_id);
             return (
-              <div key={match.id} className="rounded-md border bg-white p-3">
+              <div key={match.id} className="rounded-md border bg-white p-3 dark:border-white/8 dark:bg-card">
                 <div className="mb-2 flex items-center justify-between">
                   <p className="font-semibold">{brand?.name}</p>
                   <Badge tone="blue">{match.fit_score}</Badge>
@@ -208,7 +208,7 @@ export default async function CreatorDetailPage({ params }: { params: Promise<{ 
 
 function Score({ label, value, suffix = "" }: { label: string; value: number; suffix?: string }) {
   return (
-    <div className="rounded-md border bg-white p-4">
+    <div className="rounded-md border bg-white p-4 dark:border-white/8 dark:bg-card">
       <p className="text-sm text-muted-foreground">{label}</p>
       <p className="mt-2 text-2xl font-bold">{value}{suffix}</p>
     </div>
@@ -233,7 +233,7 @@ function ProofCard({ icon, title, items }: { icon: ReactNode; title: string; ite
       </CardHeader>
       <div className="space-y-2">
         {items.map((item) => (
-          <div className="rounded-md border bg-white p-3 text-sm leading-5" key={item}>{item}</div>
+          <div className="rounded-md border bg-white p-3 dark:border-white/8 dark:bg-card text-sm leading-5" key={item}>{item}</div>
         ))}
       </div>
     </Card>

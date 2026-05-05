@@ -106,7 +106,7 @@ export default async function HomePage() {
             {highlights.map((item) => {
               const Icon = item.icon;
               return (
-                <div key={item.title} className="flex gap-3 rounded-md border bg-white p-4">
+                <div key={item.title} className="flex gap-3 rounded-md border bg-white p-4 dark:border-white/8 dark:bg-card">
                   <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-md bg-primary/10 text-primary">
                     <Icon className="h-5 w-5" />
                   </div>
@@ -129,7 +129,7 @@ export default async function HomePage() {
           </div>
           <div className="grid gap-3 sm:grid-cols-2">
             {operatingSystem.map((item) => (
-              <div key={item} className="rounded-md border bg-white p-4 text-sm font-medium leading-6">
+              <div key={item} className="rounded-md border bg-white p-4 dark:border-white/8 dark:bg-card text-sm font-medium leading-6">
                 {item}
               </div>
             ))}

@@ -100,7 +100,7 @@ export function ConnectedAccountsPanel({
           const latest = snapshots.find((snapshot) => snapshot.provider === item.id);
           const state = getConnectionState(account, latest, Boolean(oauthReadyProviders[item.id]));
           return (
-            <div className="rounded-md border bg-white p-3" key={item.id}>
+            <div className="rounded-md border bg-white p-3 dark:border-white/8 dark:bg-card" key={item.id}>
               <div className="mb-2 flex items-start justify-between gap-2">
                 <div>
                   <p className="text-sm font-semibold">{item.label}</p>
@@ -117,7 +117,7 @@ export function ConnectedAccountsPanel({
 
       <form className="grid gap-3 md:grid-cols-[0.7fr_1fr_1.2fr_auto]" onSubmit={connect}>
         <select
-          className="h-10 rounded-md border bg-white px-3 text-sm outline-none focus:ring-2 focus:ring-ring"
+          className="h-10 rounded-md border bg-white px-3 text-sm outline-none focus:ring-2 focus:ring-ring dark:border-white/10 dark:bg-card dark:text-foreground"
           onChange={(event) => setProvider(event.target.value as SocialProvider)}
           value={provider}
         >
@@ -134,7 +134,7 @@ export function ConnectedAccountsPanel({
         {accounts.map((account) => {
           const latest = snapshots.find((snapshot) => snapshot.provider === account.provider);
           return (
-            <div className="rounded-md border bg-white p-3" key={account.id}>
+            <div className="rounded-md border bg-white p-3 dark:border-white/8 dark:bg-card" key={account.id}>
               <div className="mb-3 flex items-start justify-between gap-3">
                 <div>
                   <p className="font-semibold">{providerName(account.provider)} {account.handle}</p>

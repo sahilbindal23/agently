@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { trackEvent, userEventBase } from "@/lib/analytics/track";
+import { offerRespondedEmail, sendEmail } from "@/lib/email/send";
 import { applyLedgerEvent } from "@/lib/engines/outcome-ledger";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
@@ -119,6 +120,25 @@ export async function POST(request: Request) {
     outcomeLabel: status === "accepted" ? "accepted" : status === "changes_requested" ? "countered" : "declined",
     responseStatus: status
   });
+  const [{ data: brand }, { data: creatorProfileRow }] = await Promise.all([
+    admin.from("brands").select("contact_email, name").eq("id", deal.brand_id).maybeSingle(),
+    admin.from("profiles").select("email, full_name").eq("id", creator?.profile_id ?? "").maybeSingle()
+  ]);
+  if (brand?.contact_email) {
+    sendEmail({
+      to: brand.contact_email,
+      subject: `${creatorProfileRow?.full_name ?? "Creator"} ${status === "accepted" ? "accepted" : status === "declined" ? "declined" : "countered"} your offer — ${deal.title}`,
+      html: offerRespondedEmail({
+        brandEmail: brand.contact_email,
+        brandName: brand.name ?? "Brand",
+        dealTitle: String(deal.title),
+        status,
+        creatorName: creatorProfileRow?.full_name ?? "The creator",
+        responseNote: response || undefined
+      })
+    });
+  }
+
   return NextResponse.json({ data });
 }
 
