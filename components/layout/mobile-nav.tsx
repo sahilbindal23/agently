@@ -86,9 +86,11 @@ export function MobileNav({
               {nav.map((item) => {
                 const isMessages = item.href === "/messages";
                 const isNotifications = item.href === "/notifications" || item.href === "/activity";
+                const isOffers = item.href === "/offers";
                 const msgBadge = isMessages && unreadMessages ? unreadMessages : null;
                 const notifBadge = isNotifications && unreadNotifications ? unreadNotifications : null;
-                const badge = msgBadge ?? notifBadge;
+                const offerBadge = isOffers && pendingOffers ? pendingOffers : null;
+                const badge = msgBadge ?? notifBadge ?? offerBadge;
                 return (
                   <Link
                     key={item.href}
