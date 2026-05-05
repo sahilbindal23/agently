@@ -51,9 +51,8 @@ export const engineWeights = {
     { label: "Category signals", value: "fashion, food, gaming, tech, fitness, beauty, events", description: "Used for creator style and brand archetype matching." }
   ],
   protection: [
-    { label: "Protection fee", value: "1.5% of contract value", description: "Prototype assumption for payment workflow protection." },
-    { label: "Fee cap", value: "INR 15,000", description: "Caps the extra charge so high-value contracts do not become unrealistic." },
-    { label: "Max eligible contract", value: "INR 5,00,000", description: "Above this, prototype protection should require manual/legal review." }
+    { label: "Platform fee", value: "1% of funded contract value", description: "Simple prototype assumption for protected payout workflows." },
+    { label: "Eligibility", value: "Available for funded workflows", description: "No fee cap or estimated fee is shown to users in the product UI." }
   ]
 };
 

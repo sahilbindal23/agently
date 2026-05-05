@@ -33,7 +33,7 @@ export function offerSentEmail({ creatorName, brandName, dealTitle, amountFormat
 </body></html>`;
 }
 
-export function offerRespondedEmail({ brandEmail, brandName, dealTitle, status, creatorName, responseNote }: {
+export function offerRespondedEmail({ dealTitle, status, creatorName, responseNote }: {
   brandEmail: string;
   brandName: string;
   dealTitle: string;
