@@ -127,7 +127,7 @@ export async function AppShell({ children }: { children: React.ReactNode }) {
             );
           })}
         </nav>
-        <div className="mt-auto p-3">
+        <div className="px-3 pb-3">
           <div className="rounded-lg border bg-white p-3 dark:border-white/8 dark:bg-card">
             <div className="mb-3">
               <p className="truncate text-sm font-semibold">{user?.full_name ?? "Prototype user"}</p>
