@@ -33,35 +33,39 @@ export function OfferComposerForm({
     setStatus("saving");
     setMessage("");
 
-    const response = await fetch("/api/deals", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        campaign_id: campaignId,
-        creator_id: creatorId,
-        brand_name: brandName,
-        title: formData.get("title"),
-        deliverables: formData.get("deliverables"),
-        amount_cents: Math.round(amountInr * 100),
-        due_date: formData.get("due_date"),
-        campaign_goal: campaignGoal,
-        notes: [
-          formData.get("usage_rights") ? `Usage rights: ${formData.get("usage_rights")}` : "",
-          formData.get("approval_terms") ? `Approval terms: ${formData.get("approval_terms")}` : "",
-          formData.get("notes") ? `Brand notes: ${formData.get("notes")}` : ""
-        ].filter(Boolean).join("\n")
-      })
-    });
+    try {
+      const response = await fetch("/api/deals", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          campaign_id: campaignId,
+          creator_id: creatorId,
+          brand_name: brandName,
+          title: formData.get("title"),
+          deliverables: formData.get("deliverables"),
+          amount_cents: Math.round(amountInr * 100),
+          due_date: formData.get("due_date"),
+          campaign_goal: campaignGoal,
+          notes: [
+            formData.get("usage_rights") ? `Usage rights: ${formData.get("usage_rights")}` : "",
+            formData.get("approval_terms") ? `Approval terms: ${formData.get("approval_terms")}` : "",
+            formData.get("notes") ? `Brand notes: ${formData.get("notes")}` : ""
+          ].filter(Boolean).join("\n")
+        })
+      });
 
-    if (!response.ok) {
-      const body = await response.json().catch(() => ({}));
+      if (!response.ok) {
+        const body = await response.json().catch(() => ({}));
+        setStatus("error");
+        setMessage(body.error ?? "Could not create offer.");
+        return;
+      }
+
+      router.push("/deals");
+    } catch {
       setStatus("error");
-      setMessage(body.error ?? "Could not create offer.");
-      return;
+      setMessage("Network error. Please check your connection and try again.");
     }
-
-    router.push("/deals");
-    router.refresh();
   }
 
   return (

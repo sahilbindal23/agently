@@ -4,6 +4,7 @@ import { LogoutButton } from "@/components/auth/logout-button";
 import { HomeLogo } from "@/components/layout/home-logo";
 import { NotificationBell } from "@/components/notifications/notification-bell";
 import { ThemeToggle } from "@/components/layout/theme-toggle";
+import { FirstVisitPopup } from "@/components/onboarding/first-visit-popup";
 import { GuidedWalkthrough } from "@/components/onboarding/guided-walkthrough";
 import { WalkthroughLaunchButton } from "@/components/onboarding/walkthrough-launch-button";
 import { Badge } from "@/components/ui/badge";
@@ -146,6 +147,7 @@ export async function AppShell({ children }: { children: React.ReactNode }) {
         {children}
       </main>
       <GuidedWalkthrough role={user?.role ?? "admin"} />
+      {user ? <FirstVisitPopup /> : null}
     </div>
   );
 }

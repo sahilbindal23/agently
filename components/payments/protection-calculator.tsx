@@ -14,20 +14,18 @@ export function ProtectionCalculator({ amountCents }: { amountCents: number }) {
           <CardTitle>Protected Payout Add-On</CardTitle>
           <p className="mt-1 text-sm text-muted-foreground">Prototype monetization model for payment confidence after approved deliverables.</p>
         </div>
-        <Badge tone={protection.eligible ? "green" : "amber"}>{protection.eligible ? "eligible" : "capped"}</Badge>
+        <Badge tone={protection.eligible ? "green" : "amber"}>{protection.eligible ? "eligible" : "not eligible"}</Badge>
       </CardHeader>
-      <div className="grid gap-3 md:grid-cols-3">
-        <Metric label="Fee rate" value={`${protection.rate_percent}%`} />
-        <Metric label="Estimated fee" value={formatCurrency(protection.fee_cents, "inr")} />
-        <Metric label="Fee cap" value={formatCurrency(protection.cap_cents, "inr")} />
+      <div className="grid gap-3 md:grid-cols-1">
+        <Metric label="Platform fee" value={`${protection.rate_percent}%`} />
       </div>
-      <div className="mt-4 rounded-md border bg-white p-4">
+      <div className="mt-4 rounded-md border bg-white p-4 dark:bg-card">
         <div className="mb-2 flex items-center gap-2">
           <ShieldCheck className="h-4 w-4 text-primary" />
           <p className="text-sm font-semibold">Eligibility rule</p>
         </div>
         <p className="text-sm leading-6 text-muted-foreground">
-          {protection.reason} Max eligible contract value: {formatCurrency(protection.max_contract_cents, "inr")}. This should be positioned as payment protection workflow until reviewed by legal counsel, not as an insurance product.
+          {protection.reason} Max eligible contract value: {formatCurrency(protection.max_contract_cents, "inr")}.
         </p>
       </div>
     </Card>
