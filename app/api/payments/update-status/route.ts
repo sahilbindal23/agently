@@ -35,9 +35,12 @@ export async function POST(request: Request) {
   const brandIds = profile?.role === "brand" ? await getBrandIdsForUser(admin, authData.user.id, authData.user.email ?? "") : [];
 
   if (entityType === "deal") {
+    const { data: dealCheck } = await admin.from("deals").select("brand_id, dispute_status").eq("id", entityId).single();
+    if (status === "released" && dealCheck?.dispute_status === "open") {
+      return NextResponse.json({ error: "Cannot release payment while a dispute is open on this deal." }, { status: 409 });
+    }
     if (profile?.role === "brand") {
-      const { data: deal } = await admin.from("deals").select("brand_id").eq("id", entityId).single();
-      if (!deal || !brandIds.includes(String(deal.brand_id))) {
+      if (!dealCheck || !brandIds.includes(String(dealCheck.brand_id))) {
         return NextResponse.json({ error: "Not allowed to update this deal payment." }, { status: 403 });
       }
     }
@@ -70,9 +73,12 @@ export async function POST(request: Request) {
     return NextResponse.json({ data });
   }
 
+  const { data: projectCheck } = await admin.from("freelancer_projects").select("brand_id, dispute_status").eq("id", entityId).single();
+  if (status === "released" && projectCheck?.dispute_status === "open") {
+    return NextResponse.json({ error: "Cannot release payment while a dispute is open on this project." }, { status: 409 });
+  }
   if (profile?.role === "brand") {
-    const { data: project } = await admin.from("freelancer_projects").select("brand_id").eq("id", entityId).single();
-    if (!project || !brandIds.includes(String(project.brand_id))) {
+    if (!projectCheck || !brandIds.includes(String(projectCheck.brand_id))) {
       return NextResponse.json({ error: "Not allowed to update this project payment." }, { status: 403 });
     }
   }

@@ -3,6 +3,7 @@ import { RiskBadge } from "@/components/contracts/risk-badge";
 import { DeliverableCard } from "@/components/deliverables/deliverable-card";
 import { DeliverableSubmitForm } from "@/components/deliverables/deliverable-submit-form";
 import { OfferResponseActions } from "@/components/offers/offer-response-actions";
+import { OpenDisputeButton } from "@/components/disputes/open-dispute-button";
 import { AppShell } from "@/components/layout/app-shell";
 import { PageHeader } from "@/components/layout/page-header";
 import { MessageRecipientButton } from "@/components/messages/message-recipient-button";
@@ -35,6 +36,7 @@ type OfferRow = {
   counter_usage_rights?: string | null;
   counter_approval_terms?: string | null;
   counter_reason?: string | null;
+  dispute_status?: string | null;
 };
 
 type ContractRow = {
@@ -66,6 +68,7 @@ type ProjectRow = {
   counter_usage_rights?: string | null;
   counter_approval_terms?: string | null;
   counter_reason?: string | null;
+  dispute_status?: string | null;
 };
 
 export default async function OffersPage() {
@@ -193,6 +196,7 @@ export default async function OffersPage() {
                     ) : (
                       <FundingHoldNotice />
                     )}
+                    <OpenDisputeButton dealId={offer.id} disputeStatus={offer.dispute_status ?? undefined} />
                   </div>
                 ) : offer.offer_status === "declined" ? null : (
                   <OfferResponseActions
@@ -283,6 +287,7 @@ export default async function OffersPage() {
                     ) : (
                       <FundingHoldNotice />
                     )}
+                    <OpenDisputeButton projectId={project.id} disputeStatus={project.dispute_status ?? undefined} />
                   </div>
                 ) : project.status === "declined" ? null : (
                   <OfferResponseActions

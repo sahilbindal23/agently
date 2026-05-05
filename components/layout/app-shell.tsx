@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { Activity, BarChart3, Bell, Bot, BrainCircuit, BriefcaseBusiness, ClipboardList, CreditCard, FileText, HelpCircle, Home, LayoutDashboard, MessageSquare, MessageSquareText, Palette, Users } from "lucide-react";
+import { Activity, AlertOctagon, BarChart3, Bell, Bot, BrainCircuit, BriefcaseBusiness, ClipboardList, CreditCard, FileText, HelpCircle, Home, LayoutDashboard, MessageSquare, MessageSquareText, Palette, Users } from "lucide-react";
 import { LogoutButton } from "@/components/auth/logout-button";
 import { HomeLogo } from "@/components/layout/home-logo";
 import { MobileNav } from "@/components/layout/mobile-nav";
@@ -28,6 +28,7 @@ const adminNav = [
   { href: "/notifications", label: "Notifications", icon: Bell, tour: "activity" },
   { href: "/activity", label: "Activity", icon: Activity, tour: "activity" },
   { href: "/contracts", label: "Contracts", icon: FileText, tour: "contracts" },
+  { href: "/disputes", label: "Disputes", icon: AlertOctagon, tour: "disputes" },
   { href: "/payments", label: "Payments", icon: CreditCard, tour: "payments" },
   { href: "/ai-insights", label: "AI Insights", icon: Bot, tour: "ai" },
   { href: "/demo-guide", label: "Walkthrough", icon: HelpCircle, tour: "walkthrough" },
@@ -78,16 +79,17 @@ const freelancerNav = [
 export async function AppShell({ children }: { children: React.ReactNode }) {
   const user = await getCurrentUser();
   const admin = createAdminClient();
-  const nudges = user && admin ? await ensureNotificationsForUser(admin, user) : [];
-  const [unreadMessages, notifications, unreadNotifications, pendingOffers] = user && admin
+  const [nudges, unreadMessages, notifications, unreadNotifications, pendingOffers, openDisputes] = user && admin
     ? await Promise.all([
+      ensureNotificationsForUser(admin, user),
       getUnreadMessageCount(user.id),
       getUserNotifications(admin, user, 6),
       getUnreadNotificationCount(admin, user.id),
-      getPendingOfferCount(admin, user.id, user.role)
+      getPendingOfferCount(admin, user.id, user.role),
+      user.role === "admin" ? getOpenDisputeCount(admin) : Promise.resolve(0)
     ])
-    : [0, [], 0, 0];
-  const effectiveUnreadNotifications = unreadNotifications || nudges.length;
+    : [[], 0, [], 0, 0, 0];
+  const effectiveUnreadNotifications = Math.max(unreadNotifications, nudges.length);
   const nav = user?.role === "creator" ? creatorNav : user?.role === "brand" ? brandNav : user?.role === "freelancer" ? freelancerNav : adminNav;
 
   return (
@@ -117,6 +119,9 @@ export async function AppShell({ children }: { children: React.ReactNode }) {
                   ) : null}
                   {item.href === "/offers" && pendingOffers > 0 ? (
                     <span className="rounded-full bg-red-100 px-2 py-0.5 text-xs font-semibold text-red-800 dark:bg-red-950/60 dark:text-red-400">{pendingOffers}</span>
+                  ) : null}
+                  {item.href === "/disputes" && openDisputes > 0 ? (
+                    <span className="rounded-full bg-red-100 px-2 py-0.5 text-xs font-semibold text-red-800 dark:bg-red-950/60 dark:text-red-400">{openDisputes}</span>
                   ) : null}
                 </span>
               </Link>
@@ -170,6 +175,11 @@ export async function AppShell({ children }: { children: React.ReactNode }) {
       {user ? <FirstVisitPopup /> : null}
     </div>
   );
+}
+
+async function getOpenDisputeCount(admin: NonNullable<ReturnType<typeof createAdminClient>>) {
+  const { count } = await admin.from("disputes").select("id", { count: "exact", head: true }).eq("status", "open");
+  return count ?? 0;
 }
 
 async function getPendingOfferCount(admin: NonNullable<ReturnType<typeof createAdminClient>> | null, profileId: string, role?: string) {

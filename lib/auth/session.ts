@@ -1,3 +1,4 @@
+import { cache } from "react";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
 
@@ -8,7 +9,7 @@ export type CurrentUser = {
   role: "admin" | "creator" | "brand" | "freelancer";
 } | null;
 
-export async function getCurrentUser(): Promise<CurrentUser> {
+export const getCurrentUser = cache(async (): Promise<CurrentUser> => {
   const supabase = await createClient();
   const { data } = await supabase.auth.getUser();
   if (!data.user) return null;
@@ -35,4 +36,4 @@ export async function getCurrentUser(): Promise<CurrentUser> {
     full_name: profile?.full_name ?? data.user.user_metadata?.full_name ?? "Agently user",
     role: profile?.role ?? "admin"
   };
-}
+});
