@@ -83,7 +83,7 @@ export function DealContractScanForm({
       {dealId ? null : (
         <select
           name="deal_id"
-          className="h-10 w-full rounded-md border bg-white px-3 text-sm outline-none transition focus:ring-2 focus:ring-ring"
+          className="h-10 w-full rounded-md border bg-white px-3 text-sm dark:border-white/10 dark:bg-card dark:text-foreground outline-none transition focus:ring-2 focus:ring-ring"
           defaultValue=""
         >
           <option value="" disabled>Select deal to attach scan</option>
@@ -108,7 +108,7 @@ export function DealContractScanForm({
         <p className={status === "error" ? "text-sm text-red-600" : "text-sm text-muted-foreground"}>{message}</p>
       ) : null}
       {result ? (
-        <div className="rounded-md border bg-white p-3">
+        <div className="rounded-md border bg-white p-3 dark:border-white/8 dark:bg-card">
           <div className="mb-2 flex items-center justify-between gap-3">
             <p className="text-sm font-semibold">Latest result</p>
             <RiskBadge risk={result.risk_level} />

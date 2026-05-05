@@ -22,7 +22,7 @@ export function DeliverableCard({
   }
 
   return (
-    <div className="rounded-md border bg-white p-3">
+    <div className="rounded-md border bg-white p-3 dark:border-white/8 dark:bg-card">
       <div className="mb-2 flex items-start justify-between gap-3">
         <div>
           <p className="text-sm font-semibold">{deliverable.title || "Submitted deliverable"}</p>

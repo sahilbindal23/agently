@@ -27,7 +27,7 @@ export function AgentlySignalCard({
       <p className="text-sm leading-6 text-muted-foreground">{description}</p>
       <div className="mt-4 space-y-2">
         {cleaned.slice(0, 5).map((signal) => (
-          <div className="flex gap-2 rounded-md border bg-white p-3 text-sm leading-5" key={signal}>
+          <div className="flex gap-2 rounded-md border bg-white p-3 text-sm leading-5 dark:border-white/8 dark:bg-card" key={signal}>
             <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-primary" />
             <span>{signal}</span>
           </div>

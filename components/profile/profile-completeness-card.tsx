@@ -31,7 +31,7 @@ export function ProfileCompletenessCard({
       </div>
       <div className={compact ? "mt-3 grid gap-2" : "mt-4 grid gap-2"}>
         {visibleItems.map((item) => (
-          <div className={compact ? "flex items-center gap-2 rounded-md bg-muted px-3 py-2" : "flex items-start gap-2 rounded-md border bg-white p-3"} key={item.label}>
+          <div className={compact ? "flex items-center gap-2 rounded-md bg-muted px-3 py-2" : "flex items-start gap-2 rounded-md border bg-white p-3 dark:border-white/8 dark:bg-card"} key={item.label}>
             {item.done ? <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-emerald-600" /> : <Circle className="mt-0.5 h-4 w-4 shrink-0 text-muted-foreground" />}
             <div>
               <p className={compact ? "text-xs font-semibold" : "text-sm font-semibold"}>{item.label}</p>

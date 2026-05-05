@@ -115,11 +115,11 @@ export function ValuationEngine() {
           <Input name="exclusivity_days" placeholder="Exclusivity days" type="number" />
           <Input name="revisions" placeholder="Revision rounds" type="number" />
           <Input name="turnaround_days" placeholder="Turnaround days" type="number" />
-          <label className="flex h-10 items-center gap-2 rounded-md border bg-white px-3 text-sm">
+          <label className="flex h-10 items-center gap-2 rounded-md border bg-white px-3 text-sm dark:border-white/10 dark:bg-card">
             <input name="paid_usage" type="checkbox" />
             Paid usage
           </label>
-          <label className="flex h-10 items-center gap-2 rounded-md border bg-white px-3 text-sm">
+          <label className="flex h-10 items-center gap-2 rounded-md border bg-white px-3 text-sm dark:border-white/10 dark:bg-card">
             <input name="whitelisting" type="checkbox" />
             Whitelisting
           </label>
@@ -159,14 +159,14 @@ export function ValuationEngine() {
                 </div>
                 <div className="mt-3 grid gap-2">
                   {(result.matched_benchmarks ?? []).slice(0, 3).map((benchmark) => (
-                    <p className="rounded-md bg-white p-2 text-xs leading-5 text-emerald-950" key={benchmark.id}>
+                    <p className="rounded-md bg-white p-2 text-xs leading-5 text-emerald-950 dark:bg-card dark:text-emerald-100" key={benchmark.id}>
                       {benchmark.platform} / {benchmark.niche} / {benchmark.deliverable_type} in {benchmark.city}: {formatCurrency(benchmark.low_cents, "inr")} - {formatCurrency(benchmark.high_cents, "inr")} ({Math.round(benchmark.confidence_score * 100)}% confidence)
                     </p>
                   ))}
                 </div>
               </div>
             ) : null}
-            <div className="rounded-md border bg-white p-4">
+            <div className="rounded-md border bg-white p-4 dark:border-white/8 dark:bg-card">
               <p className="text-sm text-muted-foreground">Negotiation floor</p>
               <p className="mt-1 text-xl font-bold">{formatCurrency(result.negotiation_floor_cents, result.currency)}</p>
             </div>
@@ -180,7 +180,7 @@ export function ValuationEngine() {
             <List title="Charge Extra For" items={result.charge_extra_for} />
           </div>
         ) : (
-          <div className="rounded-md border bg-white p-4 text-sm leading-6 text-muted-foreground">
+          <div className="rounded-md border bg-white p-4 dark:border-white/8 dark:bg-card text-sm leading-6 text-muted-foreground">
             Run an estimate to see INR pricing bands, package recommendation, negotiation floor, pricing caveats, and the metric gap to reach your target sponsorship amount.
           </div>
         )}
@@ -207,7 +207,7 @@ function TargetGap({ targetInr, currentInr, baseCents }: { targetInr: number; cu
 
 function Rate({ label, value, currency }: { label: string; value: number; currency: string }) {
   return (
-    <div className="rounded-md border bg-white p-4">
+    <div className="rounded-md border bg-white p-4 dark:border-white/8 dark:bg-card">
       <p className="text-sm text-muted-foreground">{label}</p>
       <p className="mt-1 text-xl font-bold">{formatCurrency(value, currency)}</p>
     </div>
@@ -221,7 +221,7 @@ function List({ title, items }: { title: string; items: string[] }) {
       <p className="mb-2 text-sm font-semibold">{title}</p>
       <div className="space-y-2">
         {items.map((item) => (
-          <p key={item} className="rounded-md border bg-white p-3 text-sm leading-5 text-muted-foreground">{item}</p>
+          <p key={item} className="rounded-md border bg-white p-3 dark:border-white/8 dark:bg-card text-sm leading-5 text-muted-foreground">{item}</p>
         ))}
       </div>
     </div>

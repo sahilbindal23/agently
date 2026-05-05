@@ -100,7 +100,7 @@ export function NegotiationCopilot({ role, initialValues }: { role: "admin" | "c
               <Metric label="Floor" value={formatCurrency(result.minimum_floor_cents, "inr")} />
               <Metric label="Likelihood" value={`${Math.round(result.acceptance_likelihood * 100)}%`} />
             </div>
-            <div className="rounded-md border bg-white p-3">
+            <div className="rounded-md border bg-white p-3 dark:border-white/8 dark:bg-card">
               <p className="text-xs font-semibold uppercase text-muted-foreground">Push back on</p>
               <div className="mt-2 flex flex-wrap gap-2">
                 {result.terms_to_push_back_on.map((term) => <Badge key={term} tone="amber">{term}</Badge>)}
@@ -110,13 +110,13 @@ export function NegotiationCopilot({ role, initialValues }: { role: "admin" | "c
               <Explanation title="Why this counter is stronger" copy={result.counter_rationale ?? "The counter better accounts for scope, usage, revision time, and payment risk."} />
               <Explanation title="What could make it harder" copy={result.tradeoff_notes ?? "A higher counter can reduce acceptance if the brand budget is fixed. Accept lower only when usage is narrow or strategic value is clear."} />
             </div>
-            <div className="rounded-md border bg-white p-3">
+            <div className="rounded-md border bg-white p-3 dark:border-white/8 dark:bg-card">
               <p className="text-xs font-semibold uppercase text-muted-foreground">Suggested message</p>
               <p className="mt-2 whitespace-pre-wrap text-sm leading-6">{result.message}</p>
             </div>
           </div>
         ) : (
-          <div className="rounded-md border bg-white p-4 text-sm leading-6 text-muted-foreground">
+          <div className="rounded-md border bg-white p-4 dark:border-white/8 dark:bg-card text-sm leading-6 text-muted-foreground">
             Add the offer and terms to generate a talent-friendly counter position.
           </div>
         )}
@@ -127,7 +127,7 @@ export function NegotiationCopilot({ role, initialValues }: { role: "admin" | "c
 
 function Explanation({ title, copy }: { title: string; copy: string }) {
   return (
-    <div className="rounded-md border bg-white p-3">
+    <div className="rounded-md border bg-white p-3 dark:border-white/8 dark:bg-card">
       <p className="text-xs font-semibold uppercase text-muted-foreground">{title}</p>
       <p className="mt-2 text-sm leading-6">{copy}</p>
     </div>
@@ -136,7 +136,7 @@ function Explanation({ title, copy }: { title: string; copy: string }) {
 
 function Metric({ label, value }: { label: string; value: string }) {
   return (
-    <div className="rounded-md border bg-white p-3">
+    <div className="rounded-md border bg-white p-3 dark:border-white/8 dark:bg-card">
       <p className="text-xs font-semibold uppercase text-muted-foreground">{label}</p>
       <p className="mt-1 text-lg font-bold">{value}</p>
     </div>

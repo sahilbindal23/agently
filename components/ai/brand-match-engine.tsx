@@ -96,7 +96,7 @@ export function BrandMatchEngine({ creators, role }: { creators: Creator[]; role
         </CardHeader>
 
         {hasBothModes ? (
-          <div className="mb-4 grid grid-cols-2 rounded-md border bg-white p-1">
+          <div className="mb-4 grid grid-cols-2 rounded-md border bg-white p-1 dark:border-white/8 dark:bg-card">
             <button
               className={`rounded px-3 py-2 text-sm font-medium ${mode === "brand_to_creators" ? "bg-primary text-primary-foreground" : "text-muted-foreground"}`}
               onClick={() => { setMode("brand_to_creators"); setResult(null); }}
@@ -113,7 +113,7 @@ export function BrandMatchEngine({ creators, role }: { creators: Creator[]; role
             </button>
           </div>
         ) : (
-          <div className="mb-4 rounded-md border bg-white p-3 text-sm leading-6 text-muted-foreground">
+          <div className="mb-4 rounded-md border bg-white p-3 dark:border-white/8 dark:bg-card text-sm leading-6 text-muted-foreground">
             {role === "brand"
               ? "Brand workspace: use this side to find realistic creators for a campaign brief."
               : "Talent workspace: use this side to find realistic brands to approach."}
@@ -136,7 +136,7 @@ export function BrandMatchEngine({ creators, role }: { creators: Creator[]; role
             ))}
           </div>
         ) : (
-          <div className="rounded-md border bg-white p-4 text-sm leading-6 text-muted-foreground">
+          <div className="rounded-md border bg-white p-4 dark:border-white/8 dark:bg-card text-sm leading-6 text-muted-foreground">
             Run a brief to see ranked matches, realistic reasons, outreach angles, and practical objections.
           </div>
         )}
@@ -172,7 +172,7 @@ function CreatorBriefForm({ creators, isCreatorScoped, onSubmit, status, error }
         <label className="text-xs font-semibold uppercase text-muted-foreground">
           {isCreatorScoped ? "Your creator profile" : "Represented creator"}
         </label>
-        <select name="creator_id" className="mt-1 h-10 w-full rounded-md border bg-white px-3 text-sm" defaultValue={creators[0]?.id ?? ""}>
+        <select name="creator_id" className="mt-1 h-10 w-full rounded-md border bg-white px-3 text-sm dark:border-white/10 dark:bg-card dark:text-foreground" defaultValue={creators[0]?.id ?? ""}>
           {creators.map((creator) => <option key={creator.id} value={creator.id}>{creator.display_name}</option>)}
         </select>
         <p className="mt-1 text-xs leading-5 text-muted-foreground">
@@ -205,7 +205,7 @@ function SubmitButton({ status, label }: { status: string; label: string }) {
 
 function CreatorMatchCard({ match }: { match: CreatorResult }) {
   return (
-    <div className="rounded-md border bg-white p-4">
+    <div className="rounded-md border bg-white p-4 dark:border-white/8 dark:bg-card">
       <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
         <div>
           <p className="font-semibold">{match.creator_name}</p>
@@ -223,7 +223,7 @@ function CreatorMatchCard({ match }: { match: CreatorResult }) {
 
 function BrandMatchCard({ match }: { match: BrandResult }) {
   return (
-    <div className="rounded-md border bg-white p-4">
+    <div className="rounded-md border bg-white p-4 dark:border-white/8 dark:bg-card">
       <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
         <div>
           <p className="font-semibold">{match.brand_name}</p>

@@ -16,7 +16,7 @@ export function ContractSummaryCard({ contract }: { contract?: Contract | null }
       {contract?.flags?.length ? (
         <div className="mt-4 space-y-3">
           {contract.flags.map((flag) => (
-            <div key={flag.id} className="rounded-md border bg-white p-3">
+            <div key={flag.id} className="rounded-md border bg-white p-3 dark:border-white/8 dark:bg-card">
               <div className="mb-1 flex items-center justify-between gap-3">
                 <p className="text-sm font-semibold">{flag.flag_type.replaceAll("_", " ")}</p>
                 <Badge tone={flag.severity === "high" ? "red" : flag.severity === "medium" ? "amber" : "green"}>

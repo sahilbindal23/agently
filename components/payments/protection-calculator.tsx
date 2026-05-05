@@ -34,7 +34,7 @@ export function ProtectionCalculator({ amountCents }: { amountCents: number }) {
 
 function Metric({ label, value }: { label: string; value: string }) {
   return (
-    <div className="rounded-md border bg-white p-4">
+    <div className="rounded-md border bg-white p-4 dark:border-white/8 dark:bg-card">
       <p className="text-sm text-muted-foreground">{label}</p>
       <p className="mt-2 text-xl font-bold">{value}</p>
     </div>

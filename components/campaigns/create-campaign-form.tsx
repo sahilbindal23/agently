@@ -60,7 +60,7 @@ export function CreateCampaignForm({ creators = [] }: { creators?: Creator[] }) 
       <Input name="city_focus" placeholder="City focus, optional" />
       <Input name="region_focus" placeholder="Region focus, e.g. Bangalore, India, global" />
       <Input name="campaign_length" placeholder="Campaign length, e.g. 2 weeks, 3 months" />
-      <select name="visibility" className="h-10 rounded-md border bg-white px-3 text-sm" value={visibility} onChange={(event) => setVisibility(event.target.value as "open" | "invite_only")}>
+      <select name="visibility" className="h-10 rounded-md border bg-white px-3 text-sm dark:border-white/10 dark:bg-card dark:text-foreground" value={visibility} onChange={(event) => setVisibility(event.target.value as "open" | "invite_only")}>
         <option value="open">Open discovery</option>
         <option value="invite_only">Invite-only creator campaign</option>
       </select>
@@ -69,7 +69,7 @@ export function CreateCampaignForm({ creators = [] }: { creators?: Creator[] }) 
       <Input name="freelancer_needs" placeholder="Freelancer needs, e.g. editor, videographer" />
       <Input className="md:col-span-2" name="languages" placeholder="Languages, e.g. English, Hindi, Kannada" />
       {visibility === "invite_only" ? (
-        <div className="md:col-span-2 rounded-md border bg-white p-3">
+        <div className="md:col-span-2 rounded-md border bg-white p-3 dark:border-white/8 dark:bg-card">
           <div className="flex flex-wrap items-center justify-between gap-2">
             <div>
               <p className="text-xs font-semibold uppercase text-muted-foreground">Invite specific creators</p>

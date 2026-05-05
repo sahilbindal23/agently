@@ -19,7 +19,7 @@ export function MarketplaceTabs({ tabs }: { tabs: TabItem[] }) {
       <div className="mb-4 flex gap-1 overflow-x-auto border-b">
         {tabs.map((tab) => (
           <button
-            className={`rounded-t-md border border-b-0 px-4 py-2 text-sm font-medium transition ${active.id === tab.id ? "bg-white text-foreground" : "bg-muted/60 text-muted-foreground hover:bg-white"}`}
+            className={`rounded-t-md border border-b-0 px-4 py-2 text-sm font-medium transition dark:border-white/8 ${active.id === tab.id ? "bg-white text-foreground dark:bg-card" : "bg-muted/60 text-muted-foreground hover:bg-white dark:bg-white/4 dark:hover:bg-card"}`}
             key={tab.id}
             onClick={() => setActiveId(tab.id)}
             type="button"
@@ -43,7 +43,7 @@ export function MarketplaceTabs({ tabs }: { tabs: TabItem[] }) {
           })}
         </div>
       ) : (
-        <div className="rounded-md border bg-white p-4 text-sm text-muted-foreground">
+        <div className="rounded-md border bg-white p-4 text-sm text-muted-foreground dark:border-white/8 dark:bg-card">
           No profiles available yet.
         </div>
       )}

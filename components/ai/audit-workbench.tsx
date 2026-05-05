@@ -53,7 +53,7 @@ export function AuditWorkbench() {
           <Badge tone="green">{mode === "creator" ? "creator intake" : "brand intake"}</Badge>
         </CardHeader>
 
-        <div className="mb-4 grid grid-cols-2 rounded-md border bg-white p-1">
+        <div className="mb-4 grid grid-cols-2 rounded-md border bg-white p-1 dark:border-white/8 dark:bg-card">
           <button className={`rounded px-3 py-2 text-sm font-medium ${mode === "creator" ? "bg-primary text-primary-foreground" : "text-muted-foreground"}`} onClick={() => { setMode("creator"); setResult(null); }} type="button">Creator audit</button>
           <button className={`rounded px-3 py-2 text-sm font-medium ${mode === "brand" ? "bg-primary text-primary-foreground" : "text-muted-foreground"}`} onClick={() => { setMode("brand"); setResult(null); }} type="button">Brand audit</button>
         </div>
@@ -67,7 +67,7 @@ export function AuditWorkbench() {
           <Badge tone="blue">{result?.source ? String(result.source) : "ready"}</Badge>
         </CardHeader>
         {result ? <AuditResultView result={result} /> : (
-          <div className="rounded-md border bg-white p-4 text-sm leading-6 text-muted-foreground">
+          <div className="rounded-md border bg-white p-4 dark:border-white/8 dark:bg-card text-sm leading-6 text-muted-foreground">
             Run an audit to generate Bangalore fit, India relevance, content categories, creator archetypes, budget realism, risk flags, and next data to request.
           </div>
         )}
@@ -125,7 +125,7 @@ function AuditResultView({ result }: { result: AuditResult }) {
   return (
     <div className="space-y-3">
       {entries.map(([key, value]) => (
-        <div key={key} className="rounded-md border bg-white p-3">
+        <div key={key} className="rounded-md border bg-white p-3 dark:border-white/8 dark:bg-card">
           <p className="mb-1 text-xs font-semibold uppercase text-muted-foreground">{key.replaceAll("_", " ")}</p>
           <ResultValue value={value} />
         </div>

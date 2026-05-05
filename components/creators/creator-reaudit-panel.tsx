@@ -100,7 +100,7 @@ export function CreatorReauditPanel({ creator, platforms }: { creator: Creator; 
 
 function Score({ label, value }: { label: string; value?: number }) {
   return (
-    <div className="rounded-md border bg-white p-4">
+    <div className="rounded-md border bg-white p-4 dark:border-white/8 dark:bg-card">
       <p className="text-sm text-muted-foreground">{label}</p>
       <p className="mt-2 text-2xl font-bold">{value ?? "-"}</p>
     </div>
@@ -109,7 +109,7 @@ function Score({ label, value }: { label: string; value?: number }) {
 
 function Summary({ title, value }: { title: string; value?: string }) {
   return (
-    <div className="rounded-md border bg-white p-4 lg:col-span-1">
+    <div className="rounded-md border bg-white p-4 dark:border-white/8 dark:bg-card lg:col-span-1">
       <p className="text-sm font-semibold">{title}</p>
       <p className="mt-2 text-sm leading-5 text-muted-foreground">{value || "No result returned."}</p>
     </div>
