@@ -265,6 +265,14 @@ function getConnectionState(account: ConnectedAccountRow | undefined, latest: So
       tone: "amber" as const
     };
   }
+  if (latest.source.includes("no_metrics")) {
+    return {
+      key: "waiting",
+      label: "profile metrics needed",
+      copy: "Prototype connect worked, but Agently did not find follower/view metrics on this profile. Add platform metrics or use OAuth for verified data.",
+      tone: "amber" as const
+    };
+  }
   if (latest.source === "mock_api") {
     return { key: "synced", label: "prototype metrics synced", copy: "Prototype metrics are available for demo scoring until real social data is connected.", tone: "blue" as const };
   }
@@ -282,6 +290,7 @@ function accountStatusCopy(account: ConnectedAccountRow, latest?: SocialSnapshot
   if (latest.source.includes("no_creator_data")) return `Connected as ${account.handle}, but no creator performance data was found.`;
   if (latest.source.includes("permission")) return `Connected as ${account.handle}, but permissions need to be refreshed.`;
   if (latest.source.includes("setup_required")) return `Connected as ${account.handle}, but account setup needs attention.`;
+  if (latest.source.includes("no_metrics")) return `Connected as ${account.handle}, but profile metrics need to be added before scoring.`;
   return `Connected as ${account.handle}. Last synced ${formatDate(latest.synced_at)}.`;
 }
 
@@ -289,6 +298,7 @@ function sourceLabel(source: string) {
   if (source === "mock_api") return "prototype metrics";
   if (source.includes("youtube_analytics")) return "youtube analytics";
   if (source.includes("youtube_no_creator")) return "no creator data";
+  if (source.includes("no_metrics")) return "profile metrics needed";
   if (source.includes("permission")) return "permission needed";
   if (source.includes("setup_required")) return "setup required";
   if (source.includes("instagram")) return "instagram api";
@@ -300,7 +310,7 @@ function sourceLabel(source: string) {
 function sourceTone(source: string) {
   if (source === "mock_api") return "blue" as const;
   if (source.includes("permission")) return "red" as const;
-  if (source.includes("no_creator") || source.includes("setup_required")) return "amber" as const;
+  if (source.includes("no_creator") || source.includes("setup_required") || source.includes("no_metrics")) return "amber" as const;
   return "green" as const;
 }
 

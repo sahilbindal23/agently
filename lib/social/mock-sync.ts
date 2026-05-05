@@ -12,14 +12,17 @@ export function buildMockSocialSnapshot({ provider, handle, creator, platform }:
   const platformFollowers = Number(platform?.followers ?? 0);
   const platformAvgViews = Number(platform?.avg_views ?? 0);
   const platformEngagement = Number(platform?.engagement_rate ?? 0);
+  const hasProfileMetrics = platformFollowers > 0 || platformAvgViews > 0 || platformEngagement > 0;
   const niche = String(creator.primary_niche ?? "creator");
   const city = String(creator.home_city ?? "Bengaluru");
 
-  const followers = platformFollowers || Math.round(18000 + seed * 185000);
-  const avgViews = platformAvgViews || Math.round(followers * (provider === "youtube" ? 0.28 : 0.18));
-  const engagement = platformEngagement || Number((2.4 + seed * 4.8).toFixed(2));
-  const indiaAudience = Math.min(96, Math.max(42, Number(creator.india_audience_percent ?? 0) || Math.round(58 + seed * 32)));
-  const bangaloreAudience = Math.min(68, Math.max(12, Math.round(indiaAudience * (0.18 + seed * 0.32))));
+  const followers = hasProfileMetrics ? platformFollowers : 0;
+  const avgViews = hasProfileMetrics ? platformAvgViews || Math.round(followers * (provider === "youtube" ? 0.28 : 0.18)) : 0;
+  const engagement = hasProfileMetrics ? platformEngagement || Number((2.4 + seed * 4.8).toFixed(2)) : 0;
+  const indiaAudience = hasProfileMetrics
+    ? Math.min(96, Math.max(42, Number(creator.india_audience_percent ?? 0) || Math.round(58 + seed * 32)))
+    : 0;
+  const bangaloreAudience = hasProfileMetrics ? Math.min(68, Math.max(12, Math.round(indiaAudience * (0.18 + seed * 0.32)))) : 0;
   const reach = Math.round(avgViews * (provider === "instagram" ? 1.35 : provider === "facebook" ? 1.12 : 1.05));
 
   return {
@@ -37,9 +40,11 @@ export function buildMockSocialSnapshot({ provider, handle, creator, platform }:
       mock: true,
       provider,
       handle,
-      note: "Prototype metric snapshot shaped like a provider API response. Replace with OAuth API pull in production."
+      note: hasProfileMetrics
+        ? "Prototype sync used platform metrics already entered on this creator profile."
+        : "Prototype connect succeeded, but no profile metrics were available. Add platform metrics or use OAuth for verified data."
     },
-    source: "mock_api"
+    source: hasProfileMetrics ? "mock_api" : "manual_connect_no_metrics"
   };
 }
 
