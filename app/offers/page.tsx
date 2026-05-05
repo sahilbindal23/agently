@@ -139,13 +139,13 @@ export default async function OffersPage() {
                   responded={Boolean(offer.talent_response) || ["accepted", "declined", "changes_requested"].includes(String(offer.offer_status))}
                   status={offer.offer_status ?? "submitted"}
                 />
-                <div className="rounded-md border bg-white p-3">
+                <div className="rounded-md border bg-white p-3 dark:border-white/8 dark:bg-card">
                   <p className="text-xs font-semibold uppercase text-muted-foreground">Deliverables</p>
                   <p className="mt-1 text-sm leading-6">{offer.deliverables}</p>
                 </div>
                 <OfferContractNotice contract={offerContracts.get(offer.id)} />
                 {offer.notes ? (
-                  <div className="rounded-md border bg-white p-3">
+                  <div className="rounded-md border bg-white p-3 dark:border-white/8 dark:bg-card">
                     <p className="text-xs font-semibold uppercase text-muted-foreground">Terms and notes</p>
                     <p className="mt-1 whitespace-pre-wrap text-sm leading-6">{offer.notes}</p>
                   </div>
@@ -197,6 +197,7 @@ export default async function OffersPage() {
                 ) : offer.offer_status === "declined" ? null : (
                   <OfferResponseActions
                     dealId={offer.id}
+                    hasHighRiskContract={offerContracts.get(offer.id)?.risk_level === "high_risk"}
                     initialAmountCents={offer.counter_amount_cents ?? offer.amount_cents}
                     initialApprovalTerms={offer.counter_approval_terms ?? termsFromNotes(offer.notes, "approval")}
                     initialDueDate={offer.counter_due_date ?? offer.due_date ?? ""}
@@ -232,11 +233,11 @@ export default async function OffersPage() {
                   status={project.status}
                   type="project"
                 />
-                <div className="rounded-md border bg-white p-3">
+                <div className="rounded-md border bg-white p-3 dark:border-white/8 dark:bg-card">
                   <p className="text-xs font-semibold uppercase text-muted-foreground">Scope</p>
                   <p className="mt-1 text-sm leading-6">{project.scope}</p>
                 </div>
-                <div className="rounded-md border bg-white p-3">
+                <div className="rounded-md border bg-white p-3 dark:border-white/8 dark:bg-card">
                   <p className="text-xs font-semibold uppercase text-muted-foreground">Terms</p>
                   <p className="mt-1 whitespace-pre-wrap text-sm leading-6">{[project.usage_context, project.approval_terms, project.notes].filter(Boolean).join("\n") || "No extra terms added."}</p>
                 </div>
@@ -310,7 +311,7 @@ export default async function OffersPage() {
 
 function Metric({ label, value }: { label: string; value: string }) {
   return (
-    <div className="rounded-md border bg-white p-3">
+    <div className="rounded-md border bg-white p-3 dark:border-white/8 dark:bg-card">
       <p className="text-xs font-semibold uppercase text-muted-foreground">{label}</p>
       <p className="mt-1 text-sm font-semibold">{value}</p>
     </div>
@@ -319,9 +320,9 @@ function Metric({ label, value }: { label: string; value: string }) {
 
 function FundingHoldNotice() {
   return (
-    <div className="rounded-md border border-amber-200 bg-amber-50 p-3">
-      <p className="text-sm font-semibold text-amber-950">Wait for funding before final delivery</p>
-      <p className="mt-1 text-sm leading-6 text-amber-800">
+    <div className="rounded-md border border-amber-200 bg-amber-50 p-3 dark:border-amber-900/50 dark:bg-amber-950/30">
+      <p className="text-sm font-semibold text-amber-950 dark:text-amber-200">Wait for funding before final delivery</p>
+      <p className="mt-1 text-sm leading-6 text-amber-800 dark:text-amber-300">
         This offer is accepted, but the protected payment workflow is not funded yet. Use messages for clarification, but do not submit final work until funding is marked protected.
       </p>
     </div>
@@ -346,9 +347,9 @@ function CounterStatusCard({
   usageRights?: string | null;
 }) {
   return (
-    <div className="rounded-md border bg-blue-50/60 p-3">
+    <div className="rounded-md border bg-blue-50/60 p-3 dark:border-sky-900/50 dark:bg-sky-950/30">
       <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
-        <p className="text-xs font-semibold uppercase text-blue-800">Structured counter</p>
+        <p className="text-xs font-semibold uppercase text-blue-800 dark:text-sky-300">Structured counter</p>
         <Badge tone={status === "accepted" ? "green" : status === "declined" ? "red" : "amber"}>{status.replaceAll("_", " ")}</Badge>
       </div>
       <div className="grid gap-2 sm:grid-cols-2">
@@ -365,7 +366,7 @@ function CounterStatusCard({
 
 function MiniTerm({ label, value, wide = false }: { label: string; value: string; wide?: boolean }) {
   return (
-    <div className={`rounded-md bg-white px-3 py-2 ${wide ? "sm:col-span-2" : ""}`}>
+    <div className={`rounded-md border bg-white px-3 py-2 dark:border-white/8 dark:bg-card ${wide ? "sm:col-span-2" : ""}`}>
       <p className="text-[11px] font-semibold uppercase text-muted-foreground">{label}</p>
       <p className="mt-1 text-sm leading-5">{value}</p>
     </div>
@@ -396,18 +397,18 @@ function OfferDecisionPanel({
   ];
 
   return (
-    <div className="rounded-md border bg-emerald-50/60 p-3">
+    <div className="rounded-md border bg-emerald-50/60 p-3 dark:border-emerald-900/50 dark:bg-emerald-950/30">
       <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
         <div>
-          <p className="text-xs font-semibold uppercase text-emerald-800">Next best action</p>
-          <p className="mt-1 text-sm font-semibold text-emerald-950">{nextAction.title}</p>
-          <p className="mt-1 text-sm leading-6 text-emerald-900">{nextAction.copy}</p>
+          <p className="text-xs font-semibold uppercase text-emerald-800 dark:text-emerald-300">Next best action</p>
+          <p className="mt-1 text-sm font-semibold text-emerald-950 dark:text-emerald-100">{nextAction.title}</p>
+          <p className="mt-1 text-sm leading-6 text-emerald-900 dark:text-emerald-200">{nextAction.copy}</p>
         </div>
         <Badge tone={nextAction.tone}>{nextAction.label}</Badge>
       </div>
       <div className="mt-3 grid gap-2 sm:grid-cols-2">
         {checks.map((check) => (
-          <div className="flex items-center justify-between gap-3 rounded-md bg-white px-3 py-2 text-sm" key={check.label}>
+          <div className="flex items-center justify-between gap-3 rounded-md border bg-white px-3 py-2 text-sm dark:border-white/8 dark:bg-card" key={check.label}>
             <span>{check.label}</span>
             <Badge tone={check.done ? "green" : "amber"}>{check.done ? "ready" : "review"}</Badge>
           </div>
@@ -474,9 +475,9 @@ function termsFromNotes(notes: string | undefined, keyword: "approval" | "usage"
 function OfferContractNotice({ contract }: { contract?: ContractRow & { flags: ContractFlag[] } }) {
   if (!contract) {
     return (
-      <div className="rounded-md border bg-amber-50 p-3">
-        <p className="text-xs font-semibold uppercase text-amber-700">Contract protection</p>
-        <p className="mt-1 text-sm leading-6 text-amber-800">
+      <div className="rounded-md border border-amber-200 bg-amber-50 p-3 dark:border-amber-900/50 dark:bg-amber-950/30">
+        <p className="text-xs font-semibold uppercase text-amber-700 dark:text-amber-300">Contract protection</p>
+        <p className="mt-1 text-sm leading-6 text-amber-800 dark:text-amber-200">
           No contract scan is attached yet. Ask Agently/admin to review usage, exclusivity, whitelisting, revision, and payment terms before accepting.
         </p>
       </div>
@@ -484,7 +485,7 @@ function OfferContractNotice({ contract }: { contract?: ContractRow & { flags: C
   }
 
   return (
-    <div className="rounded-md border bg-white p-3">
+    <div className="rounded-md border bg-white p-3 dark:border-white/8 dark:bg-card">
       <div className="mb-2 flex items-center justify-between gap-3">
         <p className="text-xs font-semibold uppercase text-muted-foreground">Contract protection</p>
         <RiskBadge risk={contract.risk_level} />

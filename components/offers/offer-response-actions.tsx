@@ -12,6 +12,7 @@ type OfferResponseActionsProps = {
   dealId?: string;
   projectId?: string;
   kind?: "deal" | "project";
+  hasHighRiskContract?: boolean;
   initialAmountCents?: number | null;
   initialScope?: string | null;
   initialDueDate?: string | null;
@@ -23,6 +24,7 @@ export function OfferResponseActions({
   dealId,
   projectId,
   kind = "deal",
+  hasHighRiskContract = false,
   initialAmountCents,
   initialScope,
   initialDueDate,
@@ -37,56 +39,80 @@ export function OfferResponseActions({
   const [counterUsageRights, setCounterUsageRights] = useState(initialUsageRights ?? "");
   const [counterApprovalTerms, setCounterApprovalTerms] = useState(initialApprovalTerms ?? "");
   const [acknowledgeHighRisk, setAcknowledgeHighRisk] = useState(false);
-  const [status, setStatus] = useState<"idle" | "saving" | "error">("idle");
+  const [status, setStatus] = useState<"idle" | "saving" | "success" | "error">("idle");
   const [message, setMessage] = useState("");
+  const [completedStatus, setCompletedStatus] = useState<ResponseStatus | null>(null);
 
   async function respond(nextStatus: ResponseStatus) {
-    setStatus("saving");
-    setMessage("");
-    const result = await fetch(kind === "project" ? "/api/freelancer-projects/respond" : "/api/offers/respond", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        ...(kind === "project" ? { project_id: projectId } : { deal_id: dealId }),
-        status: nextStatus,
-        response,
-        acknowledge_high_risk: acknowledgeHighRisk,
-        counter: nextStatus === "changes_requested" ? {
-          amount_cents: counterAmountInr ? Math.round(Number(counterAmountInr) * 100) : null,
-          scope: counterScope,
-          due_date: counterDueDate || null,
-          usage_rights: counterUsageRights,
-          approval_terms: counterApprovalTerms
-        } : null
-      })
-    });
-
-    if (!result.ok) {
-      const body = await result.json().catch(() => ({}));
+    if (nextStatus === "accepted" && kind === "deal" && hasHighRiskContract && !acknowledgeHighRisk) {
       setStatus("error");
-      setMessage(body.error ?? "Could not update offer.");
+      setMessage("This offer has a high-risk contract attached. Tick the contract review checkbox above before accepting.");
       return;
     }
 
-    setStatus("idle");
-    router.refresh();
+    setStatus("saving");
+    setMessage("");
+
+    try {
+      const result = await fetch(kind === "project" ? "/api/freelancer-projects/respond" : "/api/offers/respond", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          ...(kind === "project" ? { project_id: projectId } : { deal_id: dealId }),
+          status: nextStatus,
+          response,
+          acknowledge_high_risk: acknowledgeHighRisk,
+          counter: nextStatus === "changes_requested" ? {
+            amount_cents: counterAmountInr ? Math.round(Number(counterAmountInr) * 100) : null,
+            scope: counterScope,
+            due_date: counterDueDate || null,
+            usage_rights: counterUsageRights,
+            approval_terms: counterApprovalTerms
+          } : null
+        })
+      });
+
+      if (!result.ok) {
+        const body = await result.json().catch(() => ({}));
+        setStatus("error");
+        setMessage(body.error ?? "Could not update offer.");
+        return;
+      }
+
+      setStatus("success");
+      setCompletedStatus(nextStatus);
+      setMessage(nextStatus === "accepted" ? "Offer accepted." : nextStatus === "declined" ? "Offer declined." : "Counter sent.");
+      router.refresh();
+    } catch {
+      setStatus("error");
+      setMessage("Network error. Please check your connection and try again.");
+    }
+  }
+
+  if (status === "success" && completedStatus) {
+    const tone = completedStatus === "accepted" ? "emerald" : completedStatus === "declined" ? "red" : "amber";
+    return (
+      <div className={`rounded-md border p-3 text-sm font-medium ${tone === "emerald" ? "border-emerald-200 bg-emerald-50 text-emerald-900 dark:border-emerald-900/50 dark:bg-emerald-950/30 dark:text-emerald-200" : tone === "red" ? "border-red-200 bg-red-50 text-red-900 dark:border-red-900/50 dark:bg-red-950/30 dark:text-red-200" : "border-amber-200 bg-amber-50 text-amber-900 dark:border-amber-900/50 dark:bg-amber-950/30 dark:text-amber-200"}`}>
+        {message}
+      </div>
+    );
   }
 
   return (
     <div className="space-y-3">
       <Textarea value={response} onChange={(event) => setResponse(event.target.value)} placeholder="Short note to the brand, e.g. what you can accept or why you need changes" />
-      {kind === "deal" ? (
-        <label className="flex items-start gap-2 rounded-md border bg-amber-50 p-3 text-sm leading-5 text-amber-900">
+      {kind === "deal" && hasHighRiskContract ? (
+        <label className="flex items-start gap-2 rounded-md border border-amber-200 bg-amber-50 p-3 text-sm leading-5 text-amber-900 dark:border-amber-900/50 dark:bg-amber-950/30 dark:text-amber-200">
           <input
             checked={acknowledgeHighRisk}
             className="mt-1"
             onChange={(event) => setAcknowledgeHighRisk(event.target.checked)}
             type="checkbox"
           />
-          <span>I have reviewed the contract risk warning if one exists. High-risk contracts should be negotiated before accepting.</span>
+          <span>I have reviewed the high-risk contract warning. High-risk contracts should be negotiated before accepting.</span>
         </label>
       ) : null}
-      <div className="scroll-mt-24 rounded-md border bg-white p-3" id={`counter-${dealId ?? projectId ?? "new"}`}>
+      <div className="scroll-mt-24 rounded-md border bg-white p-3 dark:border-white/8 dark:bg-card" id={`counter-${dealId ?? projectId ?? "new"}`}>
         <div className="mb-3">
           <p className="text-sm font-semibold">Structured counter</p>
           <p className="mt-1 text-xs leading-5 text-muted-foreground">Use this when requesting changes so the brand receives clear commercial terms, not just a loose chat message.</p>
@@ -102,7 +128,7 @@ export function OfferResponseActions({
       <div className="flex flex-wrap gap-2">
         <Button disabled={status === "saving"} onClick={() => respond("accepted")} type="button">
           <Check className="h-4 w-4" />
-          Accept
+          {status === "saving" ? "Saving..." : "Accept"}
         </Button>
         <Button disabled={status === "saving"} onClick={() => respond("changes_requested")} type="button" variant="secondary">
           <MessageSquare className="h-4 w-4" />
@@ -113,7 +139,7 @@ export function OfferResponseActions({
           Decline
         </Button>
       </div>
-      {message ? <p className={`text-sm ${status === "error" ? "text-red-600" : "text-emerald-700"}`}>{message}</p> : null}
+      {message ? <p className={`text-sm ${status === "error" ? "text-red-600 dark:text-red-400" : "text-emerald-700 dark:text-emerald-400"}`}>{message}</p> : null}
     </div>
   );
 }
