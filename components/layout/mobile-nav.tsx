@@ -8,7 +8,7 @@ import { Menu, X } from "lucide-react";
 type NavItem = {
   href: string;
   label: string;
-  icon: React.ElementType;
+  icon: React.ReactNode;
   badge?: number | null;
 };
 
@@ -82,7 +82,6 @@ export function MobileNav({
 
             <nav className="flex-1 overflow-y-auto px-3 py-3">
               {nav.map((item) => {
-                const Icon = item.icon;
                 const isMessages = item.href === "/messages";
                 const isNotifications = item.href === "/notifications" || item.href === "/activity";
                 const msgBadge = isMessages && unreadMessages ? unreadMessages : null;
@@ -94,7 +93,7 @@ export function MobileNav({
                     href={item.href}
                     className="flex items-center gap-3 rounded-md px-3 py-2.5 text-sm font-medium text-muted-foreground transition hover:bg-muted hover:text-foreground dark:hover:bg-white/6 dark:hover:text-foreground"
                   >
-                    <Icon className="h-4 w-4 shrink-0" />
+                    <span className="shrink-0">{item.icon}</span>
                     <span className="flex flex-1 items-center justify-between gap-2">
                       {item.label}
                       {badge ? (

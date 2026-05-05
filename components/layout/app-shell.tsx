@@ -135,7 +135,10 @@ export async function AppShell({ children }: { children: React.ReactNode }) {
       <main className="px-4 py-6 sm:px-6 lg:px-8">
         <div className="mb-4 flex items-center justify-between gap-2 lg:justify-end">
           <MobileNav
-            nav={nav}
+            nav={nav.map((item) => {
+              const Icon = item.icon;
+              return { href: item.href, label: item.label, icon: <Icon className="h-4 w-4" /> };
+            })}
             userName={user?.full_name}
             userEmail={user?.email}
             userRole={user?.role}
