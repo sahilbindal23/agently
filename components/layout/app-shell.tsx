@@ -155,7 +155,7 @@ export async function AppShell({ children }: { children: React.ReactNode }) {
             unreadNotifications={effectiveUnreadNotifications}
             pendingOffers={pendingOffers}
           />
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 self-start">
             <ThemeToggle />
             {user && admin ? <NotificationBell notifications={notifications} unreadCount={effectiveUnreadNotifications} /> : null}
           </div>

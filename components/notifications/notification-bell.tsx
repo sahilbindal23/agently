@@ -24,7 +24,7 @@ const toneBySeverity = {
 
 export function NotificationBell({ notifications, unreadCount }: { notifications: Notification[]; unreadCount: number }) {
   return (
-    <div className="mb-3 flex justify-end">
+    <div className="flex items-center justify-end">
       <details className="group relative">
         <summary className="flex h-10 cursor-pointer list-none items-center gap-2 rounded-full border bg-white px-3 text-sm font-semibold shadow-sm transition hover:bg-muted dark:border-white/10 dark:bg-card dark:hover:bg-muted">
             <span className="relative inline-flex">

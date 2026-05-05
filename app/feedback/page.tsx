@@ -1,4 +1,4 @@
-import { HelpCircle, IndianRupee, LockKeyhole, MessageSquareText, ShieldCheck, Sparkles, Users } from "lucide-react";
+import { BriefcaseBusiness, FileText, HelpCircle, IndianRupee, LockKeyhole, MessageSquareText, ShieldCheck, Users } from "lucide-react";
 import { AppShell } from "@/components/layout/app-shell";
 import { PageHeader } from "@/components/layout/page-header";
 import { Badge } from "@/components/ui/badge";
@@ -7,39 +7,44 @@ import { getCurrentUser } from "@/lib/auth/session";
 
 const faqs = [
   {
-    icon: <Sparkles className="h-5 w-5" />,
-    question: "What is Agently?",
-    answer: "Agently is a talent agency operating system for creators, freelancers, and brands. It helps talent get discovered, receive offers, review terms, negotiate better, submit work, and track protected payout workflows."
+    icon: <HelpCircle className="h-5 w-5" />,
+    question: "What can I use Agently for?",
+    answer: "Agently helps brands find creators and freelancers, send offers, manage campaign work, review contracts, track deliverables, and keep payments organized in one workflow."
   },
   {
     icon: <Users className="h-5 w-5" />,
-    question: "How is this different from an influencer marketplace?",
-    answer: "A marketplace mostly lists profiles. Agently focuses on representation-style workflow: campaign matching, offer review, contract risk, payment state, deliverables, disputes, and engine-driven recommendations."
+    question: "What is the difference between a creator and a freelancer?",
+    answer: "A creator posts content on their own social channels and brings audience reach. A freelancer creates the asset or service for the brand, such as editing, shooting, design, podcast production, or campaign production."
   },
   {
-    icon: <HelpCircle className="h-5 w-5" />,
-    question: "What is the difference between a creator and a freelancer?",
-    answer: "Creators post to their own audience and bring distribution. Freelancers create the asset or service, such as editing, shooting, design, podcast production, or campaign production, without needing to publish it on their own socials."
+    icon: <BriefcaseBusiness className="h-5 w-5" />,
+    question: "How do brands send work through Agently?",
+    answer: "Brands create campaign briefs, review recommended creators or freelancers, shortlist talent, and send offers or project requests with scope, amount, due date, usage terms, and approval expectations."
   },
   {
     icon: <IndianRupee className="h-5 w-5" />,
-    question: "How does Agently estimate rates?",
-    answer: "The current engine uses India-first rules, profile metrics, deliverable scope, usage terms, and admin-managed rate benchmarks. Over time, closed deal outcomes and payment/delivery data should make the estimates more accurate."
+    question: "How should I use the rate estimate tools?",
+    answer: "Use the rate tools as a starting point before accepting or countering an offer. They help you understand whether the amount fits the platform, deliverables, usage rights, revisions, timeline, and audience or service value."
   },
   {
     icon: <ShieldCheck className="h-5 w-5" />,
     question: "What does protected payout mean?",
-    answer: "It means the workflow tracks whether a brand-funded payment is in place before final delivery, whether deliverables are submitted and approved, and whether payout is ready to release. This prototype does not present itself as regulated escrow."
+    answer: "Protected payout is Agently's workflow for making sure creators and freelancers are not left unpaid after completing approved work. The goal is for brands to fund the work first, talent to submit deliverables, and payout to be released once the agreed work is approved."
   },
   {
     icon: <LockKeyhole className="h-5 w-5" />,
-    question: "Why does Agently scan contracts?",
-    answer: "Contracts can contain risky terms around payment delays, whitelisting, unpaid usage, exclusivity, revisions, cancellation, and licensing duration. The scan helps talent spot terms they should review or push back on."
+    question: "What if a brand backs out after I submit deliverables?",
+    answer: "If the work was accepted, funded, and submitted through Agently, the platform can track the agreement, deliverable, approval status, and payment state in one place. If something goes wrong, use the dispute/report issue flow so the problem can be reviewed with the campaign context attached."
+  },
+  {
+    icon: <FileText className="h-5 w-5" />,
+    question: "Why should I scan a contract before accepting?",
+    answer: "Contract scans help spot terms that can hurt creators and freelancers, such as delayed payment, unlimited usage, broad exclusivity, too many revisions, unclear cancellation terms, whitelisting, or unpaid licensing rights."
   },
   {
     icon: <MessageSquareText className="h-5 w-5" />,
-    question: "Can brands and talent message each other?",
-    answer: "Yes. Messages can be tied to discovery, campaigns, offers, and projects so important context stays attached to the workflow instead of getting lost across chats."
+    question: "Can I ask questions before accepting an offer?",
+    answer: "Yes. Use messages to clarify scope, usage, payment timing, revisions, deadline, or approval terms before accepting. Keeping the conversation inside Agently helps preserve context for the workflow."
   }
 ];
 
@@ -51,19 +56,19 @@ export default async function FeedbackPage() {
       <PageHeader
         eyebrow="Product guide"
         title="FAQ"
-        description="Quick answers to help brands, creators, and freelancers understand how Agently works."
+        description="Answers to common questions from brands, creators, and freelancers using Agently."
       />
 
       <section className="grid gap-5 xl:grid-cols-[0.8fr_1.2fr]">
         <Card>
           <CardHeader>
-            <CardTitle>How To Think About Agently</CardTitle>
+            <CardTitle>Quick Start</CardTitle>
             <Badge tone="blue">{user?.role ?? "guest"}</Badge>
           </CardHeader>
           <div className="space-y-3">
-            <GuidePoint title="Agency OS, not listing site" copy="The product is designed around the full deal lifecycle, not only profile browsing." />
-            <GuidePoint title="India-first matching" copy="The engine starts with Bangalore and India relevance, then can expand globally later." />
-            <GuidePoint title="Workflow data becomes the moat" copy="Shortlists, offers, counters, contract flags, delivery approvals, payments, and disputes should improve future recommendations." />
+            <GuidePoint title="Brands" copy="Create a campaign brief, review recommended talent, shortlist the right people, and send a clear offer." />
+            <GuidePoint title="Creators" copy="Review incoming offers, scan terms, negotiate if needed, wait for funding, then submit deliverables." />
+            <GuidePoint title="Freelancers" copy="Show your services and portfolio, receive project requests, clarify scope, and manage protected payout workflows." />
           </div>
         </Card>
 
