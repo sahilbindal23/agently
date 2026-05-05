@@ -22,7 +22,7 @@ export function RecommendationCard({
   const reviewSignals = scoreLows(item.score_breakdown).slice(0, 2);
 
   return (
-    <div className="rounded-md border bg-white p-4">
+    <div className="rounded-md border bg-white p-4 dark:border-white/8 dark:bg-card">
       <div className="mb-2 flex flex-wrap items-start justify-between gap-3">
         <div className="flex min-w-0 gap-3">
           <RecommendationImage src={item.image_url ?? ""} label={item.name} />
@@ -36,7 +36,7 @@ export function RecommendationCard({
           {type === "creator" ? <Badge tone={item.trust_source === "api_synced" ? "green" : item.trust_source === "verified_profile" ? "blue" : "neutral"}>{trustLabel(item.trust_source)}</Badge> : null}
         </div>
       </div>
-      <div className="rounded-md border bg-slate-50 p-3">
+      <div className="rounded-md border bg-slate-50 p-3 dark:border-white/8 dark:bg-white/4">
         <p className="text-xs font-semibold uppercase text-muted-foreground">Fit explanation</p>
         <p className="mt-1 text-sm leading-6">{item.reason}</p>
       </div>
@@ -47,7 +47,7 @@ export function RecommendationCard({
         <DecisionBlock label="Best use" value={item.best_use_case} />
       </div>
 
-      <div className="mt-3 rounded-md border bg-white p-3">
+      <div className="mt-3 rounded-md border bg-white p-3 dark:border-white/8 dark:bg-card">
         <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
           <p className="text-xs font-semibold uppercase text-muted-foreground">Decision signals</p>
           <Badge tone="blue">{scoreLabel(item.score)}</Badge>
@@ -59,11 +59,11 @@ export function RecommendationCard({
       </div>
 
       <div className="mt-3 grid gap-3 lg:grid-cols-[1.1fr_0.9fr]">
-        <div className="rounded-md border bg-sky-50/60 p-3">
-          <p className="text-xs font-semibold uppercase text-sky-800">Expected outcome</p>
-          <p className="mt-1 text-sm leading-6 text-sky-950">{item.expected_outcome}</p>
+        <div className="rounded-md border bg-sky-50/60 p-3 dark:border-sky-900/50 dark:bg-sky-950/30">
+          <p className="text-xs font-semibold uppercase text-sky-800 dark:text-sky-400">Expected outcome</p>
+          <p className="mt-1 text-sm leading-6 text-sky-950 dark:text-sky-200">{item.expected_outcome}</p>
         </div>
-        <div className="rounded-md border bg-white p-3">
+        <div className="rounded-md border bg-white p-3 dark:border-white/8 dark:bg-card">
           <p className="text-xs font-semibold uppercase text-muted-foreground">{type === "creator" ? "Projected efficiency" : "Production value"}</p>
           <div className="mt-2 grid gap-2">
             <MiniMetric label={type === "creator" ? "Reach" : "Unit cost"} value={type === "creator" ? formatNumber(item.roi_estimate.expected_reach) : formatCurrency(item.roi_estimate.estimated_cpe_cents, "inr")} />
@@ -86,8 +86,8 @@ export function RecommendationCard({
       </div>
 
       {item.marketplace_signals?.length ? (
-        <div className="mt-3 rounded-md border bg-emerald-50/70 p-3">
-          <p className="text-xs font-semibold uppercase text-emerald-800">Marketplace behavior</p>
+        <div className="mt-3 rounded-md border bg-emerald-50/70 p-3 dark:border-emerald-900/50 dark:bg-emerald-950/30">
+          <p className="text-xs font-semibold uppercase text-emerald-800 dark:text-emerald-400">Marketplace behavior</p>
           <div className="mt-2 flex flex-wrap gap-2">
             {item.marketplace_signals.map((signal) => <Badge key={signal} tone="green">{signal}</Badge>)}
           </div>
@@ -119,7 +119,7 @@ function RecommendationImage({ src, label }: { src: string; label: string }) {
 function DecisionBlock({ label, value, tone = "blue" }: { label: string; value: string; tone?: "blue" | "green" | "amber" | "red" }) {
   const compact = value.length < 28;
   return (
-    <div className="rounded-md border bg-white p-3">
+    <div className="rounded-md border bg-white p-3 dark:border-white/8 dark:bg-card">
       <p className="text-[11px] font-semibold uppercase text-muted-foreground">{label}</p>
       <div className="mt-2">
         {compact ? <Badge tone={tone}>{value}</Badge> : <p className="text-sm leading-5">{value}</p>}

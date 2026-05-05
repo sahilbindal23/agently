@@ -64,7 +64,7 @@ export default async function CampaignDetailPage({
         eyebrow="Campaign recommendations"
         title={campaign.title}
         description={campaign.campaign_goal || "Review recommended creators and freelancers for this campaign brief."}
-        action={<Link className="inline-flex h-10 items-center gap-2 rounded-md border bg-white px-4 text-sm font-medium" href="/campaigns"><ArrowLeft className="h-4 w-4" /> Campaigns</Link>}
+        action={<Link className="inline-flex h-10 items-center gap-2 rounded-md border bg-white px-4 text-sm font-medium dark:border-white/8 dark:bg-card" href="/campaigns"><ArrowLeft className="h-4 w-4" /> Campaigns</Link>}
       />
 
       <section className="grid gap-4 md:grid-cols-4">
@@ -143,7 +143,7 @@ export default async function CampaignDetailPage({
 function FilterLink({ active, children, href }: { active: boolean; children: React.ReactNode; href: string }) {
   return (
     <Link
-      className={`inline-flex h-9 items-center rounded-md border px-3 text-sm font-medium transition ${active ? "border-primary bg-primary text-primary-foreground" : "bg-white hover:bg-muted"}`}
+      className={`inline-flex h-9 items-center rounded-md border px-3 text-sm font-medium transition ${active ? "border-primary bg-primary text-primary-foreground" : "bg-white hover:bg-muted dark:bg-card dark:border-white/8 dark:hover:bg-muted"}`}
       href={href}
     >
       {children}
@@ -170,7 +170,7 @@ function ShortlistGroup({
   type: "creator" | "freelancer";
 }) {
   return (
-    <div className="rounded-md border bg-white p-3">
+    <div className="rounded-md border bg-white p-3 dark:border-white/8 dark:bg-card">
       <p className="font-semibold">{title}</p>
       <div className="mt-3 space-y-2">
         {items.length ? items.map((item) => {
@@ -242,7 +242,7 @@ function PerformanceProjectionCard({ projection }: { projection: CampaignPerform
         <BriefItem label="Cost per engagement" value={projection.projectedCostPerEngagementCents ? formatCurrency(projection.projectedCostPerEngagementCents, "inr") : "Needs engagement data"} />
       </div>
       <div className="mt-4 grid gap-4 xl:grid-cols-[0.9fr_1.1fr]">
-        <div className="rounded-md border bg-white p-4">
+        <div className="rounded-md border bg-white p-4 dark:border-white/8 dark:bg-card">
           <p className="text-xs font-semibold uppercase text-muted-foreground">Production contribution</p>
           <p className="mt-2 text-sm leading-6">{projection.productionContribution}</p>
           <p className="mt-2 text-xs text-muted-foreground">
@@ -260,7 +260,7 @@ function PerformanceProjectionCard({ projection }: { projection: CampaignPerform
 
 function SignalList({ items, title, tone }: { items: string[]; title: string; tone: "green" | "amber" }) {
   return (
-    <div className="rounded-md border bg-white p-4">
+    <div className="rounded-md border bg-white p-4 dark:border-white/8 dark:bg-card">
       <div className="mb-3 flex items-center justify-between gap-3">
         <p className="text-xs font-semibold uppercase text-muted-foreground">{title}</p>
         <Badge tone={tone}>{items.length}</Badge>
@@ -285,7 +285,7 @@ function Metric({ label, value }: { label: string; value: string }) {
 
 function BriefItem({ label, value }: { label: string; value: string }) {
   return (
-    <div className="rounded-md border bg-white p-3">
+    <div className="rounded-md border bg-white p-3 dark:border-white/8 dark:bg-card">
       <p className="text-xs font-semibold uppercase text-muted-foreground">{label}</p>
       <p className="mt-1 text-sm leading-5">{value}</p>
     </div>

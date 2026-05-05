@@ -21,7 +21,7 @@ export default async function OfferComposerPage({ params }: { params: Promise<{ 
         eyebrow="Offer composer"
         title={`Offer for ${data.creator.display_name}`}
         description="Confirm the commercial terms before this becomes a managed deal. This keeps campaign matching separate from real offers."
-        action={<Link className="inline-flex h-10 items-center gap-2 rounded-md border bg-white px-4 text-sm font-medium" href={`/campaigns/${id}`}><ArrowLeft className="h-4 w-4" /> Back to campaign</Link>}
+        action={<Link className="inline-flex h-10 items-center gap-2 rounded-md border bg-white px-4 text-sm font-medium dark:border-white/8 dark:bg-card" href={`/campaigns/${id}`}><ArrowLeft className="h-4 w-4" /> Back to campaign</Link>}
       />
 
       <section className="grid gap-5 xl:grid-cols-[0.8fr_1.2fr]">
@@ -59,7 +59,7 @@ export default async function OfferComposerPage({ params }: { params: Promise<{ 
 
 function Info({ label, value }: { label: string; value: string }) {
   return (
-    <div className="rounded-md border bg-white p-3">
+    <div className="rounded-md border bg-white p-3 dark:border-white/8 dark:bg-card">
       <p className="text-xs font-semibold uppercase text-muted-foreground">{label}</p>
       <p className="mt-1">{value}</p>
     </div>
