@@ -78,14 +78,16 @@ const freelancerNav = [
 export async function AppShell({ children }: { children: React.ReactNode }) {
   const user = await getCurrentUser();
   const admin = createAdminClient();
-  const [nudges, unreadMessages, notifications, unreadNotifications] = user && admin
+  const nudges = user && admin ? await ensureNotificationsForUser(admin, user) : [];
+  const [unreadMessages, notifications, unreadNotifications, pendingOffers] = user && admin
     ? await Promise.all([
-      ensureNotificationsForUser(admin, user),
       getUnreadMessageCount(user.id),
       getUserNotifications(admin, user, 6),
-      getUnreadNotificationCount(admin, user.id)
+      getUnreadNotificationCount(admin, user.id),
+      getPendingOfferCount(admin, user.id, user.role)
     ])
-    : [[], 0, [], 0];
+    : [0, [], 0, 0];
+  const effectiveUnreadNotifications = unreadNotifications || nudges.length;
   const nav = user?.role === "creator" ? creatorNav : user?.role === "brand" ? brandNav : user?.role === "freelancer" ? freelancerNav : adminNav;
 
   return (
@@ -108,10 +110,13 @@ export async function AppShell({ children }: { children: React.ReactNode }) {
                   {item.href === "/messages" && unreadMessages > 0 ? (
                     <span className="rounded-full bg-amber-100 px-2 py-0.5 text-xs font-semibold text-amber-800 dark:bg-amber-950/60 dark:text-amber-400">{unreadMessages}</span>
                   ) : null}
-                  {(item.href === "/activity" || item.href === "/notifications") && (unreadNotifications > 0 || nudges.length > 0) ? (
+                  {(item.href === "/activity" || item.href === "/notifications") && effectiveUnreadNotifications > 0 ? (
                     <span className={`rounded-full px-2 py-0.5 text-xs font-semibold ${unreadNotifications > 0 ? "bg-red-100 text-red-800 dark:bg-red-950/60 dark:text-red-400" : "bg-blue-100 text-blue-800 dark:bg-sky-950/60 dark:text-sky-400"}`}>
-                      {unreadNotifications || nudges.length}
+                      {effectiveUnreadNotifications}
                     </span>
+                  ) : null}
+                  {item.href === "/offers" && pendingOffers > 0 ? (
+                    <span className="rounded-full bg-red-100 px-2 py-0.5 text-xs font-semibold text-red-800 dark:bg-red-950/60 dark:text-red-400">{pendingOffers}</span>
                   ) : null}
                 </span>
               </Link>
@@ -143,11 +148,12 @@ export async function AppShell({ children }: { children: React.ReactNode }) {
             userEmail={user?.email}
             userRole={user?.role}
             unreadMessages={unreadMessages}
-            unreadNotifications={unreadNotifications}
+            unreadNotifications={effectiveUnreadNotifications}
+            pendingOffers={pendingOffers}
           />
           <div className="flex items-center gap-2">
             <ThemeToggle />
-            {user && admin ? <NotificationBell notifications={notifications} unreadCount={unreadNotifications} /> : null}
+            {user && admin ? <NotificationBell notifications={notifications} unreadCount={effectiveUnreadNotifications} /> : null}
           </div>
         </div>
         <div className="mb-4 space-y-2">
@@ -164,6 +170,23 @@ export async function AppShell({ children }: { children: React.ReactNode }) {
       {user ? <FirstVisitPopup /> : null}
     </div>
   );
+}
+
+async function getPendingOfferCount(admin: NonNullable<ReturnType<typeof createAdminClient>> | null, profileId: string, role?: string) {
+  if (!admin) return 0;
+  if (role === "creator") {
+    const { data: creator } = await admin.from("creators").select("id").eq("profile_id", profileId).maybeSingle();
+    if (!creator) return 0;
+    const { count } = await admin.from("deals").select("id", { count: "exact", head: true }).eq("creator_id", creator.id).eq("offer_status", "submitted");
+    return count ?? 0;
+  }
+  if (role === "freelancer") {
+    const { data: freelancer } = await admin.from("freelancers").select("id").eq("profile_id", profileId).maybeSingle();
+    if (!freelancer) return 0;
+    const { count } = await admin.from("freelancer_projects").select("id", { count: "exact", head: true }).eq("freelancer_id", freelancer.id).eq("status", "submitted");
+    return count ?? 0;
+  }
+  return 0;
 }
 
 async function getUnreadMessageCount(profileId: string) {

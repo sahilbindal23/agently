@@ -18,7 +18,8 @@ export function MobileNav({
   userEmail,
   userRole,
   unreadMessages,
-  unreadNotifications
+  unreadNotifications,
+  pendingOffers
 }: {
   nav: NavItem[];
   userName?: string;
@@ -26,6 +27,7 @@ export function MobileNav({
   userRole?: string;
   unreadMessages?: number;
   unreadNotifications?: number;
+  pendingOffers?: number;
 }) {
   const [open, setOpen] = useState(false);
   const drawerRef = useRef<HTMLDivElement>(null);

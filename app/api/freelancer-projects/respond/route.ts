@@ -11,7 +11,7 @@ const counterSchema = z.object({
   due_date: z.string().trim().max(50).optional(),
   usage_rights: z.string().trim().max(500).optional(),
   approval_terms: z.string().trim().max(500).optional()
-}).optional();
+}).nullish();
 
 const schema = z.object({
   project_id: z.string().trim().min(1, "Project ID is required."),
