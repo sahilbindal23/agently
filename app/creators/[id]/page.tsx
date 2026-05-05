@@ -6,6 +6,7 @@ import { AppShell } from "@/components/layout/app-shell";
 import { PageHeader } from "@/components/layout/page-header";
 import { MessageRecipientButton } from "@/components/messages/message-recipient-button";
 import { AgentlySignalCard } from "@/components/profile/agently-signal-card";
+import { SocialTrustBadge } from "@/components/social/social-trust-badge";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, Td, Th } from "@/components/ui/table";
@@ -40,6 +41,7 @@ export default async function CreatorDetailPage({ params }: { params: Promise<{ 
             <div className="flex flex-wrap gap-2">
               <Badge tone="green">{bundle.creator.primary_niche}</Badge>
               <VerificationBadge status={bundle.creator.verification_status} tier={bundle.creator.verification_tier} />
+              <SocialTrustBadge source={primaryPlatform?.metric_source} compact />
             </div>
           </CardHeader>
           {bundle.creator.image_url ? (
@@ -71,7 +73,7 @@ export default async function CreatorDetailPage({ params }: { params: Promise<{ 
           </div>
           <div className="overflow-x-auto">
             <Table>
-              <thead><tr><Th>Platform</Th><Th>Handle</Th><Th>Followers</Th><Th>Avg views</Th><Th>Engagement</Th></tr></thead>
+              <thead><tr><Th>Platform</Th><Th>Handle</Th><Th>Followers</Th><Th>Avg views</Th><Th>Engagement</Th><Th>Metric trust</Th></tr></thead>
               <tbody>
                 {bundle.platforms.map((platform) => (
                   <tr key={platform.id}>
@@ -80,6 +82,7 @@ export default async function CreatorDetailPage({ params }: { params: Promise<{ 
                     <Td>{formatNumber(platform.followers)}</Td>
                     <Td>{formatNumber(platform.avg_views)}</Td>
                     <Td>{formatPercent(platform.engagement_rate)}</Td>
+                    <Td><SocialTrustBadge source={platform.metric_source} compact /></Td>
                   </tr>
                 ))}
               </tbody>

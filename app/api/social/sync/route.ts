@@ -32,12 +32,16 @@ export async function POST(request: Request) {
 
   const matchingPlatform = (platforms ?? []).find((platform) => providerMatchesPlatform(String(account.provider), String(platform.platform)));
   const oauthSnapshot = await buildOAuthSnapshot(account);
-  const snapshot = oauthSnapshot ?? buildMockSocialSnapshot({
+  const snapshot = oauthSnapshot ?? (isDemoProfile(authData.user.email ?? "") ? buildMockSocialSnapshot({
     provider: account.provider,
     handle: String(account.handle ?? ""),
     creator,
     platform: matchingPlatform
-  });
+  }) : buildSelfReportedSnapshot({
+    provider: account.provider,
+    handle: String(account.handle ?? ""),
+    creator
+  }));
 
   const { data: inserted, error } = await admin
     .from("social_metric_snapshots")
@@ -59,6 +63,40 @@ export async function POST(request: Request) {
   ]);
 
   return NextResponse.json({ data: inserted, summary: latestSignals });
+}
+
+function isDemoProfile(email: string) {
+  return email.endsWith("@agently.demo");
+}
+
+function buildSelfReportedSnapshot({
+  provider,
+  handle,
+  creator
+}: {
+  provider: string;
+  handle: string;
+  creator: Record<string, unknown>;
+}) {
+  const niche = String(creator.primary_niche ?? "creator");
+  return {
+    followers: 0,
+    avg_views_30d: 0,
+    reach_30d: 0,
+    impressions_30d: 0,
+    engagement_rate_30d: 0,
+    india_audience_percent: 0,
+    bangalore_audience_percent: 0,
+    top_cities: [],
+    audience_age_range: String(creator.audience_age_range ?? "") || null,
+    content_category_signals: [niche, "manual handle connected"],
+    raw_metrics: {
+      provider,
+      handle,
+      note: "Manual connect does not verify audience metrics. Use OAuth/API sync or admin review for score-driving metrics."
+    },
+    source: "self_reported_pending_review"
+  };
 }
 
 function providerMatchesPlatform(provider: string, platform: string) {

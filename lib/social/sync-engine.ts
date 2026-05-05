@@ -21,7 +21,7 @@ export async function getCreatorLatestSignals(admin: AdminClient, creatorId: str
     .eq("creator_id", creatorId)
     .order("synced_at", { ascending: false });
 
-  const snapshots = data ?? [];
+  const snapshots = (data ?? []).filter((item) => isTrustedSnapshotSource(String(item.source ?? "")));
   const totalFollowers = snapshots.reduce((sum, item) => sum + Number(item.followers ?? 0), 0);
   const totalViews = snapshots.reduce((sum, item) => sum + Number(item.avg_views_30d ?? 0), 0);
   const avgEngagement = snapshots.length
@@ -40,4 +40,11 @@ export async function getCreatorLatestSignals(admin: AdminClient, creatorId: str
     valuationScore: Math.max(35, Math.min(96, Math.round(35 + Math.log10(Math.max(10, totalFollowers)) * 8 + Math.log10(Math.max(10, totalViews)) * 6 + bangaloreAudience * 0.14))),
     highConfidence: snapshots.length >= 1 && totalViews > 0
   };
+}
+
+function isTrustedSnapshotSource(source: string) {
+  if (!source) return false;
+  if (source === "mock_api") return true;
+  if (source.includes("api") && !source.includes("no_creator") && !source.includes("permission") && !source.includes("setup_required")) return true;
+  return false;
 }

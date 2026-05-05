@@ -200,7 +200,7 @@ function mergeSyncedPlatforms(
       engagement_rate: Number(snapshot.engagement_rate_30d ?? 0),
       posting_frequency: existingIndex >= 0 ? merged[existingIndex].posting_frequency : "Synced from API",
       metric_source: String(snapshot.source ?? "provider_api"),
-      data_confidence: String(snapshot.source ?? "").includes("mock") ? 78 : 92,
+      data_confidence: dataConfidenceForSource(String(snapshot.source ?? "")),
       india_audience_percent: Number(snapshot.india_audience_percent ?? 0),
       bangalore_audience_percent: Number(snapshot.bangalore_audience_percent ?? 0),
       synced_at: snapshot.synced_at ? String(snapshot.synced_at) : undefined
@@ -211,6 +211,13 @@ function mergeSyncedPlatforms(
   });
 
   return merged;
+}
+
+function dataConfidenceForSource(source: string) {
+  if (source.includes("self_reported") || source.includes("no_creator") || source.includes("permission") || source.includes("setup_required")) return 38;
+  if (source.includes("mock")) return 78;
+  if (source.includes("api")) return 92;
+  return 46;
 }
 
 function providerLabel(provider: string) {

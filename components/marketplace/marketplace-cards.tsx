@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { MessageRecipientButton } from "@/components/messages/message-recipient-button";
+import { SocialTrustBadge } from "@/components/social/social-trust-badge";
 import { VerificationBadge } from "@/components/verification/verification-badge";
 import { getBangaloreFit, getIndiaAudiencePercent } from "@/lib/utils/creator-metrics";
 import { formatCurrency, formatNumber } from "@/lib/utils/format";
@@ -54,6 +55,7 @@ export function CreatorMarketCard({ creator, platform }: { creator: Record<strin
   const name = stringValue(creator.display_name);
   const niche = stringValue(creator.primary_niche) || "Creator";
   const bangaloreFit = getBangaloreFit(creator as never);
+  const metricSource = stringValue(platform?.metric_source);
 
   return (
     <div className="group flex flex-col overflow-hidden rounded-2xl border border-border/60 bg-card shadow-soft transition duration-300 hover:-translate-y-1 hover:shadow-xl dark:border-white/8 dark:bg-card/90">
@@ -63,6 +65,9 @@ export function CreatorMarketCard({ creator, platform }: { creator: Record<strin
         {/* Verification badge — top right */}
         <div className="absolute right-3 top-3">
           <VerificationBadge status={creator.verification_status} tier={creator.verification_tier} />
+        </div>
+        <div className="absolute left-3 top-3 max-w-[calc(100%-7rem)]">
+          <SocialTrustBadge source={metricSource} compact />
         </div>
         {/* Name + niche — overlaid on image */}
         <div className="absolute inset-x-0 bottom-0 p-4">

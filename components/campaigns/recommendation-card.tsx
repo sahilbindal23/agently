@@ -3,6 +3,7 @@ import { CreateFreelancerProjectButton } from "@/components/campaigns/create-fre
 import { RemoveShortlistButton } from "@/components/campaigns/remove-shortlist-button";
 import { ShortlistButton } from "@/components/campaigns/shortlist-button";
 import { MessageRecipientButton } from "@/components/messages/message-recipient-button";
+import { SocialTrustBadge } from "@/components/social/social-trust-badge";
 import { Badge } from "@/components/ui/badge";
 import { formatCurrency, formatNumber } from "@/lib/utils/format";
 import type { CampaignRecommendation } from "@/lib/campaigns/recommendations";
@@ -33,7 +34,7 @@ export function RecommendationCard({
         </div>
         <div className="flex flex-col items-end gap-2">
           <Badge tone={item.score >= 80 ? "green" : item.score >= 60 ? "amber" : "neutral"}>{item.score}</Badge>
-          {type === "creator" ? <Badge tone={item.trust_source === "api_synced" ? "green" : item.trust_source === "verified_profile" ? "blue" : "neutral"}>{trustLabel(item.trust_source)}</Badge> : null}
+          {type === "creator" ? <SocialTrustBadge source={item.metric_source} compact /> : null}
         </div>
       </div>
       <div className="rounded-md border bg-slate-50 p-3 dark:border-white/8 dark:bg-white/4">
@@ -168,12 +169,6 @@ function scoreLabel(score: number) {
   if (score >= 82) return "strong match";
   if (score >= 65) return "usable match";
   return "needs review";
-}
-
-function trustLabel(source: CampaignRecommendation["trust_source"]) {
-  if (source === "api_synced") return "verified";
-  if (source === "verified_profile") return "reviewed";
-  return "profile data";
 }
 
 function scoreHighlights(score: CampaignRecommendation["score_breakdown"]) {

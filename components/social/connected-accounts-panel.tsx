@@ -88,7 +88,7 @@ export function ConnectedAccountsPanel({
         <div>
           <p className="text-sm font-semibold">Connected social accounts</p>
           <p className="mt-1 text-xs leading-5 text-muted-foreground">
-            Prototype API layer for Instagram, Facebook, and YouTube. Synced metrics are treated as higher-trust scoring inputs than self-reported screenshots.
+            Connect Instagram, Facebook, and YouTube accounts for scoring signals. Manual handles are saved for context, but do not verify audience metrics.
           </p>
         </div>
         <Badge tone={accounts.length ? "green" : "amber"}>{accounts.length ? "connected layer active" : "connect accounts"}</Badge>
@@ -273,6 +273,14 @@ function getConnectionState(account: ConnectedAccountRow | undefined, latest: So
       tone: "amber" as const
     };
   }
+  if (latest.source.includes("self_reported")) {
+    return {
+      key: "waiting",
+      label: "pending review",
+      copy: "Manual connect saved this handle, but it does not verify follower or view metrics. Use OAuth/API sync for score-driving data.",
+      tone: "amber" as const
+    };
+  }
   if (latest.source === "mock_api") {
     return { key: "synced", label: "prototype metrics synced", copy: "Prototype metrics are available for demo scoring until real social data is connected.", tone: "blue" as const };
   }
@@ -291,6 +299,7 @@ function accountStatusCopy(account: ConnectedAccountRow, latest?: SocialSnapshot
   if (latest.source.includes("permission")) return `Connected as ${account.handle}, but permissions need to be refreshed.`;
   if (latest.source.includes("setup_required")) return `Connected as ${account.handle}, but account setup needs attention.`;
   if (latest.source.includes("no_metrics")) return `Connected as ${account.handle}, but profile metrics need to be added before scoring.`;
+  if (latest.source.includes("self_reported")) return `Connected as ${account.handle}. Manual handles do not verify audience metrics.`;
   return `Connected as ${account.handle}. Last synced ${formatDate(latest.synced_at)}.`;
 }
 
@@ -301,6 +310,7 @@ function sourceLabel(source: string) {
   if (source.includes("no_metrics")) return "profile metrics needed";
   if (source.includes("permission")) return "permission needed";
   if (source.includes("setup_required")) return "setup required";
+  if (source.includes("self_reported")) return "pending review";
   if (source.includes("instagram")) return "instagram api";
   if (source.includes("facebook")) return "facebook api";
   if (source.includes("youtube")) return "youtube api";
@@ -310,7 +320,7 @@ function sourceLabel(source: string) {
 function sourceTone(source: string) {
   if (source === "mock_api") return "blue" as const;
   if (source.includes("permission")) return "red" as const;
-  if (source.includes("no_creator") || source.includes("setup_required") || source.includes("no_metrics")) return "amber" as const;
+  if (source.includes("no_creator") || source.includes("setup_required") || source.includes("no_metrics") || source.includes("self_reported")) return "amber" as const;
   return "green" as const;
 }
 

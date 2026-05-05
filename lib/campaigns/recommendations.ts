@@ -1,4 +1,5 @@
 import { getBangaloreFit, getCreatorLanguages } from "@/lib/utils/creator-metrics";
+import { isTrustedMetricSource, socialTrustFromSource } from "@/lib/social/trust";
 import type { Campaign, Creator, CreatorPlatform } from "@/types";
 
 export type FreelancerRecommendationInput = {
@@ -59,6 +60,7 @@ export type CampaignRecommendation = {
   watchouts: string[];
   roi_estimate: RoiEstimate;
   trust_source: "api_synced" | "verified_profile" | "self_reported";
+  metric_source?: string;
 };
 
 export type RecommendationEventSignal = {
@@ -83,9 +85,10 @@ export function rankCreators(campaign: Campaign, creators: Creator[], platforms:
     const cityFit = getBangaloreFit(creator);
     const budgetFit = getCreatorBudgetFit(campaign.budget_cents, primary?.avg_views ?? 0);
     const trustBoost = trustScore(creator.verification_tier, creator.verification_status) + completedWorkTrustBoost(Number(creator.completed_deal_count ?? 0));
-    const syncedMetrics = Boolean(primary?.metric_source && primary.metric_source !== "self_reported");
+    const syncedMetrics = isTrustedMetricSource(primary?.metric_source);
     const trustSource: TrustSource = syncedMetrics ? "api_synced" : creator.verification_tier && creator.verification_tier !== "unverified" ? "verified_profile" : "self_reported";
-    const dataConfidence = Math.min(96, Math.max(primary?.data_confidence ?? 0, primary?.avg_views ? 76 : 42) + trustBoost + (syncedMetrics ? 5 : 0));
+    const sourceConfidence = syncedMetrics ? 82 : primary?.metric_source ? 38 : 42;
+    const dataConfidence = Math.min(96, Math.max(primary?.data_confidence ?? 0, sourceConfidence) + trustBoost + (syncedMetrics ? 7 : 0));
     const scoreBreakdown = {
       category_fit: categoryFit,
       audience_fit: audienceFit,
@@ -115,9 +118,10 @@ export function rankCreators(campaign: Campaign, creators: Creator[], platforms:
       score_breakdown: scoreBreakdown,
       watchouts,
       roi_estimate: roi,
-      trust_source: trustSource
+      trust_source: trustSource,
+      metric_source: primary?.metric_source
     };
-  }).sort((a, b) => trustSortBoost(b.trust_source) + b.score - (trustSortBoost(a.trust_source) + a.score));
+  }).sort((a, b) => recommendationSortScore(b) - recommendationSortScore(a));
 }
 
 export function rankFreelancers(campaign: Campaign, freelancers: FreelancerRecommendationInput[], serviceRates: ServiceRateInput[]): CampaignRecommendation[] {
@@ -185,7 +189,7 @@ export function applyEventInformedRanking(
           : recommendation.proof_points
       };
     })
-    .sort((a, b) => trustSortBoost(b.trust_source) + b.score - (trustSortBoost(a.trust_source) + a.score));
+    .sort((a, b) => recommendationSortScore(b) - recommendationSortScore(a));
 }
 
 function estimateCreatorRoi(campaign: Campaign, platform?: CreatorPlatform): RoiEstimate {
@@ -325,11 +329,12 @@ function riskLevel(score: number, watchoutCount: number, confidence: number): Ca
 }
 
 function creatorProofPoints(creator: Creator, platform: CreatorPlatform | undefined, breakdown: ScoreBreakdown) {
+  const trust = socialTrustFromSource(platform?.metric_source);
   return [
     `${breakdown.category_fit}/100 category fit`,
     `${breakdown.city_fit}/100 city fit`,
     platform ? `${compactNumber(platform.avg_views)} avg views on ${platform.platform}` : "Platform metrics missing",
-    platform?.metric_source && platform.metric_source !== "self_reported" ? `Metrics source: ${platform.metric_source.replace("_", " ")}` : "Metrics source: self reported",
+    `Metrics trust: ${trust.label}`,
     creator.completed_deal_count ? `${creator.completed_deal_count} completed Agently deal${creator.completed_deal_count === 1 ? "" : "s"}` : "No completed Agently deals yet",
     creator.verification_tier ? `Trust tier: ${creator.verification_tier}` : "Trust tier: unverified"
   ];
@@ -339,6 +344,11 @@ function trustSortBoost(source: CampaignRecommendation["trust_source"]) {
   if (source === "api_synced") return 7;
   if (source === "verified_profile") return 3;
   return 0;
+}
+
+function recommendationSortScore(recommendation: CampaignRecommendation) {
+  const socialTrust = socialTrustFromSource(recommendation.metric_source);
+  return recommendation.score + trustSortBoost(recommendation.trust_source) + (socialTrust.trusted ? 3 : 0);
 }
 
 function freelancerProofPoints(freelancer: FreelancerRecommendationInput, rates: ServiceRateInput[], breakdown: ScoreBreakdown) {

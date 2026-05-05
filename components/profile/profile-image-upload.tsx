@@ -4,7 +4,6 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { ImageUp } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 
 export function ProfileImageUpload({
   entityId,
@@ -16,6 +15,7 @@ export function ProfileImageUpload({
   const router = useRouter();
   const [status, setStatus] = useState<"idle" | "uploading" | "error">("idle");
   const [error, setError] = useState("");
+  const [fileName, setFileName] = useState("");
 
   async function onSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -39,12 +39,29 @@ export function ProfileImageUpload({
     }
 
     setStatus("idle");
+    setFileName("");
+    event.currentTarget.reset();
     router.refresh();
   }
 
   return (
-    <form className="flex flex-col gap-2 sm:flex-row" onSubmit={onSubmit}>
-      <Input accept="image/*" className="max-w-sm" name="image" required type="file" />
+    <form className="flex flex-col items-start gap-2 sm:flex-row sm:items-center" onSubmit={onSubmit}>
+      <label className="flex h-10 w-full max-w-sm cursor-pointer items-center overflow-hidden rounded-md border bg-white text-sm transition hover:border-primary/50 dark:border-white/10 dark:bg-card sm:flex-1">
+        <span className="flex h-full shrink-0 items-center border-r bg-muted px-3 font-medium text-foreground dark:border-white/10">
+          Choose file
+        </span>
+        <span className="min-w-0 truncate px-3 text-muted-foreground">
+          {fileName || "No file chosen"}
+        </span>
+        <input
+          accept="image/*"
+          className="sr-only"
+          name="image"
+          onChange={(event) => setFileName(event.currentTarget.files?.[0]?.name ?? "")}
+          required
+          type="file"
+        />
+      </label>
       <Button disabled={status === "uploading"} type="submit" variant="secondary">
         <ImageUp className="h-4 w-4" />
         {status === "uploading" ? "Uploading..." : "Upload image"}
