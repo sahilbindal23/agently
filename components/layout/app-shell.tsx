@@ -31,7 +31,7 @@ const adminNav = [
   { href: "/payments", label: "Payments", icon: CreditCard, tour: "payments" },
   { href: "/ai-insights", label: "AI Insights", icon: Bot, tour: "ai" },
   { href: "/demo-guide", label: "Walkthrough", icon: HelpCircle, tour: "walkthrough" },
-  { href: "/feedback", label: "Feedback", icon: MessageSquareText, tour: "feedback" }
+  { href: "/feedback", label: "FAQ", icon: MessageSquareText, tour: "feedback" }
 ];
 
 const creatorNav = [
@@ -45,7 +45,7 @@ const creatorNav = [
   { href: "/ai-insights", label: "AI Tools", icon: Bot, tour: "ai" },
   { href: "/payments", label: "Payments", icon: CreditCard, tour: "payments" },
   { href: "/demo-guide", label: "Walkthrough", icon: HelpCircle, tour: "walkthrough" },
-  { href: "/feedback", label: "Feedback", icon: MessageSquareText, tour: "feedback" }
+  { href: "/feedback", label: "FAQ", icon: MessageSquareText, tour: "feedback" }
 ];
 
 const brandNav = [
@@ -59,7 +59,7 @@ const brandNav = [
   { href: "/activity", label: "Activity", icon: Activity, tour: "activity" },
   { href: "/payments", label: "Payments", icon: CreditCard, tour: "payments" },
   { href: "/demo-guide", label: "Walkthrough", icon: HelpCircle, tour: "walkthrough" },
-  { href: "/feedback", label: "Feedback", icon: MessageSquareText, tour: "feedback" }
+  { href: "/feedback", label: "FAQ", icon: MessageSquareText, tour: "feedback" }
 ];
 
 const freelancerNav = [
@@ -72,7 +72,7 @@ const freelancerNav = [
   { href: "/ai-insights", label: "AI Tools", icon: Bot, tour: "ai" },
   { href: "/payments", label: "Payments", icon: CreditCard, tour: "payments" },
   { href: "/demo-guide", label: "Walkthrough", icon: HelpCircle, tour: "walkthrough" },
-  { href: "/feedback", label: "Feedback", icon: MessageSquareText, tour: "feedback" }
+  { href: "/feedback", label: "FAQ", icon: MessageSquareText, tour: "feedback" }
 ];
 
 export async function AppShell({ children }: { children: React.ReactNode }) {

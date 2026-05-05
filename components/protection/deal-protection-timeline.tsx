@@ -93,7 +93,14 @@ export function DealProtectionTimeline({
       </div>
       <div className="grid gap-2 md:grid-cols-3 xl:grid-cols-6">
         {steps.map((step, index) => (
-          <div className={`rounded-md border p-3 ${step.done ? "bg-emerald-50/70" : "bg-white"}`} key={step.label}>
+          <div
+            className={`rounded-md border p-3 dark:border-white/10 ${
+              step.done
+                ? "bg-emerald-50/70 text-emerald-950 dark:bg-emerald-950/35 dark:text-emerald-100"
+                : "bg-white dark:bg-card dark:text-card-foreground"
+            }`}
+            key={step.label}
+          >
             <div className="mb-3 flex items-center justify-between gap-2">
               <span className={`flex h-8 w-8 items-center justify-center rounded-full ${step.done ? "bg-emerald-600 text-white" : "bg-muted text-muted-foreground"}`}>
                 {step.done ? <CheckCircle2 className="h-4 w-4" /> : step.icon || <Circle className="h-4 w-4" />}
@@ -108,7 +115,7 @@ export function DealProtectionTimeline({
     </>
   );
 
-  if (variant === "inline") return <div className="rounded-md border bg-muted/30 p-3">{content}</div>;
+  if (variant === "inline") return <div className="rounded-md border bg-muted/30 p-3 dark:border-white/10 dark:bg-white/5">{content}</div>;
 
   return (
     <Card>

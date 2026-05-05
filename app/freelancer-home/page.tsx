@@ -33,7 +33,7 @@ export default async function FreelancerHomePage() {
           eyebrow="Production talent add-on"
           description="You already have an Agently account. Add a freelancer profile here so brands can discover your editing, shooting, design, production, and project-rate services without making another account."
         />
-        <Card className="mb-5 border-blue-200 bg-blue-50/50">
+        <Card className="mb-5 border-blue-200 bg-blue-50/50 dark:border-sky-900/60 dark:bg-sky-950/25">
           <CardHeader><CardTitle>Why this add-on matters</CardTitle><Badge tone="blue">same account</Badge></CardHeader>
           <p className="text-sm leading-6 text-muted-foreground">
             Creator work means you post to your audience. Freelancer work means you produce the asset, edit, shoot, design, or manage production without needing to publish it. This profile keeps those two workflows separate while letting brands find both sides of your talent.

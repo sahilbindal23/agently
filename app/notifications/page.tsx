@@ -67,7 +67,14 @@ export default async function NotificationsPage() {
           </CardHeader>
           <div className="grid gap-2">
             {notifications.map((notification) => (
-              <div className={`rounded-md border p-3 ${notification.status === "unread" ? "bg-amber-50/60" : "bg-white"}`} key={notification.id}>
+              <div
+                className={`rounded-md border p-3 dark:border-white/10 ${
+                  notification.status === "unread"
+                    ? "bg-amber-50/60 text-amber-950 dark:bg-amber-950/35 dark:text-amber-100"
+                    : "bg-white dark:bg-card dark:text-card-foreground"
+                }`}
+                key={notification.id}
+              >
                 <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
                   <div>
                     <div className="flex flex-wrap items-center gap-2">
