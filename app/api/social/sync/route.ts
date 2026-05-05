@@ -75,28 +75,134 @@ async function buildOAuthSnapshot(account: Record<string, unknown>) {
 }
 
 async function fetchYouTubeSnapshot(accessToken: string) {
+  const [channelStats, totals, countries, videos] = await Promise.all([
+    fetchYouTubeChannelStats(accessToken),
+    fetchYouTubeAnalytics(accessToken, {
+      metrics: "views,estimatedMinutesWatched,likes,comments,shares,subscribersGained"
+    }),
+    fetchYouTubeAnalytics(accessToken, {
+      dimensions: "country",
+      metrics: "views",
+      sort: "-views",
+      maxResults: "25"
+    }),
+    fetchYouTubeAnalytics(accessToken, {
+      dimensions: "video",
+      metrics: "views,likes,comments,shares",
+      sort: "-views",
+      maxResults: "25"
+    })
+  ]);
+
+  const totalRow = totals?.rows?.[0] ?? [];
+  const totalViews = Number(totalRow[0] ?? 0);
+  const totalLikes = Number(totalRow[2] ?? 0);
+  const totalComments = Number(totalRow[3] ?? 0);
+  const totalShares = Number(totalRow[4] ?? 0);
+  const videoViews = (videos?.rows ?? []).map((row) => Number(row[1] ?? 0)).filter((value) => value > 0);
+  const avgViews = videoViews.length
+    ? Math.round(videoViews.reduce((sum, value) => sum + value, 0) / videoViews.length)
+    : totalViews || channelStats.avgViews;
+  const countryRows = countries?.rows ?? [];
+  const indiaViews = countryRows
+    .filter((row) => String(row[0] ?? "").toUpperCase() === "IN")
+    .reduce((sum, row) => sum + Number(row[1] ?? 0), 0);
+  const indiaAudience = totalViews > 0 ? Math.round((indiaViews / totalViews) * 100) : 0;
+  const engagementRate = totalViews > 0 ? Number((((totalLikes + totalComments + totalShares) / totalViews) * 100).toFixed(2)) : 0;
+
+  if (!totals && !countries && !videos) {
+    return {
+      followers: channelStats.followers,
+      avg_views_30d: channelStats.avgViews,
+      reach_30d: channelStats.avgViews,
+      impressions_30d: channelStats.avgViews,
+      engagement_rate_30d: 0,
+      india_audience_percent: 0,
+      bangalore_audience_percent: 0,
+      top_cities: [],
+      audience_age_range: null,
+      content_category_signals: ["youtube"],
+      raw_metrics: { provider: "youtube", statistics: channelStats.raw },
+      source: "youtube_api"
+    };
+  }
+
+  return {
+    followers: channelStats.followers,
+    avg_views_30d: avgViews,
+    reach_30d: totalViews,
+    impressions_30d: totalViews,
+    engagement_rate_30d: engagementRate,
+    india_audience_percent: indiaAudience,
+    bangalore_audience_percent: 0,
+    top_cities: indiaAudience > 0 ? ["India"] : [],
+    audience_age_range: null,
+    content_category_signals: ["youtube", "analytics verified"],
+    raw_metrics: {
+      provider: "youtube",
+      channel_statistics: channelStats.raw,
+      analytics_totals: totals,
+      analytics_countries: countries,
+      analytics_videos: videos
+    },
+    source: "youtube_analytics_api"
+  };
+}
+
+async function fetchYouTubeChannelStats(accessToken: string) {
   const response = await fetch("https://www.googleapis.com/youtube/v3/channels?part=statistics&mine=true", {
     headers: { Authorization: `Bearer ${accessToken}` }
   });
-  if (!response.ok) return null;
+  if (!response.ok) return { followers: 0, avgViews: 0, raw: null };
   const body = await response.json() as { items?: Array<{ statistics?: { subscriberCount?: string; viewCount?: string; videoCount?: string } }> };
   const stats = body.items?.[0]?.statistics;
-  if (!stats) return null;
+  if (!stats) return { followers: 0, avgViews: 0, raw: null };
   const videoCount = Math.max(1, Number(stats.videoCount ?? 1));
-  const avgViews = Math.round(Number(stats.viewCount ?? 0) / videoCount);
   return {
     followers: Number(stats.subscriberCount ?? 0),
-    avg_views_30d: avgViews,
-    reach_30d: avgViews,
-    impressions_30d: avgViews,
-    engagement_rate_30d: 0,
-    india_audience_percent: 0,
-    bangalore_audience_percent: 0,
-    top_cities: [],
-    audience_age_range: null,
-    content_category_signals: ["youtube"],
-    raw_metrics: { provider: "youtube", statistics: stats },
-    source: "youtube_api"
+    avgViews: Math.round(Number(stats.viewCount ?? 0) / videoCount),
+    raw: stats
+  };
+}
+
+async function fetchYouTubeAnalytics(
+  accessToken: string,
+  options: {
+    dimensions?: string;
+    metrics: string;
+    sort?: string;
+    maxResults?: string;
+  }
+) {
+  const { startDate, endDate } = lastNDays(30);
+  const params = new URLSearchParams({
+    ids: "channel==MINE",
+    startDate,
+    endDate,
+    metrics: options.metrics
+  });
+  if (options.dimensions) params.set("dimensions", options.dimensions);
+  if (options.sort) params.set("sort", options.sort);
+  if (options.maxResults) params.set("maxResults", options.maxResults);
+
+  const response = await fetch(`https://youtubeanalytics.googleapis.com/v2/reports?${params.toString()}`, {
+    headers: { Authorization: `Bearer ${accessToken}` }
+  });
+  if (!response.ok) return null;
+  return response.json() as Promise<{
+    columnHeaders?: Array<{ name: string; columnType: string; dataType: string }>;
+    rows?: Array<Array<string | number>>;
+  }>;
+}
+
+function lastNDays(days: number) {
+  const end = new Date();
+  end.setDate(end.getDate() - 1);
+  const start = new Date(end);
+  start.setDate(start.getDate() - days + 1);
+  return {
+    startDate: start.toISOString().slice(0, 10),
+    endDate: end.toISOString().slice(0, 10)
   };
 }
 
