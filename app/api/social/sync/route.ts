@@ -1,5 +1,7 @@
 import { NextResponse } from "next/server";
 import { buildMockSocialSnapshot } from "@/lib/social/mock-sync";
+import { refreshCreatorScoresFromSnapshots } from "@/lib/social/sync-engine";
+import { unsealToken } from "@/lib/social/token-seal";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
 
@@ -29,7 +31,8 @@ export async function POST(request: Request) {
   if (!creator) return NextResponse.json({ error: "Creator not found." }, { status: 404 });
 
   const matchingPlatform = (platforms ?? []).find((platform) => providerMatchesPlatform(String(account.provider), String(platform.platform)));
-  const snapshot = buildMockSocialSnapshot({
+  const oauthSnapshot = await buildOAuthSnapshot(account);
+  const snapshot = oauthSnapshot ?? buildMockSocialSnapshot({
     provider: account.provider,
     handle: String(account.handle ?? ""),
     creator,
@@ -49,16 +52,10 @@ export async function POST(request: Request) {
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
 
-  const latestSignals = await getCreatorLatestSignals(admin, String(account.creator_id));
+  const latestSignals = await refreshCreatorScoresFromSnapshots(admin, String(account.creator_id));
   await Promise.all([
     admin.from("connected_social_accounts").update({ last_synced_at: new Date().toISOString(), status: "synced" }).eq("id", account.id),
-    admin.from("creators").update({
-      india_audience_percent: latestSignals.indiaAudience,
-      monetization_score: latestSignals.monetizationScore,
-      valuation_score: latestSignals.valuationScore,
-      verification_status: "verified",
-      verification_tier: latestSignals.highConfidence ? "social" : "profile"
-    }).eq("id", account.creator_id)
+    Promise.resolve()
   ]);
 
   return NextResponse.json({ data: inserted, summary: latestSignals });
@@ -68,30 +65,81 @@ function providerMatchesPlatform(provider: string, platform: string) {
   return platform.toLowerCase().includes(provider === "youtube" ? "youtube" : provider);
 }
 
-async function getCreatorLatestSignals(admin: NonNullable<ReturnType<typeof createAdminClient>>, creatorId: string) {
-  const { data } = await admin
-    .from("social_metric_snapshots")
-    .select("*")
-    .eq("creator_id", creatorId)
-    .order("synced_at", { ascending: false });
+async function buildOAuthSnapshot(account: Record<string, unknown>) {
+  const accessToken = unsealToken(String(account.access_token_encrypted ?? ""));
+  if (!accessToken || !String(account.status ?? "").startsWith("oauth")) return null;
+  if (account.provider === "youtube") return fetchYouTubeSnapshot(accessToken);
+  if (account.provider === "instagram") return fetchInstagramSnapshot(accessToken, String(account.platform_account_id ?? ""));
+  if (account.provider === "facebook") return fetchFacebookSnapshot(accessToken, String(account.platform_account_id ?? ""));
+  return null;
+}
 
-  const snapshots = data ?? [];
-  const totalFollowers = snapshots.reduce((sum, item) => sum + Number(item.followers ?? 0), 0);
-  const totalViews = snapshots.reduce((sum, item) => sum + Number(item.avg_views_30d ?? 0), 0);
-  const avgEngagement = snapshots.length
-    ? snapshots.reduce((sum, item) => sum + Number(item.engagement_rate_30d ?? 0), 0) / snapshots.length
-    : 0;
-  const indiaAudience = snapshots.length
-    ? Math.round(snapshots.reduce((sum, item) => sum + Number(item.india_audience_percent ?? 0), 0) / snapshots.length)
-    : 0;
-  const bangaloreAudience = snapshots.length
-    ? Math.round(snapshots.reduce((sum, item) => sum + Number(item.bangalore_audience_percent ?? 0), 0) / snapshots.length)
-    : 0;
-
+async function fetchYouTubeSnapshot(accessToken: string) {
+  const response = await fetch("https://www.googleapis.com/youtube/v3/channels?part=statistics&mine=true", {
+    headers: { Authorization: `Bearer ${accessToken}` }
+  });
+  if (!response.ok) return null;
+  const body = await response.json() as { items?: Array<{ statistics?: { subscriberCount?: string; viewCount?: string; videoCount?: string } }> };
+  const stats = body.items?.[0]?.statistics;
+  if (!stats) return null;
+  const videoCount = Math.max(1, Number(stats.videoCount ?? 1));
+  const avgViews = Math.round(Number(stats.viewCount ?? 0) / videoCount);
   return {
-    indiaAudience,
-    monetizationScore: Math.max(35, Math.min(96, Math.round(38 + Math.log10(Math.max(10, totalViews)) * 9 + avgEngagement * 3 + indiaAudience * 0.12))),
-    valuationScore: Math.max(35, Math.min(96, Math.round(35 + Math.log10(Math.max(10, totalFollowers)) * 8 + Math.log10(Math.max(10, totalViews)) * 6 + bangaloreAudience * 0.14))),
-    highConfidence: snapshots.length >= 1 && totalViews > 0
+    followers: Number(stats.subscriberCount ?? 0),
+    avg_views_30d: avgViews,
+    reach_30d: avgViews,
+    impressions_30d: avgViews,
+    engagement_rate_30d: 0,
+    india_audience_percent: 0,
+    bangalore_audience_percent: 0,
+    top_cities: [],
+    audience_age_range: null,
+    content_category_signals: ["youtube"],
+    raw_metrics: { provider: "youtube", statistics: stats },
+    source: "youtube_api"
+  };
+}
+
+async function fetchInstagramSnapshot(accessToken: string, accountId: string) {
+  if (!accountId) return null;
+  const version = process.env.META_GRAPH_VERSION ?? "v20.0";
+  const response = await fetch(`https://graph.facebook.com/${version}/${accountId}?fields=followers_count,media_count,username&access_token=${encodeURIComponent(accessToken)}`);
+  if (!response.ok) return null;
+  const body = await response.json() as { followers_count?: number; media_count?: number; username?: string };
+  return {
+    followers: Number(body.followers_count ?? 0),
+    avg_views_30d: 0,
+    reach_30d: 0,
+    impressions_30d: 0,
+    engagement_rate_30d: 0,
+    india_audience_percent: 0,
+    bangalore_audience_percent: 0,
+    top_cities: [],
+    audience_age_range: null,
+    content_category_signals: ["instagram"],
+    raw_metrics: body,
+    source: "instagram_graph_api"
+  };
+}
+
+async function fetchFacebookSnapshot(accessToken: string, pageId: string) {
+  if (!pageId) return null;
+  const version = process.env.META_GRAPH_VERSION ?? "v20.0";
+  const response = await fetch(`https://graph.facebook.com/${version}/${pageId}?fields=followers_count,fan_count,name&access_token=${encodeURIComponent(accessToken)}`);
+  if (!response.ok) return null;
+  const body = await response.json() as { followers_count?: number; fan_count?: number; name?: string };
+  return {
+    followers: Number(body.followers_count ?? body.fan_count ?? 0),
+    avg_views_30d: 0,
+    reach_30d: 0,
+    impressions_30d: 0,
+    engagement_rate_30d: 0,
+    india_audience_percent: 0,
+    bangalore_audience_percent: 0,
+    top_cities: [],
+    audience_age_range: null,
+    content_category_signals: ["facebook"],
+    raw_metrics: body,
+    source: "facebook_graph_api"
   };
 }

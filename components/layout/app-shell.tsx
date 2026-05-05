@@ -10,6 +10,7 @@ import { WalkthroughLaunchButton } from "@/components/onboarding/walkthrough-lau
 import { Badge } from "@/components/ui/badge";
 import { getCurrentUser } from "@/lib/auth/session";
 import { ensureNotificationsForUser, getUnreadNotificationCount, getUserNotifications } from "@/lib/notifications/workflow-notifications";
+import { creatorCompleteness, freelancerCompleteness } from "@/lib/profile/completeness";
 import { createAdminClient } from "@/lib/supabase/admin";
 
 const adminNav = [
@@ -78,17 +79,20 @@ const freelancerNav = [
 export async function AppShell({ children }: { children: React.ReactNode }) {
   const user = await getCurrentUser();
   const admin = createAdminClient();
-  const [nudges, unreadMessages, notifications, unreadNotifications, pendingOffers, openDisputes] = user && admin
+  const nudges = user && admin ? await ensureNotificationsForUser(admin, user) : [];
+  const [unreadMessages, notifications, unreadNotifications, pendingOffers, openDisputes] = user && admin
     ? await Promise.all([
-      ensureNotificationsForUser(admin, user),
       getUnreadMessageCount(user.id),
       getUserNotifications(admin, user, 6),
       getUnreadNotificationCount(admin, user.id),
       getPendingOfferCount(admin, user.id, user.role),
       user.role === "admin" ? getOpenDisputeCount(admin) : Promise.resolve(0)
     ])
-    : [[], 0, [], 0, 0, 0];
-  const effectiveUnreadNotifications = Math.max(unreadNotifications, nudges.length);
+    : [0, [], 0, 0, 0];
+  const activeNotifications = notifications.filter((notification) => notification.status === "unread");
+  const activityOpenItems = user && admin
+    ? await getActivityOpenItemCount(admin, user, nudges.length, pendingOffers)
+    : 0;
   const nav = user?.role === "creator" ? creatorNav : user?.role === "brand" ? brandNav : user?.role === "freelancer" ? freelancerNav : adminNav;
 
   return (
@@ -111,9 +115,14 @@ export async function AppShell({ children }: { children: React.ReactNode }) {
                   {item.href === "/messages" && unreadMessages > 0 ? (
                     <span className="rounded-full bg-amber-100 px-2 py-0.5 text-xs font-semibold text-amber-800 dark:bg-amber-950/60 dark:text-amber-400">{unreadMessages}</span>
                   ) : null}
-                  {(item.href === "/activity" || item.href === "/notifications") && effectiveUnreadNotifications > 0 ? (
+                  {item.href === "/notifications" && unreadNotifications > 0 ? (
                     <span className={`rounded-full px-2 py-0.5 text-xs font-semibold ${unreadNotifications > 0 ? "bg-red-100 text-red-800 dark:bg-red-950/60 dark:text-red-400" : "bg-blue-100 text-blue-800 dark:bg-sky-950/60 dark:text-sky-400"}`}>
-                      {effectiveUnreadNotifications}
+                      {unreadNotifications}
+                    </span>
+                  ) : null}
+                  {item.href === "/activity" && activityOpenItems > 0 ? (
+                    <span className="rounded-full bg-red-100 px-2 py-0.5 text-xs font-semibold text-red-800 dark:bg-red-950/60 dark:text-red-400">
+                      {activityOpenItems}
                     </span>
                   ) : null}
                   {item.href === "/offers" && pendingOffers > 0 ? (
@@ -152,12 +161,13 @@ export async function AppShell({ children }: { children: React.ReactNode }) {
             userEmail={user?.email}
             userRole={user?.role}
             unreadMessages={unreadMessages}
-            unreadNotifications={effectiveUnreadNotifications}
+            unreadNotifications={unreadNotifications}
+            activityOpenItems={activityOpenItems}
             pendingOffers={pendingOffers}
           />
           <div className="flex items-center gap-2 self-start">
             <ThemeToggle />
-            {user && admin ? <NotificationBell notifications={notifications} unreadCount={effectiveUnreadNotifications} /> : null}
+            {user && admin ? <NotificationBell notifications={activeNotifications} unreadCount={unreadNotifications} /> : null}
           </div>
         </div>
         <div className="mb-4 space-y-2">
@@ -173,6 +183,59 @@ export async function AppShell({ children }: { children: React.ReactNode }) {
       <GuidedWalkthrough role={user?.role ?? "admin"} />
     </div>
   );
+}
+
+type ShellUser = NonNullable<Awaited<ReturnType<typeof getCurrentUser>>>;
+type AdminClient = NonNullable<ReturnType<typeof createAdminClient>>;
+
+async function getActivityOpenItemCount(admin: AdminClient, user: ShellUser, nudgeCount: number, pendingOffers: number) {
+  const roleProfileCount = user.role === "creator"
+    ? await getCreatorReadinessCount(admin, user.id)
+    : user.role === "freelancer"
+      ? await getFreelancerReadinessCount(admin, user.id)
+      : 0;
+
+  return nudgeCount + roleProfileCount + pendingOffers;
+}
+
+async function getCreatorReadinessCount(admin: AdminClient, profileId: string) {
+  const { data: creator } = await admin.from("creators").select("*").eq("profile_id", profileId).maybeSingle();
+  if (!creator) return 1;
+
+  const [{ data: platforms }, { data: deals }, { data: audits }] = await Promise.all([
+    admin.from("creator_platforms").select("*").eq("creator_id", creator.id),
+    admin.from("deals").select("*").eq("creator_id", creator.id),
+    admin.from("creator_audits").select("id").eq("creator_id", creator.id).limit(1)
+  ]);
+
+  const completeness = creatorCompleteness({
+    creator: creator as Record<string, unknown>,
+    platforms: platforms ?? [],
+    deals: deals ?? [],
+    hasAudit: Boolean(audits?.length)
+  });
+
+  return completeness.items.filter((item) => !item.done).length;
+}
+
+async function getFreelancerReadinessCount(admin: AdminClient, profileId: string) {
+  const { data: freelancer } = await admin.from("freelancers").select("*").eq("profile_id", profileId).maybeSingle();
+  if (!freelancer) return 1;
+
+  const [{ data: serviceRates }, { data: portfolio }, { data: projects }] = await Promise.all([
+    admin.from("freelancer_service_rates").select("*").eq("freelancer_id", freelancer.id),
+    admin.from("portfolio_items").select("*").eq("freelancer_id", freelancer.id),
+    admin.from("freelancer_projects").select("*").eq("freelancer_id", freelancer.id)
+  ]);
+
+  const completeness = freelancerCompleteness({
+    freelancer: freelancer as Record<string, unknown>,
+    serviceRates: serviceRates ?? [],
+    portfolio: portfolio ?? [],
+    projects: projects ?? []
+  });
+
+  return completeness.items.filter((item) => !item.done).length;
 }
 
 async function getOpenDisputeCount(admin: NonNullable<ReturnType<typeof createAdminClient>>) {

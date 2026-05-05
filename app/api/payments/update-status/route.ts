@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 import { trackEvent, userEventBase } from "@/lib/analytics/track";
 import { applyLedgerEvent } from "@/lib/engines/outcome-ledger";
+import { ensurePaymentRecordForEntity } from "@/lib/payments/workflow";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
 
@@ -126,30 +127,9 @@ async function getBrandIdsForUser(admin: NonNullable<ReturnType<typeof createAdm
 }
 
 async function upsertPaymentForDeal(admin: NonNullable<ReturnType<typeof createAdminClient>>, deal: Record<string, unknown>, status: string) {
-  const amount = Number(deal.amount_cents ?? 0);
-  const platformFee = Math.round(amount * 0.1);
-  await admin.from("payments").upsert({
-    deal_id: String(deal.id),
-    amount_cents: amount,
-    platform_fee_cents: platformFee,
-    creator_payout_cents: Math.max(0, amount - platformFee),
-    status,
-    funded_at: status === "funded" ? new Date().toISOString() : null,
-    released_at: status === "released" ? new Date().toISOString() : null
-  }, { onConflict: "deal_id" });
+  await ensurePaymentRecordForEntity(admin, "deal", deal, status);
 }
 
 async function upsertPaymentForProject(admin: NonNullable<ReturnType<typeof createAdminClient>>, project: Record<string, unknown>, status: string) {
-  const amount = Number(project.amount_cents ?? 0);
-  const platformFee = Math.round(amount * 0.1);
-  await admin.from("payments").upsert({
-    deal_id: null,
-    freelancer_project_id: String(project.id),
-    amount_cents: amount,
-    platform_fee_cents: platformFee,
-    creator_payout_cents: Math.max(0, amount - platformFee),
-    status,
-    funded_at: status === "funded" ? new Date().toISOString() : null,
-    released_at: status === "released" ? new Date().toISOString() : null
-  }, { onConflict: "freelancer_project_id" });
+  await ensurePaymentRecordForEntity(admin, "freelancer_project", project, status);
 }

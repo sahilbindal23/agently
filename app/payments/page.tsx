@@ -10,6 +10,7 @@ import { Card, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, Td, Th } from "@/components/ui/table";
 import { getCurrentUser } from "@/lib/auth/session";
 import { getAgentlyData } from "@/lib/db/live-data";
+import { calculatePaymentSplit } from "@/lib/payments/workflow";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { formatCurrency } from "@/lib/utils/format";
 import type { Deliverable, PaymentStatus, RiskLevel } from "@/types";
@@ -41,7 +42,7 @@ export default async function PaymentsPage() {
       status: deal.payment_status as PaymentStatus,
       amount_cents: deal.amount_cents,
       currency: deal.currency,
-      payout_cents: Math.max(0, deal.amount_cents - Math.round(deal.amount_cents * 0.1)),
+      payout_cents: calculatePaymentSplit(deal.amount_cents).talentPayoutCents,
       session: visiblePayments.find((payment) => payment.deal_id === deal.id)?.stripe_checkout_session_id ?? "not created",
       deliverable: latestDeliverables.get(`deal-${deal.id}`),
       contractRisk: latestContractRisks.get(deal.id),
@@ -55,7 +56,7 @@ export default async function PaymentsPage() {
       status: String(project.payment_status ?? "unpaid") as PaymentStatus,
       amount_cents: Number(project.amount_cents ?? 0),
       currency: project.currency ?? "inr",
-      payout_cents: Math.max(0, Number(project.amount_cents ?? 0) - Math.round(Number(project.amount_cents ?? 0) * 0.1)),
+      payout_cents: calculatePaymentSplit(Number(project.amount_cents ?? 0)).talentPayoutCents,
       session: projectPayments.find((payment) => payment.freelancer_project_id === String(project.id))?.stripe_checkout_session_id ?? "not created",
       deliverable: latestDeliverables.get(`freelancer_project-${project.id}`),
       contractRisk: null,

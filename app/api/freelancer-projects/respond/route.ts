@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 import { trackEvent, userEventBase } from "@/lib/analytics/track";
 import { applyLedgerEvent } from "@/lib/engines/outcome-ledger";
+import { ensurePaymentRecordForEntity } from "@/lib/payments/workflow";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
 
@@ -56,6 +57,9 @@ export async function POST(request: Request) {
     approvalTerms: counterApprovalTerms,
     reason: response
   }) : "";
+  const nextPaymentStatus = status === "accepted" && !["funded", "release_ready", "released"].includes(String(project.payment_status ?? ""))
+    ? "unpaid"
+    : project.payment_status;
 
   const { data, error } = await admin
     .from("freelancer_projects")
@@ -63,6 +67,7 @@ export async function POST(request: Request) {
       status,
       talent_response: response,
       responded_at: new Date().toISOString(),
+      payment_status: nextPaymentStatus,
       counter_status: status === "changes_requested" ? "pending_brand_review" : project.counter_status ?? "none",
       counter_amount_cents: status === "changes_requested" ? counterAmountCents : project.counter_amount_cents,
       counter_scope: status === "changes_requested" ? counterScope : project.counter_scope,
@@ -78,6 +83,9 @@ export async function POST(request: Request) {
     .single();
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+  if (status === "accepted") {
+    await ensurePaymentRecordForEntity(admin, "freelancer_project", data, nextPaymentStatus);
+  }
   await trackEvent(admin, {
     ...userEventBase(authData.user, profile?.role),
     eventName: status === "accepted" ? "freelancer_project_accepted" : status === "changes_requested" ? "freelancer_project_countered" : "freelancer_project_declined",

@@ -3,6 +3,7 @@ import { z } from "zod";
 import { trackEvent, userEventBase } from "@/lib/analytics/track";
 import { offerRespondedEmail, sendEmail } from "@/lib/email/send";
 import { applyLedgerEvent } from "@/lib/engines/outcome-ledger";
+import { ensurePaymentRecordForEntity } from "@/lib/payments/workflow";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
 
@@ -74,6 +75,9 @@ export async function POST(request: Request) {
     reason: response
   }) : "";
   const nextStage = status === "accepted" ? "negotiating" : deal.stage;
+  const nextPaymentStatus = status === "accepted" && !["funded", "release_ready", "released"].includes(String(deal.payment_status ?? ""))
+    ? "unpaid"
+    : deal.payment_status;
   const { data, error } = await admin
     .from("deals")
     .update({
@@ -81,6 +85,7 @@ export async function POST(request: Request) {
       talent_response: response,
       responded_at: new Date().toISOString(),
       stage: nextStage,
+      payment_status: nextPaymentStatus,
       counter_status: status === "changes_requested" ? "pending_brand_review" : deal.counter_status ?? "none",
       counter_amount_cents: status === "changes_requested" ? counterAmountCents : deal.counter_amount_cents,
       counter_deliverables: status === "changes_requested" ? counterDeliverables : deal.counter_deliverables,
@@ -96,6 +101,9 @@ export async function POST(request: Request) {
     .single();
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+  if (status === "accepted") {
+    await ensurePaymentRecordForEntity(admin, "deal", data, nextPaymentStatus);
+  }
   await trackEvent(admin, {
     ...userEventBase(authData.user, profile?.role),
     eventName: status === "accepted" ? "offer_accepted" : status === "changes_requested" ? "offer_countered" : "offer_declined",

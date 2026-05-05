@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { trackEvent, userEventBase } from "@/lib/analytics/track";
+import { ensurePaymentRecordForEntity } from "@/lib/payments/workflow";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
 import { getStripe } from "@/lib/stripe/client";
@@ -84,23 +85,9 @@ export async function POST(request: Request) {
 }
 
 async function markPending(admin: NonNullable<ReturnType<typeof createAdminClient>>, entityType: "deal" | "freelancer_project", entityId: string, sessionId: string) {
-  const target = entityType === "deal" ? await getDealTarget(admin, entityId) : await getProjectTarget(admin, entityId);
-  if (!target) return;
-  const amount = target.amountCents;
-  const platformFee = Math.round(amount * 0.1);
-
-  if (entityType === "deal") await admin.from("deals").update({ payment_status: "pending" }).eq("id", entityId);
-  else await admin.from("freelancer_projects").update({ payment_status: "pending" }).eq("id", entityId);
-
-  await admin.from("payments").upsert({
-    deal_id: entityType === "deal" ? entityId : null,
-    freelancer_project_id: entityType === "freelancer_project" ? entityId : null,
-    stripe_checkout_session_id: sessionId,
-    amount_cents: amount,
-    platform_fee_cents: platformFee,
-    creator_payout_cents: Math.max(0, amount - platformFee),
-    status: "pending"
-  }, { onConflict: entityType === "deal" ? "deal_id" : "freelancer_project_id" });
+  const table = entityType === "deal" ? "deals" : "freelancer_projects";
+  const { data } = await admin.from(table).update({ payment_status: "pending" }).eq("id", entityId).select("*").single();
+  if (data) await ensurePaymentRecordForEntity(admin, entityType, data, "pending", sessionId);
 }
 
 async function getProfileRole(admin: NonNullable<ReturnType<typeof createAdminClient>>, profileId: string) {

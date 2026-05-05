@@ -19,6 +19,7 @@ export function MobileNav({
   userRole,
   unreadMessages,
   unreadNotifications,
+  activityOpenItems,
   pendingOffers
 }: {
   nav: NavItem[];
@@ -27,6 +28,7 @@ export function MobileNav({
   userRole?: string;
   unreadMessages?: number;
   unreadNotifications?: number;
+  activityOpenItems?: number;
   pendingOffers?: number;
 }) {
   const [open, setOpen] = useState(false);
@@ -85,12 +87,14 @@ export function MobileNav({
             <nav className="flex-1 overflow-y-auto px-3 py-3">
               {nav.map((item) => {
                 const isMessages = item.href === "/messages";
-                const isNotifications = item.href === "/notifications" || item.href === "/activity";
+                const isNotifications = item.href === "/notifications";
+                const isActivity = item.href === "/activity";
                 const isOffers = item.href === "/offers";
                 const msgBadge = isMessages && unreadMessages ? unreadMessages : null;
                 const notifBadge = isNotifications && unreadNotifications ? unreadNotifications : null;
+                const activityBadge = isActivity && activityOpenItems ? activityOpenItems : null;
                 const offerBadge = isOffers && pendingOffers ? pendingOffers : null;
-                const badge = msgBadge ?? notifBadge ?? offerBadge;
+                const badge = msgBadge ?? notifBadge ?? activityBadge ?? offerBadge;
                 return (
                   <Link
                     key={item.href}

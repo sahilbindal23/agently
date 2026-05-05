@@ -110,6 +110,14 @@ export function ConnectedAccountsPanel({
               </div>
               <Badge tone={state.tone}>{state.label}</Badge>
               <p className="mt-2 text-xs leading-5 text-muted-foreground">{state.copy}</p>
+              {oauthReadyProviders[item.id] ? (
+                <a
+                  className="mt-3 inline-flex h-8 items-center justify-center rounded-md border px-3 text-xs font-semibold transition hover:bg-muted dark:border-white/10 dark:hover:bg-white/6"
+                  href={`/api/social/connect?provider=${item.id}&return_to=/profile`}
+                >
+                  Connect with OAuth
+                </a>
+              ) : null}
             </div>
           );
         })}
