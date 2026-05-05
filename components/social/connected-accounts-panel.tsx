@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { Cable, RefreshCw, ShieldAlert, ShieldCheck } from "lucide-react";
+import { Cable, CheckCircle2, RefreshCw, ShieldAlert, ShieldCheck } from "lucide-react";
 import { socialProviders, type SocialProvider } from "@/lib/social/platforms";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -123,6 +123,8 @@ export function ConnectedAccountsPanel({
         })}
       </div>
 
+      <MetaReadinessGuide />
+
       <form className="grid gap-3 md:grid-cols-[0.7fr_1fr_1.2fr_auto]" onSubmit={connect}>
         <select
           className="h-10 rounded-md border bg-white px-3 text-sm outline-none focus:ring-2 focus:ring-ring dark:border-white/10 dark:bg-card dark:text-foreground"
@@ -150,7 +152,7 @@ export function ConnectedAccountsPanel({
                 </div>
                 <div className="flex flex-wrap justify-end gap-2">
                   <Badge tone={latest ? "green" : "amber"}>{latest ? "synced" : "waiting for sync"}</Badge>
-                  {latest ? <Badge tone={latest.source === "mock_api" ? "blue" : "green"}>{latest.source.replace("_", " ")}</Badge> : null}
+                  {latest ? <Badge tone={sourceTone(latest.source)}>{sourceLabel(latest.source)}</Badge> : null}
                 </div>
                 <Button disabled={status === "syncing"} onClick={() => sync(account.id)} size="sm" type="button" variant="secondary">
                   <RefreshCw className="h-4 w-4" />
@@ -164,7 +166,7 @@ export function ConnectedAccountsPanel({
                   <Signal label="Engagement" value={`${latest.engagement_rate_30d}%`} />
                   <Signal label="India" value={`${latest.india_audience_percent}%`} />
                   <Signal label="Bangalore" value={`${latest.bangalore_audience_percent}%`} />
-                  <Signal label="Source" value={latest.source.replace("_", " ")} />
+                  <Signal label="Source" value={sourceLabel(latest.source)} />
                   <Signal label="Last sync" value={formatDate(latest.synced_at)} />
                 </div>
               ) : (
@@ -190,6 +192,37 @@ function Signal({ label, value }: { label: string; value: string }) {
   );
 }
 
+function MetaReadinessGuide() {
+  const items = [
+    "Use an Instagram Creator or Business account for useful insights.",
+    "Keep the Instagram account linked to a Facebook Page.",
+    "Grant insights permissions during OAuth when prompted.",
+    "If the creator is not ready, use prototype connect until their account setup is fixed."
+  ];
+
+  return (
+    <div className="mb-4 rounded-md border border-blue-200 bg-blue-50/70 p-3 dark:border-sky-900/60 dark:bg-sky-950/25">
+      <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
+        <div>
+          <p className="text-sm font-semibold text-blue-950 dark:text-sky-100">Instagram/Facebook setup checklist</p>
+          <p className="mt-1 text-xs leading-5 text-blue-800 dark:text-sky-300">
+            Meta works best when the creator has a professional Instagram account connected to a Facebook Page.
+          </p>
+        </div>
+        <Badge tone="blue">Meta ready path</Badge>
+      </div>
+      <div className="mt-3 grid gap-2 md:grid-cols-2">
+        {items.map((item) => (
+          <div className="flex items-start gap-2 rounded-md bg-white/70 p-2 text-xs leading-5 text-blue-900 dark:bg-white/5 dark:text-sky-200" key={item}>
+            <CheckCircle2 className="mt-0.5 h-3.5 w-3.5 shrink-0 text-primary" />
+            <span>{item}</span>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 function getConnectionState(account: ConnectedAccountRow | undefined, latest: SocialSnapshotRow | undefined, oauthReady: boolean) {
   if (!account) {
     return {
@@ -208,7 +241,34 @@ function getConnectionState(account: ConnectedAccountRow | undefined, latest: So
   if (String(account.status ?? "").includes("failed")) {
     return { key: "failed", label: "sync failed", copy: "The latest sync failed. Reconnect or retry sync.", tone: "red" as const };
   }
-  return { key: "synced", label: "synced", copy: "Metrics are available for scoring and profile verification.", tone: "green" as const };
+  if (latest.source.includes("no_creator_data")) {
+    return {
+      key: "waiting",
+      label: "no creator data yet",
+      copy: "OAuth worked, but this account has no usable creator performance data yet. Connect an active channel or keep using prototype metrics for demos.",
+      tone: "amber" as const
+    };
+  }
+  if (latest.source.includes("permission")) {
+    return {
+      key: "expired",
+      label: "permission needed",
+      copy: "The account needs refreshed permissions before Agently can sync creator metrics.",
+      tone: "red" as const
+    };
+  }
+  if (latest.source.includes("setup_required")) {
+    return {
+      key: "waiting",
+      label: "setup required",
+      copy: "Meta connected, but Agently could not find the required professional account/Page setup.",
+      tone: "amber" as const
+    };
+  }
+  if (latest.source === "mock_api") {
+    return { key: "synced", label: "prototype metrics synced", copy: "Prototype metrics are available for demo scoring until real social data is connected.", tone: "blue" as const };
+  }
+  return { key: "synced", label: "verified metrics synced", copy: "Platform metrics are available for scoring and profile verification.", tone: "green" as const };
 }
 
 function StatusIcon({ state }: { state: string }) {
@@ -219,7 +279,29 @@ function StatusIcon({ state }: { state: string }) {
 
 function accountStatusCopy(account: ConnectedAccountRow, latest?: SocialSnapshotRow) {
   if (!latest) return `Connected as ${account.handle}. Sync required before scores can use this data.`;
+  if (latest.source.includes("no_creator_data")) return `Connected as ${account.handle}, but no creator performance data was found.`;
+  if (latest.source.includes("permission")) return `Connected as ${account.handle}, but permissions need to be refreshed.`;
+  if (latest.source.includes("setup_required")) return `Connected as ${account.handle}, but account setup needs attention.`;
   return `Connected as ${account.handle}. Last synced ${formatDate(latest.synced_at)}.`;
+}
+
+function sourceLabel(source: string) {
+  if (source === "mock_api") return "prototype metrics";
+  if (source.includes("youtube_analytics")) return "youtube analytics";
+  if (source.includes("youtube_no_creator")) return "no creator data";
+  if (source.includes("permission")) return "permission needed";
+  if (source.includes("setup_required")) return "setup required";
+  if (source.includes("instagram")) return "instagram api";
+  if (source.includes("facebook")) return "facebook api";
+  if (source.includes("youtube")) return "youtube api";
+  return source.replaceAll("_", " ");
+}
+
+function sourceTone(source: string) {
+  if (source === "mock_api") return "blue" as const;
+  if (source.includes("permission")) return "red" as const;
+  if (source.includes("no_creator") || source.includes("setup_required")) return "amber" as const;
+  return "green" as const;
 }
 
 function providerName(provider: string) {

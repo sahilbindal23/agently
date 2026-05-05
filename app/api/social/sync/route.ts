@@ -93,6 +93,7 @@ async function fetchYouTubeSnapshot(accessToken: string) {
       maxResults: "25"
     })
   ]);
+  const permissionRequired = [totals, countries, videos].some((report) => report?.source_error === "permission_required");
 
   const totalRow = totals?.rows?.[0] ?? [];
   const totalViews = Number(totalRow[0] ?? 0);
@@ -109,6 +110,28 @@ async function fetchYouTubeSnapshot(accessToken: string) {
     .reduce((sum, row) => sum + Number(row[1] ?? 0), 0);
   const indiaAudience = totalViews > 0 ? Math.round((indiaViews / totalViews) * 100) : 0;
   const engagementRate = totalViews > 0 ? Number((((totalLikes + totalComments + totalShares) / totalViews) * 100).toFixed(2)) : 0;
+  const emptyChannel = channelStats.followers === 0 && channelStats.avgViews === 0;
+
+  if (permissionRequired) {
+    return {
+      followers: channelStats.followers,
+      avg_views_30d: channelStats.avgViews,
+      reach_30d: channelStats.avgViews,
+      impressions_30d: channelStats.avgViews,
+      engagement_rate_30d: 0,
+      india_audience_percent: 0,
+      bangalore_audience_percent: 0,
+      top_cities: [],
+      audience_age_range: null,
+      content_category_signals: ["youtube"],
+      raw_metrics: {
+        provider: "youtube",
+        statistics: channelStats.raw,
+        note: "YouTube Analytics permissions are missing or expired. Reconnect the account."
+      },
+      source: "youtube_permission_required"
+    };
+  }
 
   if (!totals && !countries && !videos) {
     return {
@@ -122,8 +145,14 @@ async function fetchYouTubeSnapshot(accessToken: string) {
       top_cities: [],
       audience_age_range: null,
       content_category_signals: ["youtube"],
-      raw_metrics: { provider: "youtube", statistics: channelStats.raw },
-      source: "youtube_api"
+      raw_metrics: {
+        provider: "youtube",
+        statistics: channelStats.raw,
+        note: emptyChannel
+          ? "OAuth worked, but this YouTube account has no creator performance data yet."
+          : "YouTube Analytics data was not available, so Agently used basic channel statistics."
+      },
+      source: emptyChannel ? "youtube_no_creator_data" : "youtube_api"
     };
   }
 
@@ -145,7 +174,7 @@ async function fetchYouTubeSnapshot(accessToken: string) {
       analytics_countries: countries,
       analytics_videos: videos
     },
-    source: "youtube_analytics_api"
+    source: emptyChannel && totalViews === 0 ? "youtube_no_creator_data" : "youtube_analytics_api"
   };
 }
 
@@ -188,10 +217,18 @@ async function fetchYouTubeAnalytics(
   const response = await fetch(`https://youtubeanalytics.googleapis.com/v2/reports?${params.toString()}`, {
     headers: { Authorization: `Bearer ${accessToken}` }
   });
+  if (response.status === 401 || response.status === 403) {
+    return {
+      columnHeaders: [],
+      rows: [],
+      source_error: "permission_required"
+    };
+  }
   if (!response.ok) return null;
   return response.json() as Promise<{
     columnHeaders?: Array<{ name: string; columnType: string; dataType: string }>;
     rows?: Array<Array<string | number>>;
+    source_error?: string;
   }>;
 }
 
@@ -207,13 +244,15 @@ function lastNDays(days: number) {
 }
 
 async function fetchInstagramSnapshot(accessToken: string, accountId: string) {
-  if (!accountId) return null;
+  if (!accountId) return metaSetupRequiredSnapshot("instagram", "No Instagram professional account was available from the connected Meta account.");
   const version = process.env.META_GRAPH_VERSION ?? "v20.0";
   const response = await fetch(`https://graph.facebook.com/${version}/${accountId}?fields=followers_count,media_count,username&access_token=${encodeURIComponent(accessToken)}`);
-  if (!response.ok) return null;
+  if (response.status === 401 || response.status === 403) return metaPermissionSnapshot("instagram");
+  if (!response.ok) return metaSetupRequiredSnapshot("instagram", "Instagram metrics could not be pulled from this account.");
   const body = await response.json() as { followers_count?: number; media_count?: number; username?: string };
+  const followers = Number(body.followers_count ?? 0);
   return {
-    followers: Number(body.followers_count ?? 0),
+    followers,
     avg_views_30d: 0,
     reach_30d: 0,
     impressions_30d: 0,
@@ -224,18 +263,20 @@ async function fetchInstagramSnapshot(accessToken: string, accountId: string) {
     audience_age_range: null,
     content_category_signals: ["instagram"],
     raw_metrics: body,
-    source: "instagram_graph_api"
+    source: followers > 0 ? "instagram_graph_api" : "instagram_setup_required"
   };
 }
 
 async function fetchFacebookSnapshot(accessToken: string, pageId: string) {
-  if (!pageId) return null;
+  if (!pageId) return metaSetupRequiredSnapshot("facebook", "No Facebook Page was available from the connected Meta account.");
   const version = process.env.META_GRAPH_VERSION ?? "v20.0";
   const response = await fetch(`https://graph.facebook.com/${version}/${pageId}?fields=followers_count,fan_count,name&access_token=${encodeURIComponent(accessToken)}`);
-  if (!response.ok) return null;
+  if (response.status === 401 || response.status === 403) return metaPermissionSnapshot("facebook");
+  if (!response.ok) return metaSetupRequiredSnapshot("facebook", "Facebook Page metrics could not be pulled from this account.");
   const body = await response.json() as { followers_count?: number; fan_count?: number; name?: string };
+  const followers = Number(body.followers_count ?? body.fan_count ?? 0);
   return {
-    followers: Number(body.followers_count ?? body.fan_count ?? 0),
+    followers,
     avg_views_30d: 0,
     reach_30d: 0,
     impressions_30d: 0,
@@ -246,6 +287,40 @@ async function fetchFacebookSnapshot(accessToken: string, pageId: string) {
     audience_age_range: null,
     content_category_signals: ["facebook"],
     raw_metrics: body,
-    source: "facebook_graph_api"
+    source: followers > 0 ? "facebook_graph_api" : "facebook_setup_required"
+  };
+}
+
+function metaPermissionSnapshot(provider: "instagram" | "facebook") {
+  return {
+    followers: 0,
+    avg_views_30d: 0,
+    reach_30d: 0,
+    impressions_30d: 0,
+    engagement_rate_30d: 0,
+    india_audience_percent: 0,
+    bangalore_audience_percent: 0,
+    top_cities: [],
+    audience_age_range: null,
+    content_category_signals: [provider],
+    raw_metrics: { provider, note: "Permissions are missing or expired. Reconnect the account." },
+    source: `${provider}_permission_required`
+  };
+}
+
+function metaSetupRequiredSnapshot(provider: "instagram" | "facebook", note: string) {
+  return {
+    followers: 0,
+    avg_views_30d: 0,
+    reach_30d: 0,
+    impressions_30d: 0,
+    engagement_rate_30d: 0,
+    india_audience_percent: 0,
+    bangalore_audience_percent: 0,
+    top_cities: [],
+    audience_age_range: null,
+    content_category_signals: [provider],
+    raw_metrics: { provider, note },
+    source: `${provider}_setup_required`
   };
 }
