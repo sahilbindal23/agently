@@ -46,7 +46,7 @@ export function ProfileImageUpload({
 
   return (
     <form className="flex flex-col items-start gap-2 sm:flex-row sm:items-center" onSubmit={onSubmit}>
-      <label className="flex h-10 w-full max-w-sm cursor-pointer items-center overflow-hidden rounded-md border bg-white text-sm transition hover:border-primary/50 dark:border-white/10 dark:bg-card sm:flex-1">
+      <label aria-label="Choose profile image file" className="flex h-10 w-full max-w-sm cursor-pointer items-center overflow-hidden rounded-md border bg-white text-sm transition hover:border-primary/50 dark:border-white/10 dark:bg-card sm:flex-1">
         <span className="flex h-full shrink-0 items-center border-r bg-muted px-3 font-medium text-foreground dark:border-white/10">
           Choose file
         </span>

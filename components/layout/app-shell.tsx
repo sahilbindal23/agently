@@ -121,7 +121,7 @@ export async function AppShell({ children }: { children: React.ReactNode }) {
                     </span>
                   ) : null}
                   {item.href === "/activity" && activityOpenItems > 0 ? (
-                    <span className="rounded-full bg-red-100 px-2 py-0.5 text-xs font-semibold text-red-800 dark:bg-red-950/60 dark:text-red-400">
+                    <span aria-label={`${activityOpenItems} open activity item${activityOpenItems === 1 ? "" : "s"}`} className="rounded-full bg-red-100 px-2 py-0.5 text-xs font-semibold text-red-800 dark:bg-red-950/60 dark:text-red-400">
                       {activityOpenItems}
                     </span>
                   ) : null}

@@ -55,7 +55,7 @@ export function DealProtectionTimeline({
       copy: funded ? "Funds are marked protected before delivery." : "Brand funding is still required before final delivery.",
       done: funded,
       icon: <LockKeyhole className="h-4 w-4" />,
-      label: "Payment funded",
+      label: funded ? "Funding protected" : "Funding pending",
       tone: funded ? "green" : "amber"
     },
     {

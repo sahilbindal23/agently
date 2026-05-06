@@ -41,8 +41,8 @@ export function LoginForm() {
     if (!form) return;
     const emailInput = form.elements.namedItem("email") as HTMLInputElement | null;
     const passwordInput = form.elements.namedItem("password") as HTMLInputElement | null;
-    if (emailInput) emailInput.value = email;
-    if (passwordInput) passwordInput.value = "DemoPassword123!";
+    setInputValue(emailInput, email);
+    setInputValue(passwordInput, "DemoPassword123!");
   }
 
   return (
@@ -54,10 +54,10 @@ export function LoginForm() {
       <Card className="w-full max-w-md">
         <p className="text-sm font-semibold uppercase tracking-[0.18em] text-primary">Agently</p>
         <h1 className="mt-3 text-2xl font-bold">Sign in</h1>
-        <form className="mt-6 space-y-4" onSubmit={onSubmit} data-login-form>
+        <form className="mt-6 space-y-4" method="post" onSubmit={onSubmit} data-login-form>
           <Input name="email" type="email" placeholder="Email" required />
           <Input name="password" type="password" placeholder="Password" required />
-          <Button className="w-full" disabled={status === "loading"}>{status === "loading" ? "Signing in..." : "Continue"}</Button>
+          <Button className="w-full" disabled={status === "loading"} type="submit">{status === "loading" ? "Signing in..." : "Continue"}</Button>
           {error ? <p className="text-sm text-red-600">{error}</p> : null}
         </form>
         <div className="mt-5 rounded-md border bg-muted p-3">
@@ -79,4 +79,11 @@ export function LoginForm() {
       </div>
     </main>
   );
+}
+
+function setInputValue(input: HTMLInputElement | null, value: string) {
+  if (!input) return;
+  input.value = value;
+  input.dispatchEvent(new Event("input", { bubbles: true }));
+  input.dispatchEvent(new Event("change", { bubbles: true }));
 }
