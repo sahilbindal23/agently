@@ -113,7 +113,7 @@ export default async function OffersPage() {
       <PageHeader
         eyebrow="Talent offer inbox"
         title="Offers"
-        description="Review brand-submitted offers, respond with acceptance or changes, and use negotiation tools before work begins."
+        description="Review brand-submitted offers, negotiate terms, accept only when scope is clear, and wait for protected funding before final delivery."
       />
 
       {hasItems ? (
@@ -328,7 +328,7 @@ function FundingHoldNotice() {
     <div className="rounded-md border border-amber-200 bg-amber-50 p-3 dark:border-amber-900/50 dark:bg-amber-950/30">
       <p className="text-sm font-semibold text-amber-950 dark:text-amber-200">Wait for funding before final delivery</p>
       <p className="mt-1 text-sm leading-6 text-amber-800 dark:text-amber-300">
-        This offer is accepted, but the protected payment workflow is not funded yet. Use messages for clarification, but do not submit final work until funding is marked protected.
+        This work is accepted, but the protected payout workflow is not funded yet. You can clarify scope in messages, but final files should wait until funding is marked protected.
       </p>
     </div>
   );
@@ -445,8 +445,8 @@ function getNextAction({
     return {
       title: "Review before accepting",
       copy: hasContract
-        ? "Use negotiation support or message the brand before you commit to the scope."
-        : "Ask for terms, usage, revisions, and payment timing before accepting.",
+        ? "Use structured counter or message the brand before you commit to the scope."
+        : "Ask for usage rights, revisions, approvals, deadlines, and funding timing before accepting.",
       label: "action needed",
       tone: "amber" as const
     };
@@ -455,12 +455,12 @@ function getNextAction({
     return { title: "Waiting on revised terms", copy: "Keep the conversation tied to this offer so changes stay attached to the workflow.", label: "negotiating", tone: "blue" as const };
   }
   if (!["funded", "release_ready", "released"].includes(paymentStatus)) {
-    return { title: "Wait for funding before delivery", copy: `The ${type} is accepted, but payment protection should be in place before final delivery.`, label: "funding", tone: "amber" as const };
+    return { title: "Wait for protected funding", copy: `The ${type} is accepted. Final delivery should wait until the brand funds the protected payout workflow.`, label: "funding", tone: "amber" as const };
   }
   if (paymentStatus === "released") {
     return { title: "Payment released", copy: "This workflow is complete. Keep final files and approvals attached for history.", label: "complete", tone: "green" as const };
   }
-  return { title: "Submit deliverable when ready", copy: "Payment is protected. Upload the agreed deliverable URL for approval and release.", label: "ready", tone: "green" as const };
+  return { title: "Submit deliverable when ready", copy: "Funding is protected. Upload the agreed deliverable URL for approval and payout release.", label: "ready", tone: "green" as const };
 }
 
 function responseLabel(status: string) {

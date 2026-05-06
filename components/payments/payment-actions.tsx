@@ -40,7 +40,7 @@ export function PaymentActions({
     const data = await res.json().catch(() => ({}));
     setBusy(false);
     if (!res.ok) {
-      setMessage({ text: data.error ?? "Could not create payment link.", ok: false });
+      setMessage({ text: data.error ?? "Could not create funding link.", ok: false });
       return;
     }
     if (data.checkout_url) {
@@ -60,14 +60,14 @@ export function PaymentActions({
     const data = await res.json().catch(() => ({}));
     setBusy(false);
     if (!res.ok) {
-      setMessage({ text: data.error ?? "Could not verify payment.", ok: false });
+      setMessage({ text: data.error ?? "Could not check funding.", ok: false });
       return;
     }
     if (data.funded) {
-      setMessage({ text: "Payment confirmed. Deal is now funded.", ok: true });
+      setMessage({ text: "Funding confirmed. Work is now protected.", ok: true });
       router.refresh();
     } else {
-      setMessage({ text: "Payment not yet confirmed with Stripe. Complete checkout and try again.", ok: false });
+      setMessage({ text: "Funding is not confirmed yet. Complete checkout and try again.", ok: false });
     }
   }
 
@@ -102,7 +102,7 @@ export function PaymentActions({
             title={canFund ? undefined : "Offer must be accepted before funding."}
           >
             <CreditCard className="h-4 w-4" />
-            {isPending ? "Retry payment link" : "Payment link"}
+            {isPending ? "Reopen funding link" : "Generate funding link"}
           </Button>
         )}
 
@@ -110,7 +110,7 @@ export function PaymentActions({
         {!isFunded && isPending && !isAdmin && (
           <Button disabled={busy} onClick={verifyPayment} size="sm" type="button" variant="secondary">
             <RefreshCw className="h-4 w-4" />
-            Verify payment
+            Check funding
           </Button>
         )}
 
@@ -120,7 +120,7 @@ export function PaymentActions({
             {isPending && (
               <Button disabled={busy} onClick={verifyPayment} size="sm" type="button" variant="secondary">
                 <RefreshCw className="h-4 w-4" />
-                Verify Stripe
+                Check funding
               </Button>
             )}
             <Button disabled={busy} onClick={() => update("funded")} size="sm" type="button" variant="secondary">

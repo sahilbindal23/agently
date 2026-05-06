@@ -72,8 +72,9 @@ export default async function PaymentsPage() {
       <PageHeader
         eyebrow="Payment orchestration"
         title="Protected payout workflow"
-        description="Use Stripe checkout to collect funds, track funded deals, approve deliverables, and mark payouts released without representing this MVP as regulated escrow."
+        description="Track accepted work from funding to delivery approval and payout release. The payment rail can be swapped from prototype checkout to Razorpay for India-first payments."
       />
+      <WorkflowGuidance role={user?.role} />
       <section className="mb-5 grid gap-3 md:grid-cols-4 xl:grid-cols-7">
         {statuses.map((status) => (
           <Card key={status} className="p-4">
@@ -89,7 +90,7 @@ export default async function PaymentsPage() {
         <CardHeader><CardTitle>Payment Queue</CardTitle><Badge tone="green">creator deals + freelancer projects</Badge></CardHeader>
         <div className="overflow-x-auto">
           <Table>
-            <thead><tr><Th>Item</Th><Th>Protection state</Th><Th>Deliverable</Th><Th>Session</Th><Th className="text-right">Amount</Th><Th className="text-right">Talent payout</Th><Th></Th></tr></thead>
+            <thead><tr><Th>Item</Th><Th>Protection state</Th><Th>Deliverable</Th><Th>Funding ref</Th><Th className="text-right">Amount</Th><Th className="text-right">Talent payout</Th><Th></Th></tr></thead>
             <tbody>
               {queue.map((item) => (
                 <tr key={`${item.type}-${item.id}`}>
@@ -111,7 +112,7 @@ export default async function PaymentsPage() {
                     <p className="mt-2 text-sm leading-5 text-muted-foreground">{paymentGuidance(item.status, Boolean(item.deliverable), item.deliverable?.status)}</p>
                   </Td>
                   <Td className="min-w-80"><DeliverableCard deliverable={item.deliverable} canReview={canManagePayments} /></Td>
-                  <Td>{item.session}</Td>
+                  <Td>{fundingReference(item.session, item.status)}</Td>
                   <Td className="text-right">{formatCurrency(item.amount_cents, item.currency)}</Td>
                   <Td className="text-right font-semibold">{formatCurrency(item.payout_cents, item.currency)}</Td>
                   <Td>{canManagePayments ? <PaymentActions canFund={item.canFund} canRelease={user?.role === "admin"} entityId={item.id} entityType={item.type} isAdmin={user?.role === "admin"} paymentStatus={item.status} /> : <Badge tone="neutral">view only</Badge>}</Td>
@@ -161,6 +162,38 @@ function filterDealsForUser(deals: Awaited<ReturnType<typeof getAgentlyData>>["d
   if (role === "brand") return deals.filter((deal) => scope.brandIds.includes(deal.brand_id));
   if (role === "creator") return deals.filter((deal) => scope.creatorIds.includes(deal.creator_id) && deal.offer_status === "accepted");
   return [];
+}
+
+function WorkflowGuidance({ role }: { role?: string }) {
+  const copy = role === "brand"
+    ? {
+      title: "Brand payment flow",
+      body: "Only accepted offers appear here. Generate the funding link once scope is agreed, then wait for funding to show as protected before expecting final delivery."
+    }
+    : role === "creator" || role === "freelancer"
+      ? {
+        title: "Talent payment flow",
+        body: "Accepted work appears here after you accept an offer or project. Start planning, but do not submit final work until the status says funded."
+      }
+      : {
+        title: "Admin payment flow",
+        body: "Review accepted work, funding status, deliverables, disputes, and release readiness across all creator deals and freelancer projects."
+      };
+
+  return (
+    <Card className="mb-5 border-primary/20 bg-primary/5 dark:border-primary/30 dark:bg-primary/10">
+      <div className="flex flex-col gap-2 p-1">
+        <p className="text-sm font-semibold">{copy.title}</p>
+        <p className="text-sm leading-6 text-muted-foreground">{copy.body}</p>
+      </div>
+    </Card>
+  );
+}
+
+function fundingReference(session: string, status: string) {
+  if (status === "unpaid") return "not generated";
+  if (session === "not created") return "manual tracking";
+  return session;
 }
 
 async function getFreelancerProjects(scope: PaymentScope, role: string | undefined) {
@@ -222,7 +255,7 @@ async function getLatestContractRisks(dealIds: string[]) {
 
 function paymentGuidance(status: string, hasDeliverable: boolean, deliverableStatus?: string) {
   if (status === "unpaid") return "Accepted work is waiting for brand funding. Talent should not start final delivery yet.";
-  if (status === "pending") return "Checkout has been created or marked pending. Confirm funds before delivery starts.";
+  if (status === "pending") return "A funding link has been created or marked pending. Confirm funds before delivery starts.";
   if (status === "funded" && !hasDeliverable) return "Funds are protected. Talent can submit the agreed deliverable.";
   if (status === "funded" && deliverableStatus === "submitted") return "Deliverable is waiting for brand/admin review.";
   if (status === "release_ready") return "Deliverable is approved. Admin can release the payout.";
