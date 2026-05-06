@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { verifyRazorpayWebhookSignature } from "@/lib/razorpay/client";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { runWorkflowAutomations } from "@/lib/workflow/automation";
 
 type RazorpayWebhookBody = {
   event?: string;
@@ -67,4 +68,5 @@ async function markFunded(
     })
     .eq(paymentColumn, entityId)
     .eq("razorpay_order_id", orderId);
+  await runWorkflowAutomations(admin);
 }

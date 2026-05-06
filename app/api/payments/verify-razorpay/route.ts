@@ -4,6 +4,7 @@ import { trackEvent, userEventBase } from "@/lib/analytics/track";
 import { verifyRazorpayPaymentSignature } from "@/lib/razorpay/client";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
+import { runWorkflowAutomations } from "@/lib/workflow/automation";
 
 const schema = z.object({
   entity_type: z.enum(["deal", "freelancer_project"]).default("deal"),
@@ -78,6 +79,7 @@ export async function POST(request: Request) {
     entityId,
     metadata: { status: "funded", source: "razorpay_checkout", razorpay_order_id: orderId, razorpay_payment_id: paymentId }
   });
+  await runWorkflowAutomations(admin);
 
   return NextResponse.json({ funded: true, status: "funded", source: "razorpay_verified" });
 }

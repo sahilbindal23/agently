@@ -1,3 +1,4 @@
+import type React from "react";
 import { AppShell } from "@/components/layout/app-shell";
 import { DeliverableCard } from "@/components/deliverables/deliverable-card";
 import { PageHeader } from "@/components/layout/page-header";
@@ -7,7 +8,6 @@ import { PaymentStatusBadge } from "@/components/payments/payment-status-badge";
 import { DealProtectionTimeline } from "@/components/protection/deal-protection-timeline";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardHeader, CardTitle } from "@/components/ui/card";
-import { Table, Td, Th } from "@/components/ui/table";
 import { getCurrentUser } from "@/lib/auth/session";
 import { getAgentlyData } from "@/lib/db/live-data";
 import { calculatePaymentSplit } from "@/lib/payments/workflow";
@@ -96,46 +96,80 @@ export default async function PaymentsPage() {
       </div>
       <Card>
         <CardHeader><CardTitle>Payment Queue</CardTitle><Badge tone="green">creator deals + freelancer projects</Badge></CardHeader>
-        <div className="overflow-x-auto">
-          <Table>
-            <thead><tr><Th>Item</Th><Th>Protection state</Th><Th>Deliverable</Th><Th>Funding ref</Th><Th className="text-right">Amount</Th><Th className="text-right">Talent payout</Th><Th></Th></tr></thead>
-            <tbody>
-              {queue.map((item) => (
-                <tr key={`${item.type}-${item.id}`}>
-                  <Td className="min-w-72">
-                    <p className="font-medium">{item.title}</p>
-                    <p className="mt-1 text-xs text-muted-foreground">{item.type === "deal" ? "Creator deal" : "Freelancer project"}</p>
-                    <DealProtectionTimeline
-                      accepted
-                      contractRisk={item.contractRisk}
-                      deliverableStatus={item.deliverable?.status}
-                      hasContract={item.hasContract}
-                      hasDeliverable={Boolean(item.deliverable)}
+        <div className="space-y-4">
+          {queue.map((item) => (
+            <div className="rounded-lg border bg-background/50 p-4 dark:border-white/10 dark:bg-white/[0.03]" key={`${item.type}-${item.id}`}>
+              <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+                <div className="min-w-0">
+                  <p className="font-semibold">{item.title}</p>
+                  <p className="mt-1 text-xs text-muted-foreground">{item.type === "deal" ? "Creator deal" : "Freelancer project"}</p>
+                </div>
+                <div className="shrink-0 lg:max-w-56">
+                  {canManagePayments ? (
+                    <PaymentActions
+                      canFund={item.canFund}
+                      canRelease={user?.role === "admin"}
+                      entityId={item.id}
+                      entityType={item.type}
+                      isAdmin={user?.role === "admin"}
+                      paymentProvider={item.provider ?? undefined}
                       paymentStatus={item.status}
-                      variant="inline"
                     />
-                  </Td>
-                  <Td className="min-w-64">
-                    <PaymentStatusBadge status={item.status} />
-                    <p className="mt-2 text-sm leading-5 text-muted-foreground">{paymentGuidance(item.status, Boolean(item.deliverable), item.deliverable?.status)}</p>
-                  </Td>
-                  <Td className="min-w-80"><DeliverableCard deliverable={item.deliverable} canReview={canManagePayments} /></Td>
-                  <Td>{fundingReference(item.fundingRef, item.status)}</Td>
-                  <Td className="text-right">{formatCurrency(item.amount_cents, item.currency)}</Td>
-                  <Td className="text-right font-semibold">{formatCurrency(item.payout_cents, item.currency)}</Td>
-                  <Td>{canManagePayments ? <PaymentActions canFund={item.canFund} canRelease={user?.role === "admin"} entityId={item.id} entityType={item.type} isAdmin={user?.role === "admin"} paymentProvider={item.provider ?? undefined} paymentStatus={item.status} /> : <Badge tone="neutral">view only</Badge>}</Td>
-                </tr>
-              ))}
-              {queue.length === 0 ? (
-                <tr>
-                  <Td colSpan={8} className="text-muted-foreground">No payments are connected to your account yet.</Td>
-                </tr>
-              ) : null}
-            </tbody>
-          </Table>
+                  ) : (
+                    <Badge tone="neutral">view only</Badge>
+                  )}
+                </div>
+              </div>
+
+              <div className="mt-4">
+                <DealProtectionTimeline
+                  accepted
+                  contractRisk={item.contractRisk}
+                  deliverableStatus={item.deliverable?.status}
+                  hasContract={item.hasContract}
+                  hasDeliverable={Boolean(item.deliverable)}
+                  paymentStatus={item.status}
+                  variant="inline"
+                />
+              </div>
+
+              <div className="mt-4 grid gap-3 md:grid-cols-2 xl:grid-cols-[1.1fr_1.2fr_1fr_.7fr_.8fr]">
+                <QueueDetail label="Protection state">
+                  <PaymentStatusBadge status={item.status} />
+                  <p className="mt-2 text-sm leading-6 text-muted-foreground">{paymentGuidance(item.status, Boolean(item.deliverable), item.deliverable?.status)}</p>
+                </QueueDetail>
+                <QueueDetail label="Deliverable">
+                  <DeliverableCard deliverable={item.deliverable} canReview={canManagePayments} />
+                </QueueDetail>
+                <QueueDetail label="Funding ref">
+                  <p className="break-all text-sm font-medium text-foreground">{fundingReference(item.fundingRef, item.status)}</p>
+                </QueueDetail>
+                <QueueDetail label="Amount">
+                  <p className="text-sm font-semibold">{formatCurrency(item.amount_cents, item.currency)}</p>
+                </QueueDetail>
+                <QueueDetail label="Talent payout">
+                  <p className="text-sm font-semibold">{formatCurrency(item.payout_cents, item.currency)}</p>
+                </QueueDetail>
+              </div>
+            </div>
+          ))}
+          {queue.length === 0 ? (
+            <div className="rounded-md border border-dashed p-4 text-sm text-muted-foreground dark:border-white/10">
+              No payments are connected to your account yet.
+            </div>
+          ) : null}
         </div>
       </Card>
     </AppShell>
+  );
+}
+
+function QueueDetail({ children, label }: { children: React.ReactNode; label: string }) {
+  return (
+    <div className="rounded-md border bg-card p-3 dark:border-white/10">
+      <p className="mb-2 text-xs font-semibold uppercase text-muted-foreground">{label}</p>
+      {children}
+    </div>
   );
 }
 

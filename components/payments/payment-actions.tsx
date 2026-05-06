@@ -43,7 +43,7 @@ export function PaymentActions({
   const isPending = paymentStatus === "pending";
   const canVerifyStripe = isPending && paymentProvider !== "razorpay";
   const fundButtonLabel = isPending
-    ? paymentProvider === "stripe" ? "Reopen funding link" : "Reopen Razorpay checkout"
+    ? paymentProvider === "stripe" ? "Open funding link" : "Open Razorpay"
     : "Fund with Razorpay";
 
   async function createLink() {
@@ -85,7 +85,7 @@ export function PaymentActions({
     const checkout = new window.Razorpay({
       key: data.razorpay_key_id,
       amount: data.amount_cents,
-      currency: data.currency,
+      currency: String(data.currency || "INR").toUpperCase(),
       name: data.name,
       description: data.description,
       order_id: data.razorpay_order_id,
@@ -168,6 +168,7 @@ export function PaymentActions({
         {/* Payment link — available until funded */}
         {!isFunded && (
           <Button
+            className="min-h-9 max-w-full whitespace-normal px-3 py-2 text-center leading-tight"
             disabled={busy || !canFund}
             onClick={createLink}
             size="sm"

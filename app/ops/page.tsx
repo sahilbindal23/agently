@@ -5,6 +5,7 @@ import { VerificationActions } from "@/components/admin/verification-actions";
 import { DeliverableCard } from "@/components/deliverables/deliverable-card";
 import { AppShell } from "@/components/layout/app-shell";
 import { PageHeader } from "@/components/layout/page-header";
+import { AutomationRunner } from "@/components/ops/automation-runner";
 import { PaymentActions } from "@/components/payments/payment-actions";
 import { PaymentStatusBadge } from "@/components/payments/payment-status-badge";
 import { Badge } from "@/components/ui/badge";
@@ -54,6 +55,8 @@ export default async function OpsPage() {
         title="Admin Ops Center"
         description="Exception-first marketplace control: review risk, unblock funding, approve delivery, release payouts, and verify profiles without hunting across the app."
       />
+
+      <AutomationRunner />
 
       <section className="mb-5 grid gap-3 md:grid-cols-3 xl:grid-cols-6">
         <OpsMetric icon={<AlertTriangle className="h-4 w-4" />} label="Open exceptions" tone={totalExceptions ? "amber" : "green"} value={totalExceptions} />

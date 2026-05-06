@@ -48,9 +48,10 @@ export async function POST(request: Request) {
 
   if (isRazorpayConfigured()) {
     try {
+      const razorpayCurrency = normalizeRazorpayCurrency(target.currency);
       const order = await createRazorpayOrder({
         amount: target.amountCents,
-        currency: target.currency,
+        currency: razorpayCurrency,
         receipt: `${entityType}-${entityId}`.replace(/[^a-zA-Z0-9_-]/g, "").slice(0, 40),
         notes: {
           app: "agently",
@@ -71,7 +72,7 @@ export async function POST(request: Request) {
         eventName: "payment_link_created",
         entityType,
         entityId,
-        metadata: { source: "razorpay", razorpay_order_id: order.id, amount_cents: target.amountCents, currency: target.currency }
+        metadata: { source: "razorpay", razorpay_order_id: order.id, amount_cents: target.amountCents, currency: razorpayCurrency }
       });
 
       return NextResponse.json({
@@ -79,7 +80,7 @@ export async function POST(request: Request) {
         razorpay_key_id: getRazorpayPublicKey(),
         razorpay_order_id: order.id,
         amount_cents: target.amountCents,
-        currency: target.currency,
+        currency: order.currency || razorpayCurrency,
         name: "Agently protected payout",
         description: target.title
       });
@@ -182,4 +183,9 @@ async function getBrandIdsForUser(admin: NonNullable<ReturnType<typeof createAdm
     ...((audits ?? []).map((audit) => String(audit.brand_id)).filter(Boolean)),
     ...((campaigns ?? []).map((campaign) => String(campaign.brand_id)).filter(Boolean))
   ]));
+}
+
+function normalizeRazorpayCurrency(currency: string) {
+  const normalized = String(currency || "inr").trim().toUpperCase();
+  return normalized === "INR" ? "INR" : "INR";
 }
