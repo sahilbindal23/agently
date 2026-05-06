@@ -44,7 +44,7 @@ test.describe("synthetic tester agents", () => {
     await expect(page.getByRole("button", { name: /message creator/i })).toHaveCount(0);
 
     await expectPageReady(page, "/offers", /Offers|Talent offer inbox/i);
-    await expect(page.getByText(/Open structured counter|No offers yet|Deal workflow/i).first()).toBeVisible();
+    await expect(page.getByText(/Open structured counter|No offers yet|Protected creator deal flow|Wait for funding/i).first()).toBeVisible();
     await expectPageReady(page, "/ai-insights", /Sponsor Growth Calculator|AI Insights|Negotiation/i);
     await expectPageReady(page, "/payments", /Payments|payment/i);
   });

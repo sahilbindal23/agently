@@ -35,34 +35,42 @@ export default async function PaymentsPage() {
   );
   const latestContractRisks = await getLatestContractRisks(visibleDeals.map((deal) => deal.id));
   const queue = [
-    ...paymentDeals.map((deal) => ({
+    ...paymentDeals.map((deal) => {
+      const payment = visiblePayments.find((item) => item.deal_id === deal.id);
+      return {
       id: deal.id,
       type: "deal" as const,
       title: deal.title,
       status: deal.payment_status as PaymentStatus,
       amount_cents: deal.amount_cents,
       currency: deal.currency,
+      provider: payment?.provider ?? null,
       payout_cents: calculatePaymentSplit(deal.amount_cents).talentPayoutCents,
-      session: visiblePayments.find((payment) => payment.deal_id === deal.id)?.stripe_checkout_session_id ?? "not created",
+      fundingRef: paymentReference(payment),
       deliverable: latestDeliverables.get(`deal-${deal.id}`),
       contractRisk: latestContractRisks.get(deal.id),
       hasContract: latestContractRisks.has(deal.id),
       canFund: deal.offer_status === "accepted"
-    })),
-    ...projects.map((project) => ({
+    };
+    }),
+    ...projects.map((project) => {
+      const payment = projectPayments.find((item) => item.freelancer_project_id === String(project.id));
+      return {
       id: project.id,
       type: "freelancer_project" as const,
       title: project.title,
       status: String(project.payment_status ?? "unpaid") as PaymentStatus,
       amount_cents: Number(project.amount_cents ?? 0),
       currency: project.currency ?? "inr",
+      provider: payment?.provider ?? null,
       payout_cents: calculatePaymentSplit(Number(project.amount_cents ?? 0)).talentPayoutCents,
-      session: projectPayments.find((payment) => payment.freelancer_project_id === String(project.id))?.stripe_checkout_session_id ?? "not created",
+      fundingRef: paymentReference(payment),
       deliverable: latestDeliverables.get(`freelancer_project-${project.id}`),
       contractRisk: null,
       hasContract: Boolean(project.usage_context || project.approval_terms),
       canFund: String(project.status ?? "") === "accepted"
-    }))
+    };
+    })
   ];
   const largestAmount = queue.reduce((max, item) => Math.max(max, item.amount_cents), 0);
   const canManagePayments = user?.role === "admin" || user?.role === "brand";
@@ -72,7 +80,7 @@ export default async function PaymentsPage() {
       <PageHeader
         eyebrow="Payment orchestration"
         title="Protected payout workflow"
-        description="Track accepted work from funding to delivery approval and payout release. The payment rail can be swapped from prototype checkout to Razorpay for India-first payments."
+        description="Track accepted work from Razorpay funding to delivery approval and payout release. Stripe remains available as a secondary rail, but the prototype is India-first."
       />
       <WorkflowGuidance role={user?.role} />
       <section className="mb-5 grid gap-3 md:grid-cols-4 xl:grid-cols-7">
@@ -112,10 +120,10 @@ export default async function PaymentsPage() {
                     <p className="mt-2 text-sm leading-5 text-muted-foreground">{paymentGuidance(item.status, Boolean(item.deliverable), item.deliverable?.status)}</p>
                   </Td>
                   <Td className="min-w-80"><DeliverableCard deliverable={item.deliverable} canReview={canManagePayments} /></Td>
-                  <Td>{fundingReference(item.session, item.status)}</Td>
+                  <Td>{fundingReference(item.fundingRef, item.status)}</Td>
                   <Td className="text-right">{formatCurrency(item.amount_cents, item.currency)}</Td>
                   <Td className="text-right font-semibold">{formatCurrency(item.payout_cents, item.currency)}</Td>
-                  <Td>{canManagePayments ? <PaymentActions canFund={item.canFund} canRelease={user?.role === "admin"} entityId={item.id} entityType={item.type} isAdmin={user?.role === "admin"} paymentStatus={item.status} /> : <Badge tone="neutral">view only</Badge>}</Td>
+                  <Td>{canManagePayments ? <PaymentActions canFund={item.canFund} canRelease={user?.role === "admin"} entityId={item.id} entityType={item.type} isAdmin={user?.role === "admin"} paymentProvider={item.provider ?? undefined} paymentStatus={item.status} /> : <Badge tone="neutral">view only</Badge>}</Td>
                 </tr>
               ))}
               {queue.length === 0 ? (
@@ -194,6 +202,13 @@ function fundingReference(session: string, status: string) {
   if (status === "unpaid") return "not generated";
   if (session === "not created") return "manual tracking";
   return session;
+}
+
+function paymentReference(payment?: { provider?: string | null; razorpay_order_id?: string | null; razorpay_payment_id?: string | null; stripe_checkout_session_id?: string | null }) {
+  if (!payment) return "not created";
+  if (payment.provider === "razorpay") return payment.razorpay_payment_id || payment.razorpay_order_id || "razorpay pending";
+  if (payment.provider === "manual") return "manual tracking";
+  return payment.stripe_checkout_session_id || "stripe pending";
 }
 
 async function getFreelancerProjects(scope: PaymentScope, role: string | undefined) {

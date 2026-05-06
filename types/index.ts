@@ -152,9 +152,13 @@ export type Payment = {
   id: string;
   deal_id?: string | null;
   freelancer_project_id?: string | null;
+  provider?: "stripe" | "razorpay" | "manual" | string | null;
   stripe_payment_intent_id?: string | null;
   stripe_checkout_session_id?: string | null;
   stripe_payment_link_id?: string | null;
+  razorpay_order_id?: string | null;
+  razorpay_payment_id?: string | null;
+  razorpay_signature?: string | null;
   amount_cents: number;
   platform_fee_cents: number;
   creator_payout_cents: number;

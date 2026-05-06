@@ -154,9 +154,11 @@ export default async function OffersPage() {
                   </div>
                 ) : null}
                 <div className="flex flex-wrap gap-2">
-                  <a href={`#counter-${offer.id}`}>
-                    <Button variant="secondary" type="button">Open structured counter</Button>
-                  </a>
+                  {!["accepted", "declined"].includes(String(offer.offer_status)) ? (
+                    <a href={`#counter-${offer.id}`}>
+                      <Button variant="secondary" type="button">Open structured counter</Button>
+                    </a>
+                  ) : null}
                   {offer.brand_id ? (
                     <MessageRecipientButton contextId={offer.id} contextType="deal" entityId={offer.brand_id} entityType="brand" label="Ask brand a question" />
                   ) : null}
@@ -246,9 +248,11 @@ export default async function OffersPage() {
                   <p className="mt-1 whitespace-pre-wrap text-sm leading-6">{[project.usage_context, project.approval_terms, project.notes].filter(Boolean).join("\n") || "No extra terms added."}</p>
                 </div>
                 <div className="flex flex-wrap gap-2">
-                  <a href={`#counter-${project.id}`}>
-                    <Button variant="secondary" type="button">Open structured counter</Button>
-                  </a>
+                  {!["accepted", "declined"].includes(String(project.status)) ? (
+                    <a href={`#counter-${project.id}`}>
+                      <Button variant="secondary" type="button">Open structured counter</Button>
+                    </a>
+                  ) : null}
                   {project.brand_id ? (
                     <MessageRecipientButton contextId={project.id} contextType="freelancer_project" entityId={project.brand_id} entityType="brand" label="Ask brand a question" />
                   ) : null}

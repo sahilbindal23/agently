@@ -6,6 +6,17 @@ import { CheckCircle2, CreditCard, RefreshCw, Send, ShieldCheck } from "lucide-r
 import { Button } from "@/components/ui/button";
 
 type EntityType = "deal" | "freelancer_project";
+type RazorpayCheckoutResponse = {
+  razorpay_order_id: string;
+  razorpay_payment_id: string;
+  razorpay_signature: string;
+};
+
+declare global {
+  interface Window {
+    Razorpay?: new (options: Record<string, unknown>) => { open: () => void };
+  }
+}
 
 export function PaymentActions({
   canFund = true,
@@ -13,6 +24,7 @@ export function PaymentActions({
   entityId,
   entityType,
   isAdmin = false,
+  paymentProvider,
   paymentStatus = "unpaid"
 }: {
   canFund?: boolean;
@@ -20,6 +32,7 @@ export function PaymentActions({
   entityId: string;
   entityType: EntityType;
   isAdmin?: boolean;
+  paymentProvider?: string | null;
   paymentStatus?: string;
 }) {
   const router = useRouter();
@@ -28,6 +41,10 @@ export function PaymentActions({
 
   const isFunded = ["funded", "release_ready", "released"].includes(paymentStatus);
   const isPending = paymentStatus === "pending";
+  const canVerifyStripe = isPending && paymentProvider !== "razorpay";
+  const fundButtonLabel = isPending
+    ? paymentProvider === "stripe" ? "Reopen funding link" : "Reopen Razorpay checkout"
+    : "Fund with Razorpay";
 
   async function createLink() {
     setBusy(true);
@@ -43,10 +60,67 @@ export function PaymentActions({
       setMessage({ text: data.error ?? "Could not create funding link.", ok: false });
       return;
     }
+    if (data.provider === "razorpay") {
+      await openRazorpayCheckout(data);
+      return;
+    }
     if (data.checkout_url) {
       window.open(data.checkout_url, "_blank", "noopener,noreferrer");
     }
     router.refresh();
+  }
+
+  async function openRazorpayCheckout(data: Record<string, string | number>) {
+    if (!data.razorpay_key_id || !data.razorpay_order_id) {
+      setMessage({ text: "Razorpay order was created, but checkout details are incomplete.", ok: false });
+      return;
+    }
+
+    const loaded = await loadRazorpayScript();
+    if (!loaded || !window.Razorpay) {
+      setMessage({ text: "Could not load Razorpay Checkout. Check your connection and try again.", ok: false });
+      return;
+    }
+
+    const checkout = new window.Razorpay({
+      key: data.razorpay_key_id,
+      amount: data.amount_cents,
+      currency: data.currency,
+      name: data.name,
+      description: data.description,
+      order_id: data.razorpay_order_id,
+      handler: async (response: RazorpayCheckoutResponse) => {
+        setBusy(true);
+        setMessage(null);
+        const verify = await fetch("/api/payments/verify-razorpay", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            entity_id: entityId,
+            entity_type: entityType,
+            razorpay_order_id: response.razorpay_order_id,
+            razorpay_payment_id: response.razorpay_payment_id,
+            razorpay_signature: response.razorpay_signature
+          })
+        });
+        const verifyData = await verify.json().catch(() => ({}));
+        setBusy(false);
+        if (!verify.ok) {
+          setMessage({ text: verifyData.error ?? "Payment could not be verified.", ok: false });
+          return;
+        }
+        setMessage({ text: "Funding confirmed. Work is now protected.", ok: true });
+        router.refresh();
+      },
+      modal: {
+        ondismiss: () => {
+          setMessage({ text: "Razorpay order is pending. Complete checkout when ready.", ok: false });
+          router.refresh();
+        }
+      },
+      theme: { color: "#14b8a6" }
+    });
+    checkout.open();
   }
 
   async function verifyPayment() {
@@ -102,12 +176,12 @@ export function PaymentActions({
             title={canFund ? undefined : "Offer must be accepted before funding."}
           >
             <CreditCard className="h-4 w-4" />
-            {isPending ? "Reopen funding link" : "Generate funding link"}
+            {fundButtonLabel}
           </Button>
         )}
 
         {/* Verify payment — shows for brands once a Stripe session exists */}
-        {!isFunded && isPending && !isAdmin && (
+        {!isFunded && canVerifyStripe && !isAdmin && (
           <Button disabled={busy} onClick={verifyPayment} size="sm" type="button" variant="secondary">
             <RefreshCw className="h-4 w-4" />
             Check funding
@@ -117,7 +191,7 @@ export function PaymentActions({
         {/* Admin: verify shortcut + manual overrides */}
         {isAdmin && (
           <>
-            {isPending && (
+            {canVerifyStripe && (
               <Button disabled={busy} onClick={verifyPayment} size="sm" type="button" variant="secondary">
                 <RefreshCw className="h-4 w-4" />
                 Check funding
@@ -150,4 +224,23 @@ export function PaymentActions({
       )}
     </div>
   );
+}
+
+function loadRazorpayScript() {
+  if (window.Razorpay) return Promise.resolve(true);
+  return new Promise<boolean>((resolve) => {
+    const existing = document.querySelector<HTMLScriptElement>('script[src="https://checkout.razorpay.com/v1/checkout.js"]');
+    if (existing) {
+      existing.addEventListener("load", () => resolve(true), { once: true });
+      existing.addEventListener("error", () => resolve(false), { once: true });
+      return;
+    }
+
+    const script = document.createElement("script");
+    script.src = "https://checkout.razorpay.com/v1/checkout.js";
+    script.async = true;
+    script.onload = () => resolve(true);
+    script.onerror = () => resolve(false);
+    document.body.appendChild(script);
+  });
 }

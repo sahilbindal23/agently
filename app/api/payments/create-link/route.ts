@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 import { trackEvent, userEventBase } from "@/lib/analytics/track";
 import { ensurePaymentRecordForEntity } from "@/lib/payments/workflow";
+import { createRazorpayOrder, getRazorpayPublicKey, isRazorpayConfigured } from "@/lib/razorpay/client";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
 import { getStripe } from "@/lib/stripe/client";
@@ -45,9 +46,51 @@ export async function POST(request: Request) {
     }
   }
 
+  if (isRazorpayConfigured()) {
+    try {
+      const order = await createRazorpayOrder({
+        amount: target.amountCents,
+        currency: target.currency,
+        receipt: `${entityType}-${entityId}`.replace(/[^a-zA-Z0-9_-]/g, "").slice(0, 40),
+        notes: {
+          app: "agently",
+          entity_type: entityType,
+          entity_id: entityId,
+          brand_id: target.brandId,
+          title: target.title.slice(0, 120)
+        }
+      });
+
+      await markPending(admin, entityType, entityId, {
+        provider: "razorpay",
+        providerPayload: order as unknown as Record<string, unknown>,
+        razorpayOrderId: order.id
+      });
+      await trackEvent(admin, {
+        ...userEventBase(authData.user, profile),
+        eventName: "payment_link_created",
+        entityType,
+        entityId,
+        metadata: { source: "razorpay", razorpay_order_id: order.id, amount_cents: target.amountCents, currency: target.currency }
+      });
+
+      return NextResponse.json({
+        provider: "razorpay",
+        razorpay_key_id: getRazorpayPublicKey(),
+        razorpay_order_id: order.id,
+        amount_cents: target.amountCents,
+        currency: target.currency,
+        name: "Agently protected payout",
+        description: target.title
+      });
+    } catch (error) {
+      return NextResponse.json({ error: error instanceof Error ? error.message : "Could not create Razorpay order." }, { status: 502 });
+    }
+  }
+
   const stripe = getStripe();
   if (!stripe) {
-    return NextResponse.json({ error: "Payment processing is not configured. Contact the platform admin." }, { status: 503 });
+    return NextResponse.json({ error: "Payment processing is not configured. Add Razorpay keys for India-first funding." }, { status: 503 });
   }
 
   const appUrl = process.env.APP_URL ?? "http://localhost:3000";
@@ -69,7 +112,7 @@ export async function POST(request: Request) {
     cancel_url: `${appUrl}/payments?payment=cancelled`
   });
 
-  await markPending(admin, entityType, entityId, session.id);
+  await markPending(admin, entityType, entityId, { provider: "stripe", stripeCheckoutSessionId: session.id });
   await trackEvent(admin, {
     ...userEventBase(authData.user, profile),
     eventName: "payment_link_created",
@@ -79,15 +122,21 @@ export async function POST(request: Request) {
   });
 
   return NextResponse.json({
+    provider: "stripe",
     checkout_url: session.url,
     stripe_checkout_session_id: session.id
   });
 }
 
-async function markPending(admin: NonNullable<ReturnType<typeof createAdminClient>>, entityType: "deal" | "freelancer_project", entityId: string, sessionId: string) {
+async function markPending(
+  admin: NonNullable<ReturnType<typeof createAdminClient>>,
+  entityType: "deal" | "freelancer_project",
+  entityId: string,
+  options: Parameters<typeof ensurePaymentRecordForEntity>[4]
+) {
   const table = entityType === "deal" ? "deals" : "freelancer_projects";
   const { data } = await admin.from(table).update({ payment_status: "pending" }).eq("id", entityId).select("*").single();
-  if (data) await ensurePaymentRecordForEntity(admin, entityType, data, "pending", sessionId);
+  if (data) await ensurePaymentRecordForEntity(admin, entityType, data, "pending", options);
 }
 
 async function getProfileRole(admin: NonNullable<ReturnType<typeof createAdminClient>>, profileId: string) {
