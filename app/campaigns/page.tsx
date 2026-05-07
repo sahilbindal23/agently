@@ -7,6 +7,7 @@ import { PageHeader } from "@/components/layout/page-header";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, Td, Th } from "@/components/ui/table";
+import { enrichRecommendationsWithRoi } from "@/lib/campaigns/enrich-roi";
 import { applyEventInformedRanking, rankCreators, rankFreelancers, type CampaignRecommendation, type FreelancerRecommendationInput, type RecommendationEventSignal, type ServiceRateInput } from "@/lib/campaigns/recommendations";
 import { getAgentlyData } from "@/lib/db/live-data";
 import { creatorAutomationDecision, freelancerAutomationDecision, isDiscoverable } from "@/lib/profile/automation";
@@ -29,9 +30,13 @@ export default async function CampaignsPage() {
     freelancer: freelancer as unknown as Record<string, unknown>,
     serviceRates: campaignData.serviceRates.filter((rate) => rate.freelancer_id === freelancer.id) as unknown as Array<Record<string, unknown>>
   })));
-  const creatorRecommendations = latestCampaign
+  const adminClientForRoi = createAdminClient();
+  const creatorRecommendationsBase = latestCampaign
     ? applyEventInformedRanking(rankCreators(latestCampaign, eligibleCreators, creatorPlatforms), "creator", campaignData.productEvents, latestCampaign.id).slice(0, 5)
     : [];
+  const creatorRecommendations = adminClientForRoi && creatorRecommendationsBase.length
+    ? await enrichRecommendationsWithRoi(adminClientForRoi, creatorRecommendationsBase, eligibleCreators, creatorPlatforms)
+    : creatorRecommendationsBase;
   const freelancerRecommendations = latestCampaign
     ? applyEventInformedRanking(rankFreelancers(latestCampaign, eligibleFreelancers, campaignData.serviceRates), "freelancer", campaignData.productEvents, latestCampaign.id).slice(0, 5)
     : [];

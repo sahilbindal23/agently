@@ -7,6 +7,7 @@ import { AppShell } from "@/components/layout/app-shell";
 import { PageHeader } from "@/components/layout/page-header";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardHeader, CardTitle } from "@/components/ui/card";
+import { enrichRecommendationsWithRoi } from "@/lib/campaigns/enrich-roi";
 import { projectCampaignPerformance, type CampaignPerformanceProjection } from "@/lib/campaigns/performance";
 import { applyEventInformedRanking, rankCreators, rankFreelancers, type CampaignRecommendation, type FreelancerRecommendationInput, type RecommendationEventSignal, type ServiceRateInput } from "@/lib/campaigns/recommendations";
 import { getAgentlyData } from "@/lib/db/live-data";
@@ -46,7 +47,11 @@ export default async function CampaignDetailPage({
   })));
   const creatorTrustFilter = ["verified", "api_synced"].includes(String(first(query.creatorTrust))) ? "verified" : "all";
   const allCreatorRecommendations = applyEventInformedRanking(rankCreators(campaign, eligibleCreators, creatorPlatforms), "creator", campaignData.productEvents, campaign.id);
-  const creatorRecommendations = filterCreatorRecommendations(allCreatorRecommendations, creatorTrustFilter).slice(0, 8);
+  const adminClientForRoi = createAdminClient();
+  const creatorRecommendationsBase = filterCreatorRecommendations(allCreatorRecommendations, creatorTrustFilter).slice(0, 8);
+  const creatorRecommendations = adminClientForRoi
+    ? await enrichRecommendationsWithRoi(adminClientForRoi, creatorRecommendationsBase, eligibleCreators, creatorPlatforms)
+    : creatorRecommendationsBase;
   const freelancerRecommendations = applyEventInformedRanking(rankFreelancers(campaign, eligibleFreelancers, campaignData.serviceRates), "freelancer", campaignData.productEvents, campaign.id).slice(0, 8);
   const creatorShortlist = campaignData.shortlists.filter((item) => item.entity_type === "creator");
   const freelancerShortlist = campaignData.shortlists.filter((item) => item.entity_type === "freelancer");
