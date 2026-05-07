@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { trackEvent, userEventBase } from "@/lib/analytics/track";
+import { recordObservationFromDeal, recordObservationFromFreelancerProject } from "@/lib/benchmarks/internal-deals";
 import { applyLedgerEvent } from "@/lib/engines/outcome-ledger";
 import { ensurePaymentRecordForEntity } from "@/lib/payments/workflow";
 import { createAdminClient } from "@/lib/supabase/admin";
@@ -71,6 +72,9 @@ export async function POST(request: Request) {
       offerId: entityId,
       paymentStatus: status
     });
+    if (status === "released") {
+      try { await recordObservationFromDeal(admin, entityId); } catch (err) { console.error("[benchmarks] deal observation failed", err); }
+    }
     return NextResponse.json({ data });
   }
 
@@ -109,6 +113,9 @@ export async function POST(request: Request) {
     freelancerProjectId: entityId,
     paymentStatus: status
   });
+  if (status === "released") {
+    try { await recordObservationFromFreelancerProject(admin, entityId); } catch (err) { console.error("[benchmarks] project observation failed", err); }
+  }
   return NextResponse.json({ data });
 }
 

@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { getCurrentUser } from "@/lib/auth/session";
-import { getBenchmarkBlend } from "@/lib/benchmarks/rates";
+import { getBenchmarkBlend, getBenchmarkBlendV2 } from "@/lib/benchmarks/rates";
 import { getOpenAI } from "@/lib/openai/client";
 import { rulesBasedValuation, type ValuationInput } from "@/lib/ai/valuation";
 import { createAdminClient } from "@/lib/supabase/admin";
@@ -13,7 +13,7 @@ export async function POST(request: Request) {
   const input = (await request.json()) as ValuationInput;
   const fallback = rulesBasedValuation(input);
   const admin = createAdminClient();
-  const benchmarkBlend = await getBenchmarkBlend(admin, input, fallback);
+  const benchmarkBlend = (await getBenchmarkBlendV2(admin, input, fallback)) ?? (await getBenchmarkBlend(admin, input, fallback));
   const openai = getOpenAI();
 
   if (!openai) {
