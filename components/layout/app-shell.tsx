@@ -91,7 +91,7 @@ export async function AppShell({ children }: { children: React.ReactNode }) {
     : [0, [], 0, 0, 0];
   const activeNotifications = notifications.filter((notification) => notification.status === "unread");
   const activityOpenItems = user && admin
-    ? await getActivityOpenItemCount(admin, user, nudges.length, pendingOffers)
+    ? await getActivityOpenItemCount(admin, user, nudges.length)
     : 0;
   const nav = user?.role === "creator" ? creatorNav : user?.role === "brand" ? brandNav : user?.role === "freelancer" ? freelancerNav : adminNav;
 
@@ -188,14 +188,14 @@ export async function AppShell({ children }: { children: React.ReactNode }) {
 type ShellUser = NonNullable<Awaited<ReturnType<typeof getCurrentUser>>>;
 type AdminClient = NonNullable<ReturnType<typeof createAdminClient>>;
 
-async function getActivityOpenItemCount(admin: AdminClient, user: ShellUser, nudgeCount: number, pendingOffers: number) {
+async function getActivityOpenItemCount(admin: AdminClient, user: ShellUser, nudgeCount: number) {
   const roleProfileCount = user.role === "creator"
     ? await getCreatorReadinessCount(admin, user.id)
     : user.role === "freelancer"
       ? await getFreelancerReadinessCount(admin, user.id)
       : 0;
 
-  return nudgeCount + roleProfileCount + pendingOffers;
+  return nudgeCount + roleProfileCount;
 }
 
 async function getCreatorReadinessCount(admin: AdminClient, profileId: string) {

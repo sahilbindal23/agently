@@ -35,7 +35,7 @@ export default async function ContractsPage() {
       <PageHeader
         eyebrow="Contract protection"
         title="AI contract intelligence"
-        description="Upload or paste brand agreements and flag risky usage, exclusivity, whitelisting, cancellation, revision, and payment terms."
+        description="Attach brand agreements to deals, scan terms, and create a contract packet before acceptance, funding, or final delivery."
       />
       <section className="mb-5 grid gap-3 md:grid-cols-4">
         <StatusMetric label="Visible deals" value={visibleDeals.length} tone="blue" />
@@ -45,7 +45,7 @@ export default async function ContractsPage() {
       </section>
       <section className="grid gap-5 xl:grid-cols-[0.9fr_1.1fr]">
         <Card>
-          <CardHeader><CardTitle>Attach Scan To Deal</CardTitle><Badge>{dealOptions.length ? "role scoped" : "no eligible deals"}</Badge></CardHeader>
+          <CardHeader><CardTitle>Attach Contract Packet</CardTitle><Badge>{dealOptions.length ? "role scoped" : "no eligible deals"}</Badge></CardHeader>
           {dealOptions.length ? <DealContractScanForm deals={dealOptions} /> : (
             <p className="text-sm leading-6 text-muted-foreground">No deals are currently available for contract scanning in your account.</p>
           )}
@@ -67,7 +67,11 @@ export default async function ContractsPage() {
                   <div>
                     <p className="font-semibold">{deal?.title ?? "Deal contract"}</p>
                     <p className="mt-1 text-sm text-muted-foreground">{contract.summary}</p>
-                    <p className="mt-2 text-xs font-medium text-muted-foreground">{contractGuidance(contract.risk_level)}</p>
+                    <div className="mt-2 flex flex-wrap gap-2 text-xs font-medium text-muted-foreground">
+                      <span>{contractGuidance(contract.risk_level)}</span>
+                      {contract.file_name ? <span className="rounded-full bg-muted px-2 py-0.5">file: {contract.file_name}</span> : null}
+                      {contract.review_status ? <span className="rounded-full bg-muted px-2 py-0.5">gate: {contract.review_status}</span> : null}
+                    </div>
                   </div>
                   <div className="flex shrink-0 items-center gap-2">
                     <Badge tone={contract.risk_level === "safe" ? "green" : contract.risk_level === "caution" ? "amber" : "red"}>

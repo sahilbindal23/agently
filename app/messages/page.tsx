@@ -48,7 +48,7 @@ export default async function MessagesPage({ searchParams }: { searchParams: Pro
           <div className="space-y-2">
             {threads.map((thread) => (
               <a
-                className={`block rounded-md border p-3 text-sm transition hover:bg-muted ${thread.id === selectedThreadId ? "border-primary bg-primary/5" : "bg-white"}`}
+                className={`block rounded-md border p-3 text-sm transition hover:bg-muted dark:border-white/8 ${thread.id === selectedThreadId ? "border-primary bg-primary/5" : "bg-card"}`}
                 href={`/messages?thread=${thread.id}`}
                 key={thread.id}
               >
@@ -76,12 +76,12 @@ export default async function MessagesPage({ searchParams }: { searchParams: Pro
           </CardHeader>
 
           {messages.length ? (
-            <div className="mb-4 max-h-[440px] space-y-3 overflow-y-auto rounded-md border bg-muted p-3">
+            <div className="mb-4 max-h-[440px] space-y-3 overflow-y-auto rounded-md border bg-muted p-3 dark:border-white/8">
               {messages.map((message) => {
                 const mine = message.sender_profile_id === user.id;
                 return (
                   <div className={`flex ${mine ? "justify-end" : "justify-start"}`} key={message.id}>
-                    <div className={`max-w-[78%] rounded-md border px-3 py-2 text-sm ${mine ? "bg-primary text-primary-foreground" : "bg-white"}`}>
+                    <div className={`max-w-[78%] rounded-md border px-3 py-2 text-sm dark:border-white/8 ${mine ? "bg-primary text-primary-foreground" : "bg-card"}`}>
                       <p className="whitespace-pre-wrap leading-6">{message.body}</p>
                       <p className={`mt-1 text-[11px] ${mine ? "text-primary-foreground/75" : "text-muted-foreground"}`}>{new Date(message.created_at).toLocaleString("en-IN")}</p>
                     </div>

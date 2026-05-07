@@ -141,9 +141,14 @@ export type Contract = {
   id: string;
   deal_id: string;
   file_path: string | null;
+  file_name?: string | null;
+  file_type?: string | null;
+  file_size?: number | null;
+  uploaded_by?: string | null;
   raw_text: string;
   scan_status: string;
   risk_level: RiskLevel;
+  review_status?: "needs_review" | "safe_to_accept" | "needs_negotiation" | "blocked" | string | null;
   summary: string;
   flags: ContractFlag[];
 };

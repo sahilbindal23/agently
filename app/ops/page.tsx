@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
-import { AlertTriangle, ArrowRight, Banknote, CheckCircle2, Clock3, FileWarning, ShieldCheck, UserCheck } from "lucide-react";
+import { AlertTriangle, ArrowRight, Banknote, CheckCircle2, Clock3, FileWarning, History, ShieldCheck, UserCheck } from "lucide-react";
 import { VerificationActions } from "@/components/admin/verification-actions";
 import { DeliverableCard } from "@/components/deliverables/deliverable-card";
 import { AppShell } from "@/components/layout/app-shell";
@@ -81,6 +81,7 @@ export default async function OpsPage() {
         <ReleaseQueue items={ops.releaseReady} />
         <StalledOfferQueue items={ops.stalledOffers} />
         <VerificationQueue items={ops.verificationQueue} />
+        <AutomationAudit events={ops.automationEvents} />
       </section>
     </AppShell>
   );
@@ -96,7 +97,8 @@ async function getOpsQueues(admin: NonNullable<ReturnType<typeof createAdminClie
     paymentsResult,
     creatorsResult,
     freelancersResult,
-    brandsResult
+    brandsResult,
+    eventsResult
   ] = await Promise.all([
     admin.from("deals").select("*").order("created_at", { ascending: false }),
     admin.from("freelancer_projects").select("*").order("created_at", { ascending: false }),
@@ -106,7 +108,8 @@ async function getOpsQueues(admin: NonNullable<ReturnType<typeof createAdminClie
     admin.from("payments").select("*").order("created_at", { ascending: false }),
     admin.from("creators").select("*").order("created_at", { ascending: false }),
     admin.from("freelancers").select("*").order("created_at", { ascending: false }),
-    admin.from("brands").select("*").order("created_at", { ascending: false })
+    admin.from("brands").select("*").order("created_at", { ascending: false }),
+    admin.from("product_events").select("*").eq("event_name", "workflow_automation_applied").order("created_at", { ascending: false }).limit(12)
   ]);
 
   const deals = rows(dealsResult.data);
@@ -118,6 +121,13 @@ async function getOpsQueues(admin: NonNullable<ReturnType<typeof createAdminClie
   const creators = rows(creatorsResult.data);
   const freelancers = rows(freelancersResult.data);
   const brands = rows(brandsResult.data);
+  const automationEvents = rows(eventsResult.data).map((event) => ({
+    id: String(event.id),
+    entityType: text(event.entity_type, "workflow"),
+    entityId: text(event.entity_id, "unknown"),
+    createdAt: text(event.created_at, ""),
+    metadata: asRecord(event.metadata)
+  }));
 
   const creatorName = (id: unknown) => text(creators.find((creator) => creator.id === id)?.display_name, "Creator");
   const freelancerName = (id: unknown) => text(freelancers.find((freelancer) => freelancer.id === id)?.display_name, "Freelancer");
@@ -247,7 +257,7 @@ async function getOpsQueues(admin: NonNullable<ReturnType<typeof createAdminClie
     }))
   ].slice(0, 8);
 
-  return { acceptedUnfunded, highRiskContracts, releaseReady, stalledOffers, submittedDeliverables, verificationQueue };
+  return { acceptedUnfunded, automationEvents, highRiskContracts, releaseReady, stalledOffers, submittedDeliverables, verificationQueue };
 }
 
 function ContractRiskQueue({ items }: { items: Awaited<ReturnType<typeof getOpsQueues>>["highRiskContracts"] }) {
@@ -396,6 +406,48 @@ function VerificationQueue({ items }: { items: Awaited<ReturnType<typeof getOpsQ
             {!items.length ? <tr><Td colSpan={5}><EmptyState copy="No profiles need verification review." /></Td></tr> : null}
           </tbody>
         </Table>
+      </div>
+    </Card>
+  );
+}
+
+function AutomationAudit({ events }: { events: Awaited<ReturnType<typeof getOpsQueues>>["automationEvents"] }) {
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle>Automation Audit</CardTitle>
+        <Badge tone={events.length ? "blue" : "green"}>{events.length} recent</Badge>
+      </CardHeader>
+      <div className="grid gap-3">
+        {events.map((event) => {
+          const changes = Array.isArray(event.metadata.changes) ? event.metadata.changes : [];
+          return (
+            <div className="rounded-md border bg-card p-3 dark:border-white/8" key={event.id}>
+              <div className="flex flex-col gap-2 md:flex-row md:items-start md:justify-between">
+                <div>
+                  <div className="flex items-center gap-2">
+                    <History className="h-4 w-4 text-primary" />
+                    <p className="font-semibold">{event.entityType} automation</p>
+                  </div>
+                  <p className="mt-1 text-xs text-muted-foreground">{event.createdAt ? new Date(event.createdAt).toLocaleString("en-IN") : "recent"} - {event.entityId}</p>
+                </div>
+                <Badge tone="blue">{changes.length || 1} update{changes.length === 1 ? "" : "s"}</Badge>
+              </div>
+              <div className="mt-3 grid gap-2 md:grid-cols-2">
+                {changes.length ? changes.slice(0, 4).map((change, index) => (
+                  <p className="rounded-md bg-muted p-2 text-xs leading-5 text-muted-foreground" key={index}>
+                    {String(change)}
+                  </p>
+                )) : (
+                  <p className="rounded-md bg-muted p-2 text-xs leading-5 text-muted-foreground">
+                    Workflow automation applied a safe state transition.
+                  </p>
+                )}
+              </div>
+            </div>
+          );
+        })}
+        {!events.length ? <EmptyState copy="No automation events have been recorded yet." /> : null}
       </div>
     </Card>
   );

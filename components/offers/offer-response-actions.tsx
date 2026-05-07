@@ -12,7 +12,9 @@ type OfferResponseActionsProps = {
   dealId?: string;
   projectId?: string;
   kind?: "deal" | "project";
+  hasContract?: boolean;
   hasHighRiskContract?: boolean;
+  contractReviewStatus?: string | null;
   initialAmountCents?: number | null;
   initialScope?: string | null;
   initialDueDate?: string | null;
@@ -24,7 +26,9 @@ export function OfferResponseActions({
   dealId,
   projectId,
   kind = "deal",
+  hasContract = true,
   hasHighRiskContract = false,
+  contractReviewStatus,
   initialAmountCents,
   initialScope,
   initialDueDate,
@@ -44,6 +48,12 @@ export function OfferResponseActions({
   const [completedStatus, setCompletedStatus] = useState<ResponseStatus | null>(null);
 
   async function respond(nextStatus: ResponseStatus) {
+    if (nextStatus === "accepted" && kind === "deal" && !hasContract) {
+      setStatus("error");
+      setMessage("A contract scan is required before accepting. Ask the brand or Agently to attach and scan the terms first.");
+      return;
+    }
+
     if (nextStatus === "accepted" && kind === "deal" && hasHighRiskContract && !acknowledgeHighRisk) {
       setStatus("error");
       setMessage("This offer has a high-risk contract attached. Tick the contract review checkbox above before accepting.");
@@ -101,6 +111,16 @@ export function OfferResponseActions({
   return (
     <div className="space-y-3">
       <Textarea value={response} onChange={(event) => setResponse(event.target.value)} placeholder="Short note to the brand, e.g. what you can accept or why you need changes" />
+      {kind === "deal" && !hasContract ? (
+        <div className="rounded-md border border-amber-200 bg-amber-50 p-3 text-sm leading-5 text-amber-900 dark:border-amber-900/50 dark:bg-amber-950/30 dark:text-amber-200">
+          Contract scan required before acceptance. You can message the brand, decline, or request changes while waiting for terms to be attached.
+        </div>
+      ) : null}
+      {kind === "deal" && hasContract && contractReviewStatus ? (
+        <div className="rounded-md border bg-muted p-3 text-sm leading-5 text-muted-foreground dark:border-white/8">
+          Contract gate: <span className="font-semibold text-foreground">{contractReviewStatus.replaceAll("_", " ")}</span>
+        </div>
+      ) : null}
       {kind === "deal" && hasHighRiskContract ? (
         <label className="flex items-start gap-2 rounded-md border border-amber-200 bg-amber-50 p-3 text-sm leading-5 text-amber-900 dark:border-amber-900/50 dark:bg-amber-950/30 dark:text-amber-200">
           <input
@@ -126,7 +146,7 @@ export function OfferResponseActions({
         </div>
       </div>
       <div className="flex flex-wrap gap-2">
-        <Button disabled={status === "saving"} onClick={() => respond("accepted")} type="button">
+        <Button disabled={status === "saving" || (kind === "deal" && !hasContract)} onClick={() => respond("accepted")} type="button">
           <Check className="h-4 w-4" />
           {status === "saving" ? "Saving..." : "Accept"}
         </Button>

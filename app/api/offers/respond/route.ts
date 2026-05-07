@@ -51,15 +51,20 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Not allowed to respond to this offer." }, { status: 403 });
   }
 
-  if (status === "accepted" && !acknowledgeHighRisk) {
+  if (status === "accepted") {
     const { data: contract } = await admin
       .from("contracts")
-      .select("risk_level")
+      .select("risk_level, review_status")
       .eq("deal_id", dealId)
       .order("created_at", { ascending: false })
       .limit(1)
       .maybeSingle();
-    if (contract?.risk_level === "high_risk") {
+    if (!contract) {
+      return NextResponse.json({
+        error: "A contract scan is required before accepting this offer."
+      }, { status: 409 });
+    }
+    if (!acknowledgeHighRisk && (contract.risk_level === "high_risk" || contract.review_status === "blocked")) {
       return NextResponse.json({
         error: "This contract is high risk. Acknowledge the contract warning before accepting."
       }, { status: 409 });

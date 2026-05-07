@@ -1,3 +1,5 @@
+import { FileText, ShieldCheck } from "lucide-react";
+import type React from "react";
 import { RiskBadge } from "@/components/contracts/risk-badge";
 import { Card, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -13,6 +15,24 @@ export function ContractSummaryCard({ contract }: { contract?: Contract | null }
       <p className="text-sm leading-6 text-muted-foreground">
         {contract?.summary ?? "No contract scan has been saved for this deal yet."}
       </p>
+      {contract ? (
+        <div className="mt-4 grid gap-3 md:grid-cols-2">
+          <PacketDetail icon={<FileText className="h-4 w-4" />} label="Attachment">
+            {contract.file_name ? (
+              <>
+                <p className="truncate font-semibold">{contract.file_name}</p>
+                <p className="mt-1 text-xs text-muted-foreground">{formatFileMeta(contract.file_type, contract.file_size)}</p>
+              </>
+            ) : (
+              <p className="text-muted-foreground">No original file attached.</p>
+            )}
+          </PacketDetail>
+          <PacketDetail icon={<ShieldCheck className="h-4 w-4" />} label="Acceptance gate">
+            <p className="font-semibold">{reviewLabel(contract.review_status, contract.risk_level)}</p>
+            <p className="mt-1 text-xs text-muted-foreground">{reviewCopy(contract.review_status, contract.risk_level)}</p>
+          </PacketDetail>
+        </div>
+      ) : null}
       {contract?.flags?.length ? (
         <div className="mt-4 space-y-3">
           {contract.flags.map((flag) => (
@@ -31,4 +51,37 @@ export function ContractSummaryCard({ contract }: { contract?: Contract | null }
       ) : null}
     </Card>
   );
+}
+
+function PacketDetail({ children, icon, label }: { children: React.ReactNode; icon: React.ReactNode; label: string }) {
+  return (
+    <div className="rounded-md border bg-card p-3 text-sm dark:border-white/8">
+      <div className="mb-2 flex items-center gap-2 text-xs font-semibold uppercase text-muted-foreground">
+        <span className="text-primary">{icon}</span>
+        {label}
+      </div>
+      {children}
+    </div>
+  );
+}
+
+function reviewLabel(status: string | null | undefined, risk: string) {
+  if (status === "blocked" || risk === "high_risk") return "Blocked until negotiated";
+  if (status === "needs_negotiation" || risk === "caution") return "Needs terms review";
+  if (status === "safe_to_accept" || risk === "safe") return "Safe to accept";
+  return "Needs review";
+}
+
+function reviewCopy(status: string | null | undefined, risk: string) {
+  if (status === "blocked" || risk === "high_risk") return "Talent should not accept until risky clauses are changed or explicitly acknowledged.";
+  if (status === "needs_negotiation" || risk === "caution") return "Review payment timing, usage, revisions, and exclusivity before accepting.";
+  if (status === "safe_to_accept" || risk === "safe") return "No major risk flags were found by the current scan.";
+  return "Attach and scan terms before accepting or funding the deal.";
+}
+
+function formatFileMeta(type?: string | null, size?: number | null) {
+  const parts = [];
+  if (type) parts.push(type);
+  if (size) parts.push(`${Math.max(1, Math.round(size / 1024))} KB`);
+  return parts.length ? parts.join(" - ") : "Stored with contract packet";
 }

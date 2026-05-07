@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { redirect } from "next/navigation";
 import { RiskBadge } from "@/components/contracts/risk-badge";
 import { DeliverableCard } from "@/components/deliverables/deliverable-card";
@@ -44,6 +45,8 @@ type ContractRow = {
   deal_id: string;
   risk_level: RiskLevel;
   summary: string;
+  review_status?: string | null;
+  file_name?: string | null;
   created_at?: string;
 };
 
@@ -203,7 +206,9 @@ export default async function OffersPage() {
                 ) : offer.offer_status === "declined" ? null : (
                   <OfferResponseActions
                     dealId={offer.id}
+                    hasContract={offerContracts.has(offer.id)}
                     hasHighRiskContract={offerContracts.get(offer.id)?.risk_level === "high_risk"}
+                    contractReviewStatus={offerContracts.get(offer.id)?.review_status}
                     initialAmountCents={offer.counter_amount_cents ?? offer.amount_cents}
                     initialApprovalTerms={offer.counter_approval_terms ?? termsFromNotes(offer.notes, "approval")}
                     initialDueDate={offer.counter_due_date ?? offer.due_date ?? ""}
@@ -489,6 +494,9 @@ function OfferContractNotice({ contract }: { contract?: ContractRow & { flags: C
         <p className="mt-1 text-sm leading-6 text-amber-800 dark:text-amber-200">
           No contract scan is attached yet. Ask Agently/admin to review usage, exclusivity, whitelisting, revision, and payment terms before accepting.
         </p>
+        <Link className="mt-2 inline-flex text-sm font-semibold text-amber-900 underline underline-offset-4 dark:text-amber-200" href="/contracts">
+          Open contract review
+        </Link>
       </div>
     );
   }
@@ -500,6 +508,10 @@ function OfferContractNotice({ contract }: { contract?: ContractRow & { flags: C
         <RiskBadge risk={contract.risk_level} />
       </div>
       <p className="text-sm leading-6 text-muted-foreground">{contract.summary}</p>
+      <div className="mt-2 flex flex-wrap gap-2">
+        {contract.file_name ? <Badge tone="blue">file attached</Badge> : <Badge tone="amber">text only</Badge>}
+        {contract.review_status ? <Badge tone={contract.review_status === "blocked" ? "red" : contract.review_status === "safe_to_accept" ? "green" : "amber"}>{contract.review_status}</Badge> : null}
+      </div>
       {contract.flags.slice(0, 2).map((flag) => (
         <p key={flag.id} className="mt-2 text-sm leading-5">
           <span className="font-semibold">{flag.flag_type.replaceAll("_", " ")}:</span> {flag.recommendation}
@@ -515,7 +527,7 @@ async function getLatestContractsForDeals(admin: NonNullable<ReturnType<typeof c
 
   const { data: contracts } = await admin
     .from("contracts")
-    .select("id, deal_id, risk_level, summary, created_at")
+    .select("id, deal_id, risk_level, summary, review_status, file_name, created_at")
     .in("deal_id", dealIds)
     .order("created_at", { ascending: false });
 

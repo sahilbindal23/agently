@@ -38,6 +38,9 @@ export async function POST(request: Request) {
   if (!["accepted", "approved"].includes(target.acceptanceStatus)) {
     return NextResponse.json({ error: "The offer or project must be accepted before funding." }, { status: 409 });
   }
+  if (entityType === "deal" && target.contractReady === false) {
+    return NextResponse.json({ error: "Attach and scan the contract before funding this creator deal." }, { status: 409 });
+  }
 
   if (profile === "brand") {
     const brandIds = await getBrandIdsForUser(admin, authData.user.id, authData.user.email ?? "");
@@ -148,10 +151,18 @@ async function getProfileRole(admin: NonNullable<ReturnType<typeof createAdminCl
 async function getDealTarget(admin: NonNullable<ReturnType<typeof createAdminClient>>, id: string) {
   const { data } = await admin.from("deals").select("*").eq("id", id).single();
   if (!data) return null;
+  const { data: contract } = await admin
+    .from("contracts")
+    .select("id, review_status, risk_level")
+    .eq("deal_id", id)
+    .order("created_at", { ascending: false })
+    .limit(1)
+    .maybeSingle();
   return {
     acceptanceStatus: String(data.offer_status ?? ""),
     amountCents: Number(data.amount_cents ?? 0),
     brandId: data.brand_id ? String(data.brand_id) : "",
+    contractReady: contract ? String(contract.review_status ?? "") !== "blocked" && String(contract.risk_level ?? "") !== "high_risk" : false,
     currency: String(data.currency ?? "inr"),
     description: String(data.deliverables ?? ""),
     title: String(data.title ?? "Creator deal")
@@ -165,6 +176,7 @@ async function getProjectTarget(admin: NonNullable<ReturnType<typeof createAdmin
     acceptanceStatus: String(data.status ?? ""),
     amountCents: Number(data.amount_cents ?? 0),
     brandId: data.brand_id ? String(data.brand_id) : "",
+    contractReady: true,
     currency: String(data.currency ?? "inr"),
     description: String(data.scope ?? ""),
     title: String(data.title ?? "Freelancer project")

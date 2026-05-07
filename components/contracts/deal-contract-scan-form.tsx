@@ -15,7 +15,7 @@ type DealOption = {
   brandName?: string;
 };
 
-type ScanResult = {
+  type ScanResult = {
   risk_level: RiskLevel;
   summary: string;
   flags: Array<{
@@ -24,6 +24,8 @@ type ScanResult = {
     excerpt: string;
     recommendation: string;
   }>;
+  file_name?: string | null;
+  review_status?: string | null;
   source?: string;
 };
 
@@ -46,22 +48,31 @@ export function DealContractScanForm({
     const selectedDealId = dealId ?? String(formData.get("deal_id") ?? "");
     const file = formData.get("file");
     const pastedText = String(formData.get("raw_text") ?? "").trim();
-    const fileText = file instanceof File && file.size > 0 ? await file.text() : "";
+    const isTextFile = file instanceof File && file.size > 0
+      ? file.type.startsWith("text/") || file.type === "application/json" || /\.(txt|md|csv|rtf)$/i.test(file.name)
+      : false;
+    const fileText = file instanceof File && file.size > 0 && isTextFile ? await file.text() : "";
     const rawText = pastedText || fileText.trim();
 
     if (!selectedDealId || !rawText) {
       setStatus("error");
-      setMessage("Choose a deal and paste the contract text before scanning.");
+      setMessage(file instanceof File && file.name.toLowerCase().endsWith(".pdf")
+        ? "PDF selected. For this prototype, paste the contract text from the PDF so Agently can scan it."
+        : "Choose a deal and paste the contract text before scanning.");
       return;
     }
 
     setStatus("loading");
     setMessage("");
 
+    const payloadForm = new FormData();
+    payloadForm.set("deal_id", selectedDealId);
+    payloadForm.set("raw_text", rawText);
+    if (file instanceof File && file.size > 0) payloadForm.set("file", file);
+
     const response = await fetch("/api/ai/scan-contract", {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ deal_id: selectedDealId, raw_text: rawText })
+      body: payloadForm
     });
 
     const payload = await response.json();
@@ -73,7 +84,7 @@ export function DealContractScanForm({
 
     setResult(payload);
     setStatus("done");
-    setMessage(payload.source === "rules_fallback" ? "Scan saved with the local rules fallback." : "Scan saved to the deal.");
+    setMessage(payload.source === "rules_fallback" ? "Contract packet saved with the local rules fallback." : "Contract packet saved to the deal.");
     form.reset();
     router.refresh();
   }
@@ -94,7 +105,10 @@ export function DealContractScanForm({
           ))}
         </select>
       )}
-      <Input name="file" type="file" accept=".txt,.md,.csv,.rtf" />
+      <Input name="file" type="file" accept=".txt,.md,.csv,.rtf,.pdf,.doc,.docx" />
+      <p className="text-xs leading-5 text-muted-foreground">
+        Upload the contract file to attach it to the deal. Text files scan directly; for PDF or DOC contracts, paste the extracted text below until full document parsing is added.
+      </p>
       <Textarea
         name="raw_text"
         placeholder="Paste the contract terms here: payment timing, usage rights, exclusivity, whitelisting, revisions, cancellation, and licensing duration."
@@ -113,6 +127,9 @@ export function DealContractScanForm({
             <p className="text-sm font-semibold">Latest result</p>
             <RiskBadge risk={result.risk_level} />
           </div>
+          {result.file_name ? (
+            <p className="mb-2 text-xs font-medium text-muted-foreground">Attached file: {result.file_name}</p>
+          ) : null}
           <p className="text-sm leading-6 text-muted-foreground">{result.summary}</p>
         </div>
       ) : null}

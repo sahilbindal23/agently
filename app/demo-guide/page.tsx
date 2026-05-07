@@ -1,4 +1,4 @@
-import { MousePointer2, Route, Sparkles, Target, Workflow } from "lucide-react";
+import { CheckCircle2, MessageSquareWarning, MousePointer2, Route, Sparkles, Target, Workflow } from "lucide-react";
 import { AppShell } from "@/components/layout/app-shell";
 import { PageHeader } from "@/components/layout/page-header";
 import { WalkthroughLaunchButton } from "@/components/onboarding/walkthrough-launch-button";
@@ -73,13 +73,41 @@ export default async function DemoGuidePage() {
           </div>
         </Card>
       </section>
+
+      <section className="mt-5 grid gap-5 xl:grid-cols-2">
+        <Card>
+          <CardHeader>
+            <CardTitle>Tester Script</CardTitle>
+            <Badge tone="amber">send to friends</Badge>
+          </CardHeader>
+          <div className="grid gap-3">
+            <TesterStep title="1. Create one account" copy="Choose creator, brand, or freelancer. Complete the intake and check whether the homepage makes sense for that role." />
+            <TesterStep title="2. Explore the marketplace" copy="Search, filter, open full profiles, shortlist talent if you are a brand, and message another profile." />
+            <TesterStep title="3. Run one workflow" copy="Brands should create a campaign and send an offer. Creators or freelancers should accept, decline, negotiate, or message back." />
+            <TesterStep title="4. Check protection pages" copy="Open offers, contracts, payments, notifications, activity, and messages. Look for confusing copy, broken links, slow actions, or unreadable dark mode." />
+          </div>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <CardTitle>What To Report</CardTitle>
+            <Badge tone="blue">feedback quality</Badge>
+          </CardHeader>
+          <div className="space-y-3">
+            <ReportPoint title="Workflow blockers" copy="Where did you get stuck, hesitate, or not know what to click next?" />
+            <ReportPoint title="Trust gaps" copy="Did the matching, verification, protected payout, or contract scan feel believable enough to use?" />
+            <ReportPoint title="Role confusion" copy="Was it obvious what creators post, what freelancers deliver, and what brands control?" />
+            <ReportPoint title="Prototype bugs" copy="Share the page, role, action clicked, and what happened versus what you expected." />
+          </div>
+        </Card>
+      </section>
     </AppShell>
   );
 }
 
 function Feature({ icon, title, copy }: { icon: React.ReactNode; title: string; copy: string }) {
   return (
-    <div className="rounded-md border bg-white p-4">
+    <div className="rounded-md border bg-card p-4 dark:border-white/8">
       <div className="mb-3 flex h-10 w-10 items-center justify-center rounded-md bg-primary/10 text-primary">
         {icon}
       </div>
@@ -91,10 +119,34 @@ function Feature({ icon, title, copy }: { icon: React.ReactNode; title: string; 
 
 function WalkthroughStep({ title, copy }: { title: string; copy: string }) {
   return (
-    <div className="flex gap-3 rounded-md border bg-white p-4">
+    <div className="flex gap-3 rounded-md border bg-card p-4 dark:border-white/8">
       <div className="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-accent text-accent-foreground">
         <Sparkles className="h-4 w-4" />
       </div>
+      <div>
+        <p className="font-semibold">{title}</p>
+        <p className="mt-1 text-sm leading-6 text-muted-foreground">{copy}</p>
+      </div>
+    </div>
+  );
+}
+
+function TesterStep({ title, copy }: { title: string; copy: string }) {
+  return (
+    <div className="flex gap-3 rounded-md border bg-card p-4 dark:border-white/8">
+      <CheckCircle2 className="mt-0.5 h-5 w-5 shrink-0 text-primary" />
+      <div>
+        <p className="font-semibold">{title}</p>
+        <p className="mt-1 text-sm leading-6 text-muted-foreground">{copy}</p>
+      </div>
+    </div>
+  );
+}
+
+function ReportPoint({ title, copy }: { title: string; copy: string }) {
+  return (
+    <div className="flex gap-3 rounded-md border bg-card p-4 dark:border-white/8">
+      <MessageSquareWarning className="mt-0.5 h-5 w-5 shrink-0 text-primary" />
       <div>
         <p className="font-semibold">{title}</p>
         <p className="mt-1 text-sm leading-6 text-muted-foreground">{copy}</p>

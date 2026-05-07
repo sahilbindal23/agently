@@ -20,17 +20,17 @@ type ContractScanPayload = {
 };
 
 export async function POST(request: Request) {
-  const body = await request.json();
-  const text = String(body.raw_text ?? body.text ?? "").trim();
-  const dealId = String(body.deal_id ?? "").trim();
-
-  if (!text) {
-    return NextResponse.json({ error: "Contract text is required." }, { status: 400 });
-  }
-
   const auth = await createClient();
   const { data: authData } = await auth.auth.getUser();
   if (!authData.user) return NextResponse.json({ error: "Login required." }, { status: 401 });
+
+  const input = await readContractInput(request);
+  const text = input.text;
+  const dealId = input.dealId;
+
+  if (!text) {
+    return NextResponse.json({ error: "Contract text is required. Paste the contract text even when uploading a PDF." }, { status: 400 });
+  }
 
   const fallback = scanFallback(text);
   const openai = getOpenAI();
@@ -56,13 +56,26 @@ export async function POST(request: Request) {
   const allowed = await canScanDealContract(supabase, dealId, authData.user.id, authData.user.email ?? "");
   if (!allowed) return NextResponse.json({ error: "Not allowed to scan a contract for this deal." }, { status: 403 });
 
+  let filePath = "";
+  try {
+    filePath = input.file ? await uploadContractFile(supabase, dealId, input.file) : "";
+  } catch (error) {
+    return NextResponse.json({ error: error instanceof Error ? error.message : "Could not upload contract file." }, { status: 500 });
+  }
+
   const { data: contract, error: contractError } = await supabase
     .from("contracts")
     .insert({
       deal_id: dealId,
+      file_path: filePath || null,
+      file_name: input.file?.name ?? null,
+      file_type: input.file?.type ?? null,
+      file_size: input.file?.size ?? null,
+      uploaded_by: authData.user.id,
       raw_text: text,
       scan_status: "complete",
       risk_level: scan.risk_level,
+      review_status: reviewStatusFor(scan.risk_level),
       summary: scan.summary
     })
     .select("*")
@@ -102,11 +115,40 @@ export async function POST(request: Request) {
       deal_id: dealId,
       risk_level: scan.risk_level,
       flag_count: scan.flags.length,
+      file_attached: Boolean(filePath),
+      file_name: input.file?.name ?? null,
       source: scan.source ?? "openai"
     }
   });
 
-  return NextResponse.json({ ...scan, contract_id: contract.id, source: scan.source ?? "openai" });
+  return NextResponse.json({
+    ...scan,
+    contract_id: contract.id,
+    file_name: input.file?.name ?? null,
+    file_path: filePath || null,
+    review_status: reviewStatusFor(scan.risk_level),
+    source: scan.source ?? "openai"
+  });
+}
+
+async function readContractInput(request: Request) {
+  const contentType = request.headers.get("content-type") ?? "";
+  if (contentType.includes("multipart/form-data")) {
+    const form = await request.formData();
+    const file = form.get("file");
+    return {
+      dealId: String(form.get("deal_id") ?? "").trim(),
+      file: file instanceof File && file.size > 0 ? file : null,
+      text: String(form.get("raw_text") ?? form.get("text") ?? "").trim()
+    };
+  }
+
+  const body = await request.json();
+  return {
+    dealId: String(body.deal_id ?? "").trim(),
+    file: null,
+    text: String(body.raw_text ?? body.text ?? "").trim()
+  };
 }
 
 function normalizeScan(scan: Partial<ContractScanPayload>): ContractScanPayload {
@@ -145,6 +187,27 @@ function riskScoreFor(risk: RiskLevel) {
   if (risk === "high_risk") return 82;
   if (risk === "caution") return 45;
   return 12;
+}
+
+function reviewStatusFor(risk: RiskLevel) {
+  if (risk === "high_risk") return "blocked";
+  if (risk === "caution") return "needs_negotiation";
+  return "safe_to_accept";
+}
+
+async function uploadContractFile(admin: NonNullable<ReturnType<typeof createAdminClient>>, dealId: string, file: File) {
+  if (file.size > 10 * 1024 * 1024) {
+    throw new Error("Contract file must be under 10MB.");
+  }
+
+  const safeName = file.name.replace(/[^a-zA-Z0-9._-]/g, "-").slice(-120) || "contract.txt";
+  const path = `${dealId}/${Date.now()}-${safeName}`;
+  const { error } = await admin.storage
+    .from("contracts")
+    .upload(path, file, { contentType: file.type || "application/octet-stream", upsert: false });
+
+  if (error) throw new Error(error.message);
+  return path;
 }
 
 async function canScanDealContract(admin: NonNullable<ReturnType<typeof createAdminClient>>, dealId: string, profileId: string, email: string) {
