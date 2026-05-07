@@ -118,15 +118,16 @@ export function RecommendationCard({
 
 function RecommendationImage({ src, label }: { src: string; label: string }) {
   return src ? (
-    <span className="block h-14 w-14 overflow-hidden rounded-xl bg-muted ring-1 ring-border dark:ring-white/10">
+    <span className="relative block h-14 w-14 shrink-0 isolate overflow-hidden rounded-xl bg-muted ring-1 ring-border dark:ring-white/10">
       {/* eslint-disable-next-line @next/next/no-img-element */}
       <img
         alt={label}
-        className="h-full w-full scale-[1.03] object-cover"
+        className="absolute inset-0 h-full w-full rounded-xl object-cover [backface-visibility:hidden] [image-rendering:auto] [transform:translateZ(0)]"
         decoding="async"
         draggable={false}
         src={src}
       />
+      <span className="pointer-events-none absolute inset-0 rounded-xl ring-1 ring-inset ring-black/5 dark:ring-white/10" />
     </span>
   ) : (
     <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-xl bg-muted text-lg font-bold text-muted-foreground ring-1 ring-border dark:ring-white/10">
