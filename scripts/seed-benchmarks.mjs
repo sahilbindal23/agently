@@ -61,7 +61,7 @@ const { data: sources, error: srcErr } = await admin.from("benchmark_sources").s
 if (srcErr) { console.error(srcErr); process.exit(1); }
 const sourceIdBySlug = new Map(sources.map((s) => [s.slug, s.id]));
 
-let rateInserts = 0, engInserts = 0, skipped = 0;
+let rateInserts = 0, engInserts = 0, convInserts = 0, skipped = 0;
 
 // 1. rate_cards → rate_observations (one per row using median_inr, with p25/p75 metadata)
 for (const card of file.rate_cards ?? []) {
@@ -146,8 +146,39 @@ if (qoruz) {
   }
 }
 
-// 4. Refresh the materialized views
+// 4. conversion_assumptions → conversion_observations
+for (const conv of file.conversion_assumptions ?? []) {
+  const sourceId = sourceIdBySlug.get(sourceSlugFor(conv));
+  if (!sourceId) { skipped++; continue; }
+  const dedupeKey = `seed:conv:${conv.platform}/${conv.niche}/${conv.source}`;
+  const confidence = conv.source === "verified" ? 0.85 : conv.source === "estimated" ? 0.30 : 0.50;
+  const { error } = await admin.from("conversion_observations").upsert({
+    source_id: sourceId,
+    platform: conv.platform === "instagram" ? "Instagram" : conv.platform === "youtube" ? "YouTube" : conv.platform,
+    niche: conv.niche,
+    ctr_pct: Number(conv.median_ctr_pct ?? 0),
+    conversion_rate_pct: Number(conv.median_conversion_rate_pct ?? 0),
+    aov_inr: Math.round(Number(conv.typical_aov_inr ?? 0)),
+    confidence,
+    dedupe_key: dedupeKey,
+    raw_metadata: {
+      seed_source: "india-creator-benchmarks.json",
+      original_source_flag: conv.source,
+      notes: conv.notes
+    }
+  }, { onConflict: "dedupe_key", ignoreDuplicates: true });
+  if (error) console.error("conv insert err:", error.message);
+  else convInserts++;
+}
+
+// 5. Refresh the materialized views
 const { error: refreshErr } = await admin.rpc("refresh_benchmark_aggregates");
 if (refreshErr) console.error("refresh err:", refreshErr.message);
 
-console.log(JSON.stringify({ rate_observations_seeded: rateInserts, engagement_observations_seeded: engInserts, skipped, refreshed: !refreshErr }, null, 2));
+console.log(JSON.stringify({
+  rate_observations_seeded: rateInserts,
+  engagement_observations_seeded: engInserts,
+  conversion_observations_seeded: convInserts,
+  skipped,
+  refreshed: !refreshErr
+}, null, 2));

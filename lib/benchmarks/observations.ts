@@ -74,6 +74,38 @@ export type EngagementAggregate = {
   total_weight: number;
 };
 
+export type ConversionObservationInput = {
+  source_slug: string;
+  platform?: string;
+  niche?: string;
+  ctr_pct: number;
+  conversion_rate_pct: number;
+  aov_inr: number;
+  confidence?: number;
+  deal_id?: string | null;
+  observed_at?: string;
+  raw_metadata?: Record<string, unknown>;
+  dedupe_key?: string;
+};
+
+export type ConversionAggregate = {
+  platform: string;
+  niche: string;
+  observation_count: number;
+  weighted_ctr_pct: number;
+  weighted_conversion_rate_pct: number;
+  weighted_aov_inr: number;
+  p25_ctr_pct: number;
+  p50_ctr_pct: number;
+  p75_ctr_pct: number;
+  p25_conversion_pct: number;
+  p50_conversion_pct: number;
+  p75_conversion_pct: number;
+  latest_observation_at: string;
+  internal_deal_count: number;
+  total_weight: number;
+};
+
 const sourceCache = new Map<string, BenchmarkSource>();
 
 async function resolveSource(admin: SupabaseClient, slug: string): Promise<BenchmarkSource | null> {
@@ -180,6 +212,45 @@ export async function getEngagementAggregates(admin: SupabaseClient, filter: {
   const { data, error } = await query;
   if (error) return [];
   return (data ?? []) as EngagementAggregate[];
+}
+
+export async function recordConversionObservation(admin: SupabaseClient, input: ConversionObservationInput) {
+  const source = await resolveSource(admin, input.source_slug);
+  if (!source) throw new Error(`Unknown benchmark source slug: ${input.source_slug}`);
+
+  const row = {
+    source_id: source.id,
+    platform: input.platform ?? "unknown",
+    niche: input.niche ?? "unknown",
+    ctr_pct: input.ctr_pct,
+    conversion_rate_pct: input.conversion_rate_pct,
+    aov_inr: input.aov_inr,
+    confidence: input.confidence ?? 0.5,
+    deal_id: input.deal_id ?? null,
+    observed_at: input.observed_at ?? new Date().toISOString(),
+    raw_metadata: input.raw_metadata ?? null,
+    dedupe_key: input.dedupe_key ?? null
+  };
+
+  const query = input.dedupe_key
+    ? admin.from("conversion_observations").upsert(row, { onConflict: "dedupe_key", ignoreDuplicates: true })
+    : admin.from("conversion_observations").insert(row);
+  const { error } = await query;
+  if (error) throw new Error(`Failed to record conversion observation: ${error.message}`);
+}
+
+export async function getConversionAggregates(admin: SupabaseClient, filter: {
+  platform?: string;
+  niche?: string;
+  limit?: number;
+}): Promise<ConversionAggregate[]> {
+  let query = admin.from("conversion_benchmark_aggregates").select("*");
+  if (filter.platform) query = query.eq("platform", filter.platform);
+  if (filter.niche) query = query.eq("niche", filter.niche);
+  query = query.order("total_weight", { ascending: false }).limit(filter.limit ?? 50);
+  const { data, error } = await query;
+  if (error) return [];
+  return (data ?? []) as ConversionAggregate[];
 }
 
 export function tierFromFollowers(followers: number | null | undefined): "nano" | "micro" | "mid" | "macro" | "mega" | "unknown" {
