@@ -1,48 +1,8 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
+import { extractFromText } from "@/lib/benchmarks/extract";
 import { recordRateObservation, tierFromFollowers } from "@/lib/benchmarks/observations";
 
 type Row = Record<string, unknown>;
-
-const PLATFORM_KEYWORDS: Array<{ pattern: RegExp; platform: string }> = [
-  { pattern: /\binstagram|insta|ig\b|reel|story|stories\b/i, platform: "Instagram" },
-  { pattern: /\byoutube|yt\b|vlog/i, platform: "YouTube" },
-  { pattern: /\btwitter|x\.com|tweet|thread\b/i, platform: "Twitter" },
-  { pattern: /\blinkedin|li post\b/i, platform: "LinkedIn" },
-  { pattern: /\btiktok|tt\b/i, platform: "TikTok" },
-  { pattern: /\bmoj|josh|sharechat\b/i, platform: "Regional" }
-];
-
-const DELIVERABLE_KEYWORDS: Array<{ pattern: RegExp; deliverable: string }> = [
-  { pattern: /\breel(s)?\b/i, deliverable: "reel" },
-  { pattern: /\bshort(s)?\b/i, deliverable: "short" },
-  { pattern: /\bstory|stories\b/i, deliverable: "story" },
-  { pattern: /\bstatic|carousel|post\b/i, deliverable: "static_post" },
-  { pattern: /\blong[- ]?form|dedicated|integration\b/i, deliverable: "long_form" },
-  { pattern: /\bthread|tweet\b/i, deliverable: "thread" },
-  { pattern: /\bpodcast\b/i, deliverable: "podcast" }
-];
-
-const NICHE_KEYWORDS: Array<{ pattern: RegExp; niche: string }> = [
-  { pattern: /\bfashion|apparel|clothing|outfit\b/i, niche: "fashion" },
-  { pattern: /\bbeauty|skincare|cosmetic|makeup\b/i, niche: "beauty" },
-  { pattern: /\bfood|restaurant|cafe|recipe|cooking\b/i, niche: "food" },
-  { pattern: /\btech|gadget|review|smartphone|laptop\b/i, niche: "tech" },
-  { pattern: /\bfitness|gym|workout|wellness\b/i, niche: "fitness" },
-  { pattern: /\bfinance|stock|invest|sip|mutual fund|fintech\b/i, niche: "finance" },
-  { pattern: /\bgaming|esport|stream\b/i, niche: "gaming" },
-  { pattern: /\btravel|hotel|trip|destination\b/i, niche: "travel" },
-  { pattern: /\bparenting|baby|kids|family\b/i, niche: "parenting" },
-  { pattern: /\bcomedy|funny|prank|skit\b/i, niche: "comedy" },
-  { pattern: /\beducation|edtech|tutorial|learn\b/i, niche: "education" },
-  { pattern: /\blifestyle|vlog|day in\b/i, niche: "lifestyle" }
-];
-
-function extractFromText(text: string) {
-  const platform = PLATFORM_KEYWORDS.find((entry) => entry.pattern.test(text))?.platform ?? "unknown";
-  const deliverable = DELIVERABLE_KEYWORDS.find((entry) => entry.pattern.test(text))?.deliverable ?? "unknown";
-  const niche = NICHE_KEYWORDS.find((entry) => entry.pattern.test(text))?.niche ?? "unknown";
-  return { platform, deliverable, niche };
-}
 
 export async function recordObservationFromDeal(admin: SupabaseClient, dealId: string) {
   const { data: deal } = await admin.from("deals").select("*").eq("id", dealId).maybeSingle();
