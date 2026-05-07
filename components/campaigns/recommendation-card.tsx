@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { CreateOfferButton } from "@/components/campaigns/create-offer-button";
 import { CreateFreelancerProjectButton } from "@/components/campaigns/create-freelancer-project-button";
 import { RemoveShortlistButton } from "@/components/campaigns/remove-shortlist-button";
@@ -22,81 +23,87 @@ export function RecommendationCard({
 }) {
   const strongestSignals = scoreHighlights(item.score_breakdown).slice(0, 2);
   const reviewSignals = scoreLows(item.score_breakdown).slice(0, 2);
+  const profileHref = type === "creator" ? `/creators/${item.id}` : `/freelancers/${item.id}`;
+  const primaryMetric = type === "creator"
+    ? `${formatNumber(item.roi_estimate.expected_reach)} reach`
+    : `${formatCurrency(item.roi_estimate.estimated_cpe_cents, "inr")} unit cost`;
+  const secondaryMetric = type === "creator"
+    ? `${formatCurrency(item.roi_estimate.estimated_cpm_cents, "inr")} CPM`
+    : `${Math.round(item.roi_estimate.confidence_score * 100)}% confidence`;
 
   return (
-    <div className="rounded-md border bg-white p-4 dark:border-white/8 dark:bg-card">
-      <div className="mb-2 flex flex-wrap items-start justify-between gap-3">
+    <div className="rounded-lg border bg-card p-4 shadow-sm dark:border-white/8">
+      <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
         <div className="flex min-w-0 gap-3">
-          <RecommendationImage src={item.image_url ?? ""} label={item.name} />
+          <Link href={profileHref} className="shrink-0">
+            <RecommendationImage src={item.image_url ?? ""} label={item.name} />
+          </Link>
           <div className="min-w-0">
-            <p className="font-semibold">{item.name}</p>
-            <p className="mt-1 text-xs text-muted-foreground">{item.subtitle}</p>
+            <Link href={profileHref} className="font-semibold text-foreground transition hover:text-primary">
+              {item.name}
+            </Link>
+            <p className="mt-1 line-clamp-1 text-xs text-muted-foreground">{item.subtitle}</p>
+            <div className="mt-2 flex flex-wrap items-center gap-2">
+              <Badge tone={item.score >= 80 ? "green" : item.score >= 60 ? "amber" : "neutral"}>{item.score} fit</Badge>
+              <Badge tone={item.risk_level === "low" ? "green" : item.risk_level === "medium" ? "amber" : "red"}>{item.risk_level} risk</Badge>
+              {type === "creator" ? <SocialTrustBadge source={item.metric_source} compact /> : null}
+            </div>
           </div>
         </div>
-        <div className="flex flex-col items-end gap-2">
-          <Badge tone={item.score >= 80 ? "green" : item.score >= 60 ? "amber" : "neutral"}>{item.score}</Badge>
-          {type === "creator" ? <SocialTrustBadge source={item.metric_source} compact /> : null}
+        <div className="grid shrink-0 grid-cols-2 gap-2 text-right sm:min-w-52">
+          <CompactMetric label={type === "creator" ? "Reach" : "Cost"} value={primaryMetric} />
+          <CompactMetric label={type === "creator" ? "CPM" : "Confidence"} value={secondaryMetric} />
         </div>
       </div>
-      <div className="rounded-md border bg-slate-50 p-3 dark:border-white/8 dark:bg-white/4">
-        <p className="text-xs font-semibold uppercase text-muted-foreground">Fit explanation</p>
-        <p className="mt-1 text-sm leading-6">{item.reason}</p>
-      </div>
 
-      <div className="mt-3 grid gap-2 sm:grid-cols-3">
-        <DecisionBlock label="Match" value={item.match_type} />
-        <DecisionBlock label="Risk" value={item.risk_level} tone={item.risk_level === "low" ? "green" : item.risk_level === "medium" ? "amber" : "red"} />
-        <DecisionBlock label="Best use" value={item.best_use_case} />
-      </div>
-
-      <div className="mt-3 rounded-md border bg-white p-3 dark:border-white/8 dark:bg-card">
-        <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
-          <p className="text-xs font-semibold uppercase text-muted-foreground">Decision signals</p>
-          <Badge tone="blue">{scoreLabel(item.score)}</Badge>
+      <div className="mt-4 rounded-md border bg-muted/50 p-3 dark:border-white/8">
+        <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
+          <div>
+            <p className="text-xs font-semibold uppercase text-muted-foreground">Why this match</p>
+            <p className="mt-1 line-clamp-2 text-sm leading-6">{item.reason}</p>
+          </div>
+          <Badge tone="blue">{item.match_type}</Badge>
         </div>
-        <div className="grid gap-3 sm:grid-cols-2">
+      </div>
+
+      <div className="mt-3 flex flex-wrap gap-2">
+        <Badge tone="green">{strongestSignals[0]?.label ?? "Fit"} {strongestSignals[0]?.value ?? item.score}</Badge>
+        <Badge tone={reviewSignals[0]?.value < 55 ? "amber" : "blue"}>{reviewSignals[0]?.label ?? "Review"} {reviewSignals[0]?.value ?? item.score}</Badge>
+        {item.watchouts.slice(0, 2).map((watchout) => <Badge key={watchout} tone="amber">{watchout}</Badge>)}
+      </div>
+
+      <details className="mt-3 rounded-md border bg-background/50 p-3 dark:border-white/8 dark:bg-white/[0.03]">
+        <summary className="cursor-pointer text-sm font-semibold text-primary">View ranking details</summary>
+        <div className="mt-3 grid gap-3 lg:grid-cols-2">
+          <div>
+            <p className="text-xs font-semibold uppercase text-muted-foreground">Best use</p>
+            <p className="mt-1 text-sm leading-6">{item.best_use_case}</p>
+          </div>
+          <div>
+            <p className="text-xs font-semibold uppercase text-muted-foreground">Expected outcome</p>
+            <p className="mt-1 text-sm leading-6">{item.expected_outcome}</p>
+          </div>
+        </div>
+        <div className="mt-3 grid gap-3 sm:grid-cols-2">
           <SignalGroup title="Strongest signals" tone="green" metrics={strongestSignals} />
           <SignalGroup title="Needs review" tone="amber" metrics={reviewSignals} />
         </div>
-      </div>
-
-      <div className="mt-3 grid gap-3 lg:grid-cols-[1.1fr_0.9fr]">
-        <div className="rounded-md border bg-sky-50/60 p-3 dark:border-sky-900/50 dark:bg-sky-950/30">
-          <p className="text-xs font-semibold uppercase text-sky-800 dark:text-sky-400">Expected outcome</p>
-          <p className="mt-1 text-sm leading-6 text-sky-950 dark:text-sky-200">{item.expected_outcome}</p>
-        </div>
-        <div className="rounded-md border bg-white p-3 dark:border-white/8 dark:bg-card">
-          <p className="text-xs font-semibold uppercase text-muted-foreground">{type === "creator" ? "Projected efficiency" : "Production value"}</p>
-          <div className="mt-2 grid gap-2">
-            <MiniMetric label={type === "creator" ? "Reach" : "Unit cost"} value={type === "creator" ? formatNumber(item.roi_estimate.expected_reach) : formatCurrency(item.roi_estimate.estimated_cpe_cents, "inr")} />
-            <MiniMetric label={type === "creator" ? "CPM" : "Confidence"} value={type === "creator" ? formatCurrency(item.roi_estimate.estimated_cpm_cents, "inr") : `${Math.round(item.roi_estimate.confidence_score * 100)}%`} />
-          </div>
-        </div>
-      </div>
-
-      {type === "creator" && item.projected_roi ? <ProjectedRoiBlock summary={item.projected_roi} /> : null}
-
-      {item.watchouts.length ? (
-        <div className="mt-3 flex flex-wrap gap-2">
-          {item.watchouts.map((watchout) => <Badge key={watchout} tone="amber">{watchout}</Badge>)}
-        </div>
-      ) : null}
-
-      <div className="mt-3 rounded-md bg-muted p-3">
-        <p className="text-xs font-semibold uppercase text-muted-foreground">Verified signals</p>
-        <div className="mt-2 flex flex-wrap gap-2">
-          {item.proof_points.map((point) => <Badge key={point} tone="blue">{point}</Badge>)}
-        </div>
-      </div>
-
-      {item.marketplace_signals?.length ? (
-        <div className="mt-3 rounded-md border bg-emerald-50/70 p-3 dark:border-emerald-900/50 dark:bg-emerald-950/30">
-          <p className="text-xs font-semibold uppercase text-emerald-800 dark:text-emerald-400">Marketplace behavior</p>
+        <div className="mt-3 rounded-md bg-muted p-3">
+          <p className="text-xs font-semibold uppercase text-muted-foreground">Verified signals</p>
           <div className="mt-2 flex flex-wrap gap-2">
-            {item.marketplace_signals.map((signal) => <Badge key={signal} tone="green">{signal}</Badge>)}
+            {item.proof_points.map((point) => <Badge key={point} tone="blue">{point}</Badge>)}
           </div>
         </div>
-      ) : null}
+        {type === "creator" && item.projected_roi ? <ProjectedRoiBlock summary={item.projected_roi} /> : null}
+        {item.marketplace_signals?.length ? (
+          <div className="mt-3 rounded-md border bg-emerald-50/70 p-3 dark:border-emerald-900/50 dark:bg-emerald-950/30">
+            <p className="text-xs font-semibold uppercase text-emerald-800 dark:text-emerald-400">Marketplace behavior</p>
+            <div className="mt-2 flex flex-wrap gap-2">
+              {item.marketplace_signals.map((signal) => <Badge key={signal} tone="green">{signal}</Badge>)}
+            </div>
+          </div>
+        ) : null}
+      </details>
 
       <div className="mt-3 flex flex-wrap gap-2">
         {isShortlisted ? <RemoveShortlistButton campaignId={campaignId} entityId={item.id} entityType={type} label="Unshortlist" /> : (
@@ -111,32 +118,28 @@ export function RecommendationCard({
 
 function RecommendationImage({ src, label }: { src: string; label: string }) {
   return src ? (
-    // eslint-disable-next-line @next/next/no-img-element
-    <img alt={label} className="h-14 w-14 shrink-0 rounded-md object-cover" src={src} />
+    <span className="block h-14 w-14 overflow-hidden rounded-xl bg-muted ring-1 ring-border dark:ring-white/10">
+      {/* eslint-disable-next-line @next/next/no-img-element */}
+      <img
+        alt={label}
+        className="h-full w-full scale-[1.03] object-cover"
+        decoding="async"
+        draggable={false}
+        src={src}
+      />
+    </span>
   ) : (
-    <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-md bg-muted text-lg font-bold text-muted-foreground">
+    <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-xl bg-muted text-lg font-bold text-muted-foreground ring-1 ring-border dark:ring-white/10">
       {label.slice(0, 1)}
     </div>
   );
 }
 
-function DecisionBlock({ label, value, tone = "blue" }: { label: string; value: string; tone?: "blue" | "green" | "amber" | "red" }) {
-  const compact = value.length < 28;
+function CompactMetric({ label, value }: { label: string; value: string }) {
   return (
-    <div className="rounded-md border bg-white p-3 dark:border-white/8 dark:bg-card">
-      <p className="text-[11px] font-semibold uppercase text-muted-foreground">{label}</p>
-      <div className="mt-2">
-        {compact ? <Badge tone={tone}>{value}</Badge> : <p className="text-sm leading-5">{value}</p>}
-      </div>
-    </div>
-  );
-}
-
-function MiniMetric({ label, value }: { label: string; value: string }) {
-  return (
-    <div>
-      <p className="text-[11px] uppercase text-muted-foreground">{label}</p>
-      <p className="text-sm font-semibold">{value}</p>
+    <div className="rounded-md border bg-background/60 px-3 py-2 dark:border-white/8 dark:bg-white/[0.03]">
+      <p className="text-[10px] font-semibold uppercase text-muted-foreground">{label}</p>
+      <p className="mt-1 text-sm font-semibold">{value}</p>
     </div>
   );
 }
@@ -208,12 +211,6 @@ function SignalGroup({
       </div>
     </div>
   );
-}
-
-function scoreLabel(score: number) {
-  if (score >= 82) return "strong match";
-  if (score >= 65) return "usable match";
-  return "needs review";
 }
 
 function scoreHighlights(score: CampaignRecommendation["score_breakdown"]) {
