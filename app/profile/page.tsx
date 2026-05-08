@@ -72,6 +72,12 @@ export default async function ProfilePage() {
               snapshots={bundle.socialSnapshots as SocialSnapshotRow[]}
             />
           </>
+        ) : role === "brand" ? (
+          <ConnectedAccountsPanel
+            accounts={bundle.connectedAccounts as ConnectedAccountRow[]}
+            oauthReadyProviders={oauthReadyProviders()}
+            snapshots={bundle.socialSnapshots as SocialSnapshotRow[]}
+          />
         ) : null}
         <PayoutReadinessCard role={role as "creator" | "brand" | "freelancer"} />
         <ProfileEditForm
@@ -119,8 +125,15 @@ async function getProfileBundle(role: string, userId: string, email: string) {
   if (role === "brand") {
     const { data: brand } = await admin.from("brands").select("*").eq("contact_email", email).maybeSingle();
     if (!brand) return emptyBundle();
-    const { data: audits } = await admin.from("brand_audits").select("*").eq("brand_id", brand.id).order("created_at", { ascending: false }).limit(1);
-    return { profile: brand, platforms: [], audit: audits?.[0] ?? null, serviceRates: [], portfolio: [], connectedAccounts: [], socialSnapshots: [] };
+    const [{ data: audits }, { data: connectedAccounts }] = await Promise.all([
+      admin.from("brand_audits").select("*").eq("brand_id", brand.id).order("created_at", { ascending: false }).limit(1),
+      admin.from("connected_social_accounts").select("*").eq("brand_id", brand.id).order("created_at", { ascending: true })
+    ]);
+    const accountIds = (connectedAccounts ?? []).map((account) => String(account.id));
+    const { data: socialSnapshots } = accountIds.length
+      ? await admin.from("social_metric_snapshots").select("*").in("connected_account_id", accountIds).order("synced_at", { ascending: false })
+      : { data: [] };
+    return { profile: brand, platforms: [], audit: audits?.[0] ?? null, serviceRates: [], portfolio: [], connectedAccounts: connectedAccounts ?? [], socialSnapshots: latestSnapshotsByProvider(socialSnapshots ?? []) };
   }
 
   return emptyBundle();

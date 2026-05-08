@@ -28,8 +28,27 @@ export async function GET(request: Request) {
   const admin = createAdminClient();
   if (!admin) return NextResponse.redirect(profileRedirect(state.returnTo, { social: "supabase_not_configured" }));
 
-  const { data: creator } = await admin.from("creators").select("*").eq("profile_id", state.profileId).maybeSingle();
-  if (!creator) return NextResponse.redirect(profileRedirect(state.returnTo, { social: "creator_profile_required" }));
+  // Resolve which entity (creator/brand/freelancer) this connection belongs to.
+  const { data: profile } = await admin.from("profiles").select("role, email").eq("id", state.profileId).maybeSingle();
+  const role = String(profile?.role ?? "");
+  let entityKey: "creator_id" | "brand_id" | "freelancer_id" = "creator_id";
+  let entityId = "";
+  let onConflict = "creator_id,provider,handle";
+  let creatorIdForPlatformSync: string | null = null;
+  if (role === "brand") {
+    const { data: brand } = await admin.from("brands").select("id").eq("contact_email", String(profile?.email ?? "").toLowerCase()).maybeSingle();
+    if (!brand) return NextResponse.redirect(profileRedirect(state.returnTo, { social: "brand_profile_required" }));
+    entityKey = "brand_id"; entityId = String(brand.id); onConflict = "brand_id,provider,handle";
+  } else if (role === "freelancer") {
+    const { data: freelancer } = await admin.from("freelancers").select("id").eq("profile_id", state.profileId).maybeSingle();
+    if (!freelancer) return NextResponse.redirect(profileRedirect(state.returnTo, { social: "freelancer_profile_required" }));
+    entityKey = "freelancer_id"; entityId = String(freelancer.id); onConflict = "freelancer_id,provider,handle";
+  } else {
+    const { data: creator } = await admin.from("creators").select("id").eq("profile_id", state.profileId).maybeSingle();
+    if (!creator) return NextResponse.redirect(profileRedirect(state.returnTo, { social: "creator_profile_required" }));
+    entityKey = "creator_id"; entityId = String(creator.id); onConflict = "creator_id,provider,handle";
+    creatorIdForPlatformSync = String(creator.id);
+  }
 
   const token = await exchangeGoogleCode(code);
   if (!token.access_token) return NextResponse.redirect(profileRedirect(state.returnTo, { social: "youtube_token_failed" }));
@@ -43,7 +62,7 @@ export async function GET(request: Request) {
     .from("connected_social_accounts")
     .upsert({
       profile_id: state.profileId,
-      creator_id: creator.id,
+      [entityKey]: entityId,
       provider: "youtube",
       handle,
       account_url: `https://www.youtube.com/channel/${channelId}`,
@@ -53,19 +72,22 @@ export async function GET(request: Request) {
       access_token_encrypted: sealToken(token.access_token),
       refresh_token_encrypted: sealToken(token.refresh_token),
       token_expires_at: expiresAt
-    }, { onConflict: "creator_id,provider,handle" })
+    }, { onConflict })
     .select("*")
     .single();
 
   if (error || !account) return NextResponse.redirect(profileRedirect(state.returnTo, { social: "youtube_save_failed" }));
 
-  await upsertCreatorPlatform(admin, String(creator.id), handle, String(account.account_url ?? ""), channel);
+  // creator_platforms is creator-only; only sync when this is a creator OAuth.
+  if (creatorIdForPlatformSync) {
+    await upsertCreatorPlatform(admin, creatorIdForPlatformSync, handle, String(account.account_url ?? ""), channel);
+  }
   await trackEvent(admin, {
-    ...userEventBase({ id: state.profileId } as Parameters<typeof userEventBase>[0], "creator"),
+    ...userEventBase({ id: state.profileId } as Parameters<typeof userEventBase>[0], role || "creator"),
     eventName: "social_oauth_connected",
     entityType: "connected_social_account",
     entityId: account.id,
-    metadata: { provider: "youtube", creator_id: creator.id, platform_account_id: channelId }
+    metadata: { provider: "youtube", [entityKey]: entityId, platform_account_id: channelId }
   });
 
   return NextResponse.redirect(profileRedirect(state.returnTo, { social: "youtube_connected" }));

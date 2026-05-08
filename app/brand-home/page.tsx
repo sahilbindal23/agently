@@ -42,7 +42,10 @@ export default async function BrandHomePage() {
   ]);
 
   const result = audit?.result as Record<string, unknown> | undefined;
-  const completeness = brandCompleteness({ brand, audit: audit ?? null, campaigns: campaigns ?? [], deals: deals ?? [], projects: projects ?? [] });
+  const { data: brandConnectedAccounts } = brand?.id
+    ? await admin.from("connected_social_accounts").select("id").eq("brand_id", brand.id)
+    : { data: [] };
+  const completeness = brandCompleteness({ brand, audit: audit ?? null, campaigns: campaigns ?? [], deals: deals ?? [], projects: projects ?? [], connectedAccounts: brandConnectedAccounts ?? [] });
   const automation = brand ? brandAutomationDecision({ brand, audit: audit ?? null, campaigns: campaigns ?? [] }) : null;
   const visibleCreators = (creators ?? []).filter((creator) => isDiscoverable(creatorAutomationDecision({
     creator,

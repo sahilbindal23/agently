@@ -95,7 +95,11 @@ export default async function OffersPage() {
       .order("created_at", { ascending: false })
     : { data: [] };
 
-  const offers = (deals ?? []) as OfferRow[];
+  const allOffers = (deals ?? []) as OfferRow[];
+  // Hide declined offers from the main view to keep the inbox focused on
+  // active workflow. Declined offers stay queryable in a collapsed section.
+  const offers = allOffers.filter((offer) => offer.offer_status !== "declined");
+  const declinedOffers = allOffers.filter((offer) => offer.offer_status === "declined");
   const offerContracts = await getLatestContractsForDeals(admin, offers.map((offer) => offer.id));
   const { data: projects } = freelancer?.id || isAdmin
     ? await admin
@@ -104,12 +108,15 @@ export default async function OffersPage() {
       .match(isAdmin ? {} : { freelancer_id: freelancer.id })
       .order("created_at", { ascending: false })
     : { data: [] };
-  const freelancerProjects = (projects ?? []) as ProjectRow[];
+  const allProjects = (projects ?? []) as ProjectRow[];
+  const freelancerProjects = allProjects.filter((project) => project.status !== "declined");
+  const declinedProjects = allProjects.filter((project) => project.status === "declined");
   const latestDeliverables = await getLatestDeliverables(admin, [
     ...offers.map((offer) => ({ type: "deal" as const, id: offer.id })),
     ...freelancerProjects.map((project) => ({ type: "freelancer_project" as const, id: project.id }))
   ]);
   const hasItems = offers.length || freelancerProjects.length;
+  const hasDeclined = declinedOffers.length || declinedProjects.length;
 
   return (
     <AppShell>
@@ -319,6 +326,40 @@ export default async function OffersPage() {
           <p className="mt-1 text-sm leading-6 text-muted-foreground">When a brand sends an offer from a campaign recommendation, it will appear here.</p>
         </Card>
       )}
+
+      {hasDeclined ? (
+        <details className="mt-5">
+          <summary className="cursor-pointer rounded-md border bg-white px-4 py-3 text-sm font-medium text-muted-foreground transition hover:bg-muted dark:border-white/8 dark:bg-card dark:hover:bg-white/4">
+            Declined offers ({declinedOffers.length + declinedProjects.length})
+          </summary>
+          <div className="mt-3 grid gap-2">
+            {declinedOffers.map((offer) => (
+              <div key={offer.id} className="flex flex-wrap items-center justify-between gap-2 rounded-md border bg-muted/30 px-4 py-3 text-sm dark:border-white/8 dark:bg-white/4">
+                <div>
+                  <p className="font-medium">{offer.title}</p>
+                  <p className="text-xs text-muted-foreground">
+                    Creator offer · {formatCurrency(offer.amount_cents, offer.currency ?? "inr")}
+                    {offer.due_date ? ` · was due ${offer.due_date}` : ""}
+                  </p>
+                </div>
+                <Badge tone="red">declined</Badge>
+              </div>
+            ))}
+            {declinedProjects.map((project) => (
+              <div key={project.id} className="flex flex-wrap items-center justify-between gap-2 rounded-md border bg-muted/30 px-4 py-3 text-sm dark:border-white/8 dark:bg-white/4">
+                <div>
+                  <p className="font-medium">{project.title}</p>
+                  <p className="text-xs text-muted-foreground">
+                    Freelancer project · {formatCurrency(project.amount_cents, project.currency ?? "inr")}
+                    {project.due_date ? ` · was due ${project.due_date}` : ""}
+                  </p>
+                </div>
+                <Badge tone="red">declined</Badge>
+              </div>
+            ))}
+          </div>
+        </details>
+      ) : null}
     </AppShell>
   );
 }

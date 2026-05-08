@@ -49,6 +49,7 @@ export async function GET(request: Request) {
 }
 
 function getMetaOAuthScopes() {
+  // Override via env when you have specific scopes approved in App Review.
   const explicitScopes = process.env.META_OAUTH_SCOPES
     ?.split(",")
     .map((scope) => scope.trim())
@@ -57,10 +58,15 @@ function getMetaOAuthScopes() {
   if (explicitScopes?.length) return explicitScopes.join(",");
 
   if (process.env.META_OAUTH_MODE === "business") {
+    // Page + Instagram analytics scopes - all require App Review for production
     return "pages_show_list,pages_read_engagement,instagram_basic,instagram_manage_insights";
   }
 
-  return "public_profile,email";
+  // Default: only public_profile, which Facebook grants without App Review.
+  // Adding 'email' (or any other permission) triggers "Invalid Scopes" until
+  // you submit the app for review and get the permission approved in
+  // Meta App Dashboard -> Permissions and Features.
+  return "public_profile";
 }
 
 export async function POST(request: Request) {
@@ -80,32 +86,56 @@ export async function POST(request: Request) {
   const admin = createAdminClient();
   if (!admin) return NextResponse.json({ error: "Supabase service role key is not configured." }, { status: 500 });
 
-  const { data: creator } = await admin.from("creators").select("*").eq("profile_id", authData.user.id).maybeSingle();
-  if (!creator) return NextResponse.json({ error: "Create a creator profile before connecting social accounts." }, { status: 404 });
+  // Dispatch by role - creators, brands, and freelancers can all connect socials
+  const { data: profile } = await admin.from("profiles").select("role").eq("id", authData.user.id).maybeSingle();
+  const role = String(profile?.role ?? "");
+
+  let entityKey: "creator_id" | "brand_id" | "freelancer_id";
+  let entityId: string;
+  let onConflict: string;
+  if (role === "brand") {
+    const { data: brand } = await admin.from("brands").select("id").eq("contact_email", String(authData.user.email ?? "").toLowerCase()).maybeSingle();
+    if (!brand) return NextResponse.json({ error: "Complete brand intake before connecting social accounts." }, { status: 404 });
+    entityKey = "brand_id";
+    entityId = String(brand.id);
+    onConflict = "brand_id,provider,handle";
+  } else if (role === "freelancer") {
+    const { data: freelancer } = await admin.from("freelancers").select("id").eq("profile_id", authData.user.id).maybeSingle();
+    if (!freelancer) return NextResponse.json({ error: "Create a freelancer profile before connecting social accounts." }, { status: 404 });
+    entityKey = "freelancer_id";
+    entityId = String(freelancer.id);
+    onConflict = "freelancer_id,provider,handle";
+  } else {
+    const { data: creator } = await admin.from("creators").select("id").eq("profile_id", authData.user.id).maybeSingle();
+    if (!creator) return NextResponse.json({ error: "Create a creator profile before connecting social accounts." }, { status: 404 });
+    entityKey = "creator_id";
+    entityId = String(creator.id);
+    onConflict = "creator_id,provider,handle";
+  }
 
   const providerConfig = socialProviders.find((item) => item.id === provider);
   const { data, error } = await admin
     .from("connected_social_accounts")
     .upsert({
       profile_id: authData.user.id,
-      creator_id: creator.id,
+      [entityKey]: entityId,
       provider,
       handle,
       account_url: accountUrl,
       platform_account_id: `${provider}:${handle}`,
       status: "mock_connected",
       scopes: providerConfig?.requiredScopes ?? []
-    }, { onConflict: "creator_id,provider,handle" })
+    }, { onConflict })
     .select("*")
     .single();
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
   await trackEvent(admin, {
-    ...userEventBase(authData.user, "creator"),
+    ...userEventBase(authData.user, role || "creator"),
     eventName: "social_connected",
     entityType: "connected_social_account",
     entityId: data.id,
-    metadata: { provider, creator_id: creator.id, status: data.status }
+    metadata: { provider, [entityKey]: entityId, status: data.status }
   });
   return NextResponse.json({ data });
 }

@@ -100,6 +100,7 @@ export function brandCompleteness(input: {
   campaigns?: unknown[];
   deals?: unknown[];
   projects?: unknown[];
+  connectedAccounts?: unknown[];
 }) {
   return buildCompleteness([
     {
@@ -111,6 +112,12 @@ export function brandCompleteness(input: {
       label: "Complete brand intake/audit",
       done: Boolean(input.audit),
       reason: "The audit turns brand goals into creator archetypes and campaign positioning."
+    },
+    {
+      label: "Connect a social account",
+      done: Boolean(input.connectedAccounts?.length),
+      reason: "Connected Instagram / Facebook / YouTube proves the brand is real and lifts your trust score with creators evaluating your offers.",
+      href: "/profile"
     },
     {
       label: "Create first campaign brief",
