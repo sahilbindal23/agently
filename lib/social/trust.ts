@@ -1,56 +1,50 @@
 export type SocialTrustTone = "green" | "blue" | "amber" | "neutral";
 
+/**
+ * Map a metric_source string to a simple trust signal:
+ *   - `label`: short, user-facing. "Instagram verified" / "YouTube verified" /
+ *     "Facebook verified" when the source is authoritative. Empty string
+ *     when not - the badge component renders nothing in that case.
+ *   - `trusted`: drives engine scoring. True for OAuth + matched-public-API
+ *     sources, false for self-report, mismatched, pending, etc.
+ *
+ * The "trusted" boolean is the load-bearing signal for the recommendation
+ * engine and rate-blender. Don't widen what counts as trusted without
+ * also reviewing how those weights flow downstream.
+ */
 export function socialTrustFromSource(source?: string | null) {
   const value = String(source ?? "");
+
+  // ----- YouTube -----
   if (value.includes("youtube_analytics")) {
-    return { label: "Verified via YouTube Analytics", tone: "green" as const, trusted: true };
+    return { label: "YouTube verified", tone: "green" as const, trusted: true };
   }
   if (value === "youtube_public_api") {
-    // Pulled from YouTube Data API with our server API key. Authoritative
-    // for subscriber/view counts but lacks audience demographics.
-    return { label: "Verified via YouTube API", tone: "blue" as const, trusted: true };
+    return { label: "YouTube verified", tone: "green" as const, trusted: true };
   }
-  if (value === "youtube_public_unconfirmed") {
-    // Self-reported number disagreed with YouTube API - flagged for review
-    return { label: "Self-report doesn't match YouTube channel", tone: "amber" as const, trusted: false };
-  }
+
+  // ----- Instagram -----
   if (value.includes("instagram_graph")) {
-    return { label: "Verified via Instagram API", tone: "green" as const, trusted: true };
-  }
-  if (value.includes("facebook_graph")) {
-    return { label: "Verified via Facebook API", tone: "green" as const, trusted: true };
-  }
-  if (value === "mock_api") {
-    return { label: "Prototype demo metrics", tone: "blue" as const, trusted: true };
+    return { label: "Instagram verified", tone: "green" as const, trusted: true };
   }
   if (value === "public_scrape") {
-    // Public scrape matched (or we had no self-report to compare to). Trust
-    // is between OAuth-grade and self-reported - we know the number is real
-    // from a real Instagram page, but Instagram could have changed their
-    // HTML or the scrape could be stale.
-    return { label: "Verified from public Instagram profile", tone: "blue" as const, trusted: true };
+    return { label: "Instagram verified", tone: "green" as const, trusted: true };
   }
-  if (value === "public_scrape_unconfirmed") {
-    // Scraped number significantly disagreed with what the user self-reported.
-    // Don't count this as trusted - flag for review.
-    return { label: "Self-report doesn't match Instagram profile", tone: "amber" as const, trusted: false };
+
+  // ----- Facebook -----
+  if (value.includes("facebook_graph")) {
+    return { label: "Facebook verified", tone: "green" as const, trusted: true };
   }
-  if (value.includes("self_reported")) {
-    return { label: "Pending metric review", tone: "amber" as const, trusted: false };
+
+  // ----- Demo / mock data (only in non-prod) -----
+  if (value === "mock_api") {
+    return { label: "", tone: "neutral" as const, trusted: true };
   }
-  if (value.includes("no_creator")) {
-    return { label: "No creator data yet", tone: "amber" as const, trusted: false };
-  }
-  if (value.includes("permission")) {
-    return { label: "Permission needed", tone: "amber" as const, trusted: false };
-  }
-  if (value.includes("setup_required")) {
-    return { label: "Setup required", tone: "amber" as const, trusted: false };
-  }
-  if (value && value !== "self_reported") {
-    return { label: "Platform metrics", tone: "green" as const, trusted: true };
-  }
-  return { label: "Self-reported metrics", tone: "neutral" as const, trusted: false };
+
+  // ----- Untrusted sources: no badge shown -----
+  // Includes: youtube_public_unconfirmed, public_scrape_unconfirmed,
+  // self_reported, no_creator, permission_*, setup_required, empty, anything else.
+  return { label: "", tone: "neutral" as const, trusted: false };
 }
 
 export function isTrustedMetricSource(source?: string | null) {
