@@ -5,6 +5,15 @@ export function socialTrustFromSource(source?: string | null) {
   if (value.includes("youtube_analytics")) {
     return { label: "Verified via YouTube Analytics", tone: "green" as const, trusted: true };
   }
+  if (value === "youtube_public_api") {
+    // Pulled from YouTube Data API with our server API key. Authoritative
+    // for subscriber/view counts but lacks audience demographics.
+    return { label: "Verified via YouTube API", tone: "blue" as const, trusted: true };
+  }
+  if (value === "youtube_public_unconfirmed") {
+    // Self-reported number disagreed with YouTube API - flagged for review
+    return { label: "Self-report doesn't match YouTube channel", tone: "amber" as const, trusted: false };
+  }
   if (value.includes("instagram_graph")) {
     return { label: "Verified via Instagram API", tone: "green" as const, trusted: true };
   }
