@@ -196,7 +196,7 @@ function MetaReadinessGuide() {
   const items = [
     "Use an Instagram Creator or Business account for useful insights.",
     "Keep the Instagram account linked to a Facebook Page.",
-    "Grant insights permissions during OAuth when prompted.",
+    "Grant insights permissions during OAuth once the Meta app is approved for them.",
     "If the creator is not ready, use prototype connect until their account setup is fixed."
   ];
 
@@ -230,6 +230,22 @@ function getConnectionState(account: ConnectedAccountRow | undefined, latest: So
       label: oauthReady ? "not connected" : "prototype connect",
       copy: oauthReady ? "OAuth credentials are configured. Connect this provider when ready." : "OAuth credentials are not configured yet, so this uses prototype connect and mock sync.",
       tone: "neutral" as const
+    };
+  }
+  if (account.status === "oauth_limited") {
+    return {
+      key: "waiting",
+      label: "basic login connected",
+      copy: "Meta login worked. Insights sync needs an Instagram professional account linked to a Facebook Page plus approved Meta business permissions.",
+      tone: "amber" as const
+    };
+  }
+  if (account.status === "pending_metric_review") {
+    return {
+      key: "waiting",
+      label: "pending metric review",
+      copy: "The handle is saved, but manual sync cannot verify audience metrics. Scores will not use these numbers until OAuth/API data or admin review is available.",
+      tone: "amber" as const
     };
   }
   if (String(account.status ?? "").includes("expired")) {
@@ -294,6 +310,8 @@ function StatusIcon({ state }: { state: string }) {
 }
 
 function accountStatusCopy(account: ConnectedAccountRow, latest?: SocialSnapshotRow) {
+  if (account.status === "oauth_limited") return `Connected as ${account.handle}. Full insights sync needs Meta Page/Instagram permissions.`;
+  if (account.status === "pending_metric_review") return `Connected as ${account.handle}. Manual connection is saved, but metrics are not verified.`;
   if (!latest) return `Connected as ${account.handle}. Sync required before scores can use this data.`;
   if (latest.source.includes("no_creator_data")) return `Connected as ${account.handle}, but no creator performance data was found.`;
   if (latest.source.includes("permission")) return `Connected as ${account.handle}, but permissions need to be refreshed.`;
@@ -307,6 +325,7 @@ function sourceLabel(source: string) {
   if (source === "mock_api") return "prototype metrics";
   if (source.includes("youtube_analytics")) return "youtube analytics";
   if (source.includes("youtube_no_creator")) return "no creator data";
+  if (source.includes("manual_connect")) return "manual review needed";
   if (source.includes("no_metrics")) return "profile metrics needed";
   if (source.includes("permission")) return "permission needed";
   if (source.includes("setup_required")) return "setup required";

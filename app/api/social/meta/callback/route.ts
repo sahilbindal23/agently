@@ -20,6 +20,11 @@ type MetaPagesResponse = {
   data?: MetaPage[];
 };
 
+type MetaProfileResponse = {
+  id?: string;
+  name?: string;
+};
+
 export async function GET(request: Request) {
   const url = new URL(request.url);
   const code = url.searchParams.get("code");
@@ -39,23 +44,22 @@ export async function GET(request: Request) {
   const { data: creator } = await admin.from("creators").select("*").eq("profile_id", state.profileId).maybeSingle();
   if (!creator) return NextResponse.redirect(profileRedirect(state.returnTo, { social: "creator_profile_required" }));
 
-  const token = await exchangeMetaCode(code);
+  const token = await exchangeMetaCode(code, metaProvider);
   if (!token.access_token) return NextResponse.redirect(profileRedirect(state.returnTo, { social: "meta_token_failed" }));
 
   const pages = await fetchMetaPages(token.access_token);
   const selected = selectMetaPage(pages, metaProvider);
-  if (!selected) {
-    return NextResponse.redirect(profileRedirect(state.returnTo, { social: `${state.provider}_page_required` }));
-  }
+  const limitedProfile = selected ? null : await fetchMetaProfile(token.access_token);
 
-  const accountToken = selected.access_token ?? token.access_token;
+  const accountToken = selected?.access_token ?? token.access_token;
   const accountId = state.provider === "instagram"
-    ? selected.instagram_business_account?.id ?? selected.id
-    : selected.id;
+    ? selected?.instagram_business_account?.id ?? selected?.id ?? limitedProfile?.id ?? `meta:${state.profileId}`
+    : selected?.id ?? limitedProfile?.id ?? `meta:${state.profileId}`;
   const handle = state.provider === "instagram"
-    ? selected.instagram_business_account?.username ?? selected.name ?? "Instagram account"
-    : selected.name ?? "Facebook page";
+    ? selected?.instagram_business_account?.username ?? selected?.name ?? limitedProfile?.name ?? "Meta account"
+    : selected?.name ?? limitedProfile?.name ?? "Meta account";
   const expiresAt = token.expires_in ? new Date(Date.now() + token.expires_in * 1000).toISOString() : null;
+  const connectionStatus = selected ? "oauth_connected" : "oauth_limited";
 
   const { data: account, error } = await admin
     .from("connected_social_accounts")
@@ -64,10 +68,12 @@ export async function GET(request: Request) {
       creator_id: creator.id,
       provider: state.provider,
       handle,
-      account_url: state.provider === "instagram" ? `https://www.instagram.com/${handle}` : `https://www.facebook.com/${accountId}`,
+      account_url: selected
+        ? state.provider === "instagram" ? `https://www.instagram.com/${handle}` : `https://www.facebook.com/${accountId}`
+        : "https://www.facebook.com/me",
       platform_account_id: accountId,
-      status: "oauth_connected",
-      scopes: ["pages_show_list", "pages_read_engagement", "read_insights", "instagram_basic", "instagram_manage_insights"],
+      status: connectionStatus,
+      scopes: getMetaOAuthScopes(),
       access_token_encrypted: sealToken(accountToken),
       refresh_token_encrypted: null,
       token_expires_at: expiresAt
@@ -82,10 +88,12 @@ export async function GET(request: Request) {
     eventName: "social_oauth_connected",
     entityType: "connected_social_account",
     entityId: account.id,
-    metadata: { provider: state.provider, creator_id: creator.id, platform_account_id: accountId }
+    metadata: { provider: state.provider, creator_id: creator.id, platform_account_id: accountId, status: connectionStatus }
   });
 
-  return NextResponse.redirect(profileRedirect(state.returnTo, { social: `${state.provider}_connected` }));
+  return NextResponse.redirect(profileRedirect(state.returnTo, {
+    social: selected ? `${state.provider}_connected` : `${state.provider}_limited_connected`
+  }));
 }
 
 function getProviderFromState(encoded: string) {
@@ -97,12 +105,12 @@ function getProviderFromState(encoded: string) {
   }
 }
 
-async function exchangeMetaCode(code: string): Promise<MetaTokenResponse> {
+async function exchangeMetaCode(code: string, provider: "instagram" | "facebook"): Promise<MetaTokenResponse> {
   const version = process.env.META_GRAPH_VERSION ?? "v20.0";
   const response = await fetch(`https://graph.facebook.com/${version}/oauth/access_token?${new URLSearchParams({
     client_id: process.env.META_APP_ID ?? "",
     client_secret: process.env.META_APP_SECRET ?? "",
-    redirect_uri: getProviderRedirectUri("instagram"),
+    redirect_uri: getProviderRedirectUri(provider),
     code
   }).toString()}`);
   if (!response.ok) return {};
@@ -120,7 +128,31 @@ async function fetchMetaPages(accessToken: string) {
   return body.data ?? [];
 }
 
+async function fetchMetaProfile(accessToken: string) {
+  const version = process.env.META_GRAPH_VERSION ?? "v20.0";
+  const response = await fetch(`https://graph.facebook.com/${version}/me?fields=id,name`, {
+    headers: { Authorization: `Bearer ${accessToken}` }
+  });
+  if (!response.ok) return null;
+  return response.json() as Promise<MetaProfileResponse>;
+}
+
 function selectMetaPage(pages: MetaPage[], provider: "instagram" | "facebook") {
   if (provider === "instagram") return pages.find((page) => page.instagram_business_account?.id);
   return pages[0] ?? null;
+}
+
+function getMetaOAuthScopes() {
+  const explicitScopes = process.env.META_OAUTH_SCOPES
+    ?.split(",")
+    .map((scope) => scope.trim())
+    .filter(Boolean);
+
+  if (explicitScopes?.length) return explicitScopes;
+
+  if (process.env.META_OAUTH_MODE === "business") {
+    return ["pages_show_list", "pages_read_engagement", "instagram_basic", "instagram_manage_insights"];
+  }
+
+  return ["public_profile", "email"];
 }

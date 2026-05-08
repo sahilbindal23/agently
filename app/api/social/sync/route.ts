@@ -57,12 +57,22 @@ export async function POST(request: Request) {
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
 
   const latestSignals = await refreshCreatorScoresFromSnapshots(admin, String(account.creator_id));
+  const nextStatus = socialAccountStatusAfterSync(String(snapshot.source ?? ""));
   await Promise.all([
-    admin.from("connected_social_accounts").update({ last_synced_at: new Date().toISOString(), status: "synced" }).eq("id", account.id),
+    admin.from("connected_social_accounts").update({ last_synced_at: new Date().toISOString(), status: nextStatus }).eq("id", account.id),
     Promise.resolve()
   ]);
 
   return NextResponse.json({ data: inserted, summary: latestSignals });
+}
+
+function socialAccountStatusAfterSync(source: string) {
+  if (source.includes("permission")) return "permission_required";
+  if (source.includes("setup_required")) return "setup_required";
+  if (source.includes("self_reported") || source.includes("manual_connect_no_metrics") || source.includes("no_metrics")) {
+    return "pending_metric_review";
+  }
+  return "synced";
 }
 
 function isDemoProfile(email: string) {

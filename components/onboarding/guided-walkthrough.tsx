@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useLayoutEffect, useMemo, useState } from "react";
-import { usePathname, useRouter } from "next/navigation";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { ArrowRight, ChevronLeft, MousePointer2, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
@@ -26,7 +26,7 @@ const storageKey = "agently-walkthrough-state";
 
 const sharedFinalStep = {
   title: "Payments close the loop",
-  body: "This is where Agently becomes more than discovery: deliverable approval can move payouts to release-ready, so brands and talent understand what happens next.",
+  body: "Payments are the protected workflow layer. A brand funds the deal before final delivery, the creator or freelancer submits the work, approval moves it into release-ready, and payout is then released. In the prototype, this shows the operating logic; RazorpayX automation comes after account approval.",
   target: "nav-payments",
   route: "/payments",
   cta: "Open payments"
@@ -169,6 +169,7 @@ const stepsByRole: Record<Role, Step[]> = {
 export function GuidedWalkthrough({ role }: { role: Role }) {
   const router = useRouter();
   const pathname = usePathname();
+  const searchParams = useSearchParams();
   const steps = useMemo(() => stepsByRole[role] ?? stepsByRole.admin, [role]);
   const [active, setActive] = useState(false);
   const [index, setIndex] = useState(0);
@@ -246,6 +247,12 @@ export function GuidedWalkthrough({ role }: { role: Role }) {
       window.sessionStorage.removeItem(storageKey);
     }
   }, [role, steps.length]);
+
+  useEffect(() => {
+    if (searchParams.get("walkthrough") !== "1") return;
+    window.sessionStorage.setItem(storageKey, JSON.stringify({ active: true, index: 0, role }));
+    goToIndex(0);
+  }, [goToIndex, role, searchParams]);
 
   useEffect(() => {
     function start() {

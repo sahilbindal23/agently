@@ -154,7 +154,7 @@ function ProjectedRoiBlock({ summary }: { summary: ProjectedRoiSummary }) {
     ? "amber"
     : "red";
   const sourceLabel = summary.has_internal_deal_data
-    ? "incl. closed Agently deals"
+    ? "includes verified outcome history"
     : summary.rate_source === "observation_aggregate"
     ? "from market observations"
     : summary.rate_source === "no_data"

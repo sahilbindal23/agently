@@ -43,9 +43,24 @@ export async function GET(request: Request) {
   authUrl.searchParams.set("client_id", process.env.META_APP_ID ?? "");
   authUrl.searchParams.set("redirect_uri", redirectUri);
   authUrl.searchParams.set("response_type", "code");
-  authUrl.searchParams.set("scope", "pages_show_list,pages_read_engagement,read_insights,instagram_basic,instagram_manage_insights");
+  authUrl.searchParams.set("scope", getMetaOAuthScopes());
   authUrl.searchParams.set("state", state);
   return NextResponse.redirect(authUrl);
+}
+
+function getMetaOAuthScopes() {
+  const explicitScopes = process.env.META_OAUTH_SCOPES
+    ?.split(",")
+    .map((scope) => scope.trim())
+    .filter(Boolean);
+
+  if (explicitScopes?.length) return explicitScopes.join(",");
+
+  if (process.env.META_OAUTH_MODE === "business") {
+    return "pages_show_list,pages_read_engagement,instagram_basic,instagram_manage_insights";
+  }
+
+  return "public_profile,email";
 }
 
 export async function POST(request: Request) {

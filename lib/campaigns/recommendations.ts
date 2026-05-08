@@ -109,7 +109,7 @@ export function rankCreators(campaign: Campaign, creators: Creator[], platforms:
       image_url: creator.image_url ?? null,
       subtitle: `${creator.primary_niche} - ${primary ? `${primary.platform}, ${compactNumber(primary.followers)} followers` : getCreatorLanguages(creator)}`,
       score,
-      reason: `${creator.display_name} fits through ${creator.primary_niche.toLowerCase()}, ${creator.home_city || "India"} relevance, and ${creator.content_style || "audience"} style${creator.completed_deal_count ? `, with ${creator.completed_deal_count} completed Agently deal${creator.completed_deal_count === 1 ? "" : "s"}` : ""}.`,
+      reason: `${creator.display_name} fits through ${creator.primary_niche.toLowerCase()}, ${creator.home_city || "India"} relevance, and ${creator.content_style || "audience"} style.`,
       match_type: matchType,
       best_use_case: creatorBestUseCase(matchType, campaign, creator),
       expected_outcome: creatorExpectedOutcome(campaign, primary, roi),
@@ -335,7 +335,6 @@ function creatorProofPoints(creator: Creator, platform: CreatorPlatform | undefi
     `${breakdown.city_fit}/100 city fit`,
     platform ? `${compactNumber(platform.avg_views)} avg views on ${platform.platform}` : "Platform metrics missing",
     `Metrics trust: ${trust.label}`,
-    creator.completed_deal_count ? `${creator.completed_deal_count} completed Agently deal${creator.completed_deal_count === 1 ? "" : "s"}` : "No completed Agently deals yet",
     creator.verification_tier ? `Trust tier: ${creator.verification_tier}` : "Trust tier: unverified"
   ];
 }
@@ -356,7 +355,6 @@ function freelancerProofPoints(freelancer: FreelancerRecommendationInput, rates:
     `${breakdown.category_fit}/100 skill fit`,
     `${breakdown.city_fit}/100 city fit`,
     rates.length ? `${rates.length} service rate card${rates.length === 1 ? "" : "s"} listed` : "No service rates listed",
-    freelancer.completed_project_count ? `${freelancer.completed_project_count} completed Agently project${freelancer.completed_project_count === 1 ? "" : "s"}` : "No completed Agently projects yet",
     freelancer.verification_tier ? `Trust tier: ${freelancer.verification_tier}` : "Trust tier: unverified"
   ];
 }
@@ -378,11 +376,11 @@ function eventAdjustment(events: RecommendationEventSignal[], campaignId?: strin
     const sameCampaign = campaignId && String(event.metadata?.campaign_id ?? "") === campaignId;
     switch (event.event_name) {
       case "talent_shortlisted":
-        points += sameCampaign ? 5 : 3;
-        labels.add(sameCampaign ? "Shortlisted for this campaign" : "Previously shortlisted");
+        points += sameCampaign ? 2 : 1;
+        labels.add(sameCampaign ? "Shortlist interest signal" : "Recent brand interest");
         break;
       case "talent_unshortlisted":
-        points -= sameCampaign ? 6 : 2;
+        points -= sameCampaign ? 2 : 1;
         labels.add("Recently unshortlisted");
         break;
       case "offer_sent":
@@ -402,8 +400,8 @@ function eventAdjustment(events: RecommendationEventSignal[], campaignId?: strin
         break;
       case "offer_declined":
       case "freelancer_project_declined":
-        points -= 7;
-        labels.add("Recent declined offer");
+        points -= declinePenalty(event);
+        labels.add("Declined offer context");
         break;
       case "counter_accepted":
         points += 5;
@@ -418,8 +416,8 @@ function eventAdjustment(events: RecommendationEventSignal[], campaignId?: strin
         labels.add("Approved delivery history");
         break;
       case "deliverable_revision_requested":
-        points -= 3;
-        labels.add("Recent revision request");
+        points -= revisionPenalty(event);
+        labels.add("Revision requested");
         break;
       case "payment_status_updated":
         if (event.metadata?.status === "released" || event.metadata?.status === "release_ready") {
@@ -435,7 +433,7 @@ function eventAdjustment(events: RecommendationEventSignal[], campaignId?: strin
 
   return {
     labels: Array.from(labels).slice(0, 4),
-    points: Math.max(-14, Math.min(18, points))
+    points: Math.max(-10, Math.min(14, points))
   };
 }
 
@@ -443,7 +441,21 @@ function isRecentEnough(value: string | null | undefined) {
   if (!value) return true;
   const created = new Date(value).getTime();
   if (!Number.isFinite(created)) return true;
-  return Date.now() - created <= 180 * 24 * 60 * 60 * 1000;
+  return Date.now() - created <= 45 * 24 * 60 * 60 * 1000;
+}
+
+function declinePenalty(event: RecommendationEventSignal) {
+  const amount = Number(event.metadata?.amount_cents ?? event.metadata?.offer_amount_cents ?? 0);
+  const median = Number(event.metadata?.median_rate_cents ?? event.metadata?.benchmark_base_cents ?? 0);
+  if (amount > 0 && median > 0 && amount < median * 0.65) return 0;
+  if (String(event.metadata?.decline_reason ?? "").toLowerCase().includes("low")) return 0;
+  return 2;
+}
+
+function revisionPenalty(event: RecommendationEventSignal) {
+  const reason = String(event.metadata?.reason ?? event.metadata?.revision_reason ?? "").toLowerCase();
+  if (reason.includes("brand") || reason.includes("scope") || reason.includes("brief") || reason.includes("unclear")) return 0;
+  return 1;
 }
 
 function completedWorkTrustBoost(count: number) {

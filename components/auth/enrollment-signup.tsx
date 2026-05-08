@@ -200,8 +200,8 @@ function EnrollmentAuditResult({ result }: { result: EnrollmentResult }) {
           </div>
         ))}
       </div>
-      <a className="mt-4 inline-flex h-10 items-center justify-center rounded-md bg-primary px-4 text-sm font-medium text-primary-foreground" href={result.next_url}>
-        Continue to profile
+      <a className="mt-4 inline-flex h-10 items-center justify-center rounded-md bg-primary px-4 text-sm font-medium text-primary-foreground" href={`${result.next_url}?walkthrough=1`}>
+        Continue to guided walkthrough
       </a>
     </div>
   );

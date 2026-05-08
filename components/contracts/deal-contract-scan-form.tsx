@@ -107,11 +107,11 @@ export function DealContractScanForm({
       )}
       <Input name="file" type="file" accept=".txt,.md,.csv,.rtf,.pdf,.doc,.docx" />
       <p className="text-xs leading-5 text-muted-foreground">
-        Upload the contract file to attach it to the deal. Text files scan directly; for PDF or DOC contracts, paste the extracted text below until full document parsing is added.
+        Start from the Agently template whenever possible. Brand-supplied contracts should be treated as exception cases and scanned for usage, payment, exclusivity, revision, cancellation, and dispute risks before anyone accepts.
       </p>
       <Textarea
         name="raw_text"
-        placeholder="Paste the contract terms here: payment timing, usage rights, exclusivity, whitelisting, revisions, cancellation, and licensing duration."
+        placeholder="Paste the Agently contract packet or redlined brand terms here: scope, payment timing, usage rights, exclusivity, whitelisting, revisions, cancellation, dispute process, and licensing duration."
         className="min-h-48"
       />
       <Button type="submit" disabled={status === "loading"}>

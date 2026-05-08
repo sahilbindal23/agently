@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { AgentlyContractTemplate } from "@/components/contracts/agently-contract-template";
 import { FileText } from "lucide-react";
 import { DealContractScanForm } from "@/components/contracts/deal-contract-scan-form";
 import { ContractSummaryCard } from "@/components/contracts/contract-summary-card";
@@ -43,6 +44,7 @@ export default async function ContractsPage() {
         <StatusMetric label="Caution" value={cautionCount} tone={cautionCount ? "amber" : "green"} />
         <StatusMetric label="High risk" value={highRiskCount} tone={highRiskCount ? "red" : "green"} />
       </section>
+      <AgentlyContractTemplate />
       <section className="grid gap-5 xl:grid-cols-[0.9fr_1.1fr]">
         <Card>
           <CardHeader><CardTitle>Attach Contract Packet</CardTitle><Badge>{dealOptions.length ? "role scoped" : "no eligible deals"}</Badge></CardHeader>
