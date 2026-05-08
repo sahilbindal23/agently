@@ -4,10 +4,9 @@ import { Search, ShieldCheck } from "lucide-react";
 import { useMemo, useState } from "react";
 import { CreatorMarketCard, FreelancerMarketCard, BrandMarketCard } from "@/components/marketplace/marketplace-cards";
 import { Input } from "@/components/ui/input";
-import type { ProjectedRoiSummary } from "@/lib/campaigns/enrich-roi";
 
 type TabItem =
-  | { id: string; label: string; type: "creator"; items: Array<Record<string, unknown>>; platforms?: Array<Record<string, unknown>>; roiByCreatorId?: Record<string, ProjectedRoiSummary> }
+  | { id: string; label: string; type: "creator"; items: Array<Record<string, unknown>>; platforms?: Array<Record<string, unknown>> }
   | { id: string; label: string; type: "freelancer"; items: Array<Record<string, unknown>> }
   | { id: string; label: string; type: "brand"; items: Array<Record<string, unknown>> };
 
@@ -70,8 +69,7 @@ export function MarketplaceTabs({ tabs }: { tabs: TabItem[] }) {
           {visibleItems.map((item) => {
             if (active.type === "creator") {
               const platform = active.platforms?.find((entry) => entry.creator_id === item.id);
-              const roi = active.roiByCreatorId?.[String(item.id)];
-              return <CreatorMarketCard creator={item} key={String(item.id)} platform={platform} roi={roi} />;
+              return <CreatorMarketCard creator={item} key={String(item.id)} platform={platform} />;
             }
             if (active.type === "freelancer") {
               return <FreelancerMarketCard freelancer={item} key={String(item.id)} />;

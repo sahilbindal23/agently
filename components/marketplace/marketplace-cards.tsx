@@ -2,7 +2,6 @@ import Link from "next/link";
 import { MessageRecipientButton } from "@/components/messages/message-recipient-button";
 import { SocialTrustBadge } from "@/components/social/social-trust-badge";
 import { VerificationBadge } from "@/components/verification/verification-badge";
-import type { ProjectedRoiSummary } from "@/lib/campaigns/enrich-roi";
 import { getBangaloreFit, getIndiaAudiencePercent } from "@/lib/utils/creator-metrics";
 import { formatCurrency, formatNumber } from "@/lib/utils/format";
 
@@ -51,7 +50,7 @@ function StatPill({ label, value }: { label: string; value: string }) {
   );
 }
 
-export function CreatorMarketCard({ creator, platform, roi }: { creator: Record<string, unknown>; platform?: Record<string, unknown>; roi?: ProjectedRoiSummary }) {
+export function CreatorMarketCard({ creator, platform }: { creator: Record<string, unknown>; platform?: Record<string, unknown> }) {
   const href = `/creators/${stringValue(creator.id)}`;
   const name = stringValue(creator.display_name);
   const niche = stringValue(creator.primary_niche) || "Creator";
@@ -91,9 +90,6 @@ export function CreatorMarketCard({ creator, platform, roi }: { creator: Record<
         <StatPill label="Avg views" value={formatNumber(numberValue(platform?.avg_views))} />
         <StatPill label="India" value={`${getIndiaAudiencePercent(creator as never)}%`} />
       </div>
-
-      {/* Projected ROI for brands */}
-      {roi ? <CreatorRoiRow roi={roi} /> : null}
 
       {/* Actions */}
       <div className="flex items-center gap-2 p-3">
@@ -185,38 +181,6 @@ export function BrandMarketCard({ brand }: { brand: Record<string, unknown> }) {
           </Link>
         </div>
       </div>
-    </div>
-  );
-}
-
-function CreatorRoiRow({ roi }: { roi: ProjectedRoiSummary }) {
-  const tone = roi.expected_roi_multiplier >= 3
-    ? "bg-emerald-50 text-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-300"
-    : roi.expected_roi_multiplier >= 1.5
-    ? "bg-sky-50 text-sky-800 dark:bg-sky-950/40 dark:text-sky-300"
-    : roi.expected_roi_multiplier >= 1
-    ? "bg-amber-50 text-amber-800 dark:bg-amber-950/40 dark:text-amber-300"
-    : "bg-red-50 text-red-800 dark:bg-red-950/40 dark:text-red-300";
-  const sourceLabel = roi.has_internal_deal_data
-    ? "verified outcomes"
-    : roi.rate_source === "observation_aggregate"
-    ? "market data"
-    : "estimate";
-  return (
-    <div className="border-b border-border/60 px-3 py-2 dark:border-white/8">
-      <div className="flex items-center justify-between gap-2">
-        <span className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">Projected ROI · 1 deliverable</span>
-        <span className={`rounded-full px-2 py-0.5 text-[11px] font-bold ${tone}`}>
-          {roi.expected_roi_multiplier}x
-        </span>
-      </div>
-      <div className="mt-1 flex items-center justify-between gap-2 text-xs">
-        <span className="text-muted-foreground">Cost {formatCurrency(roi.expected_cost_inr * 100, "inr")}</span>
-        <span className="font-semibold">Rev {formatCurrency(roi.expected_revenue_inr * 100, "inr")}</span>
-      </div>
-      <p className="mt-1 truncate text-[10px] text-muted-foreground">
-        {roi.matched_platform} · {roi.matched_niche} · {roi.matched_tier} · {sourceLabel} · band {roi.conservative_roi_multiplier}x–{roi.optimistic_roi_multiplier}x
-      </p>
     </div>
   );
 }
