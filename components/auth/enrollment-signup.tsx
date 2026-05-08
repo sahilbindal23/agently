@@ -6,7 +6,20 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input, Textarea } from "@/components/ui/input";
+import { MultiCheckbox, Select } from "@/components/ui/select";
 import { HomeLogo } from "@/components/layout/home-logo";
+import {
+  AVAILABILITY_STATUSES,
+  BRAND_INDUSTRIES,
+  CAMPAIGN_LENGTHS,
+  CREATOR_SIZE_BANDS,
+  FREELANCER_SERVICES,
+  FREELANCER_SKILLS,
+  INDIAN_CITIES,
+  LANGUAGES,
+  NICHES,
+  PRICE_POINTS
+} from "@/lib/taxonomies";
 
 type Mode = "creator" | "brand" | "freelancer";
 type AuditResult = Record<string, unknown> & { source?: string };
@@ -102,7 +115,12 @@ export function EnrollmentSignup({ initialMode = "creator" }: { initialMode?: Mo
           </div>
 
           <form className="grid gap-3 md:grid-cols-2" onSubmit={onSubmit}>
-            <Input name="city_focus" placeholder={mode === "brand" ? "Launch city or region, optional" : "Home city"} />
+            <Select
+              name="city_focus"
+              label={mode === "brand" ? "Launch city or region" : "Home city"}
+              options={INDIAN_CITIES}
+              placeholderOption={mode === "brand" ? "Where will the campaign launch?" : "Where are you based?"}
+            />
             {mode === "creator" ? <CreatorEnrollmentFields /> : mode === "brand" ? <BrandEnrollmentFields /> : <FreelancerEnrollmentFields />}
             <Button className="md:col-span-2" disabled={status === "auditing"}>
               <ClipboardCheck className="h-4 w-4" />
@@ -125,12 +143,12 @@ export function EnrollmentSignup({ initialMode = "creator" }: { initialMode?: Mo
 function CreatorEnrollmentFields() {
   return (
     <>
-      <Input name="creator_name" placeholder="Creator/display name" />
-      <Input name="instagram_url" placeholder="Instagram URL" />
-      <Input name="youtube_url" placeholder="YouTube URL" />
-      <Input name="tiktok_url" placeholder="TikTok URL" />
-      <Textarea className="md:col-span-2" name="sample_posts" placeholder="Paste recent captions, hashtags, post links, or content notes" />
-      <Textarea className="md:col-span-2" name="audience_notes" placeholder="Audience notes or screenshot summary" />
+      <Input name="creator_name" placeholder="Display name" required />
+      <Select name="primary_niche" label="Primary niche" options={NICHES} placeholderOption="What do you make content about?" />
+      <MultiCheckbox className="md:col-span-2" name="languages" label="Languages you create in" options={LANGUAGES} />
+      <Input name="instagram_url" placeholder="Instagram URL (optional)" />
+      <Input name="youtube_url" placeholder="YouTube URL (optional)" />
+      <Textarea className="md:col-span-2" name="audience_notes" placeholder="Anything notable about your audience? (optional)" />
     </>
   );
 }
@@ -138,16 +156,17 @@ function CreatorEnrollmentFields() {
 function BrandEnrollmentFields() {
   return (
     <>
-      <Input name="brand_name" placeholder="Brand name" />
-      <Input name="category" placeholder="Category" />
+      <Input name="brand_name" placeholder="Brand name" required />
+      <Select name="category" label="Industry" options={BRAND_INDUSTRIES} placeholderOption="What does your brand do?" />
       <Input name="website_url" placeholder="Website URL" />
-      <Input name="instagram_url" placeholder="Instagram URL" />
-      <Input name="product_price_point" placeholder="Product price point" />
+      <Input name="instagram_url" placeholder="Instagram URL (optional)" />
+      <Select name="product_price_point" label="Typical product price" options={PRICE_POINTS} placeholderOption="What does your product cost?" />
       <Input name="budget_inr" placeholder="Campaign budget INR" type="number" />
-      <Input name="campaign_length" placeholder="Campaign length, e.g. 2 weeks, 3 months, always-on" />
-      <Input className="md:col-span-2" name="target_audience" placeholder="Target audience" />
-      <Textarea className="md:col-span-2" name="campaign_goal" placeholder="Campaign goal" />
-      <Textarea className="md:col-span-2" name="brand_notes" placeholder="Brand tone, competitors, constraints" />
+      <Select name="campaign_length" label="Campaign length" options={CAMPAIGN_LENGTHS} placeholderOption="How long will the campaign run?" />
+      <Select name="creator_size_band" label="Preferred creator size" options={CREATOR_SIZE_BANDS} placeholderOption="What size creators do you want?" />
+      <Input className="md:col-span-2" name="target_audience" placeholder="Who is your target customer? (e.g. 25-34 urban women in metros)" />
+      <Textarea className="md:col-span-2" name="campaign_goal" placeholder="What is the campaign goal? (awareness, signups, sales, app installs…)" />
+      <Textarea className="md:col-span-2" name="brand_notes" placeholder="Brand tone, competitors, constraints (optional)" />
     </>
   );
 }
@@ -155,17 +174,14 @@ function BrandEnrollmentFields() {
 function FreelancerEnrollmentFields() {
   return (
     <>
-      <Input name="freelancer_name" placeholder="Freelancer/studio name" />
-      <Input name="service_category" placeholder="Service category, e.g. videographer, editor, designer" />
-      <Input name="skills" placeholder="Skills, e.g. reels, motion graphics, event shoots" />
-      <Input name="languages" placeholder="Languages" />
-      <Input name="service_regions" placeholder="Service regions" />
-      <Input name="availability_status" placeholder="Availability status" />
+      <Input name="freelancer_name" placeholder="Freelancer or studio name" required />
+      <Select name="service_category" label="Primary service" options={FREELANCER_SERVICES} placeholderOption="What's your main craft?" />
+      <Select name="availability_status" label="Availability" options={AVAILABILITY_STATUSES} placeholderOption="Are you taking work?" />
       <Input name="hourly_rate_inr" placeholder="Hourly rate INR" type="number" />
-      <Textarea className="md:col-span-2" name="service_rates" placeholder="Service pricing, one per line. Example: Podcast edit - 8000 INR, Reel shoot - 12000 INR" />
-      <Textarea className="md:col-span-2" name="portfolio_links" placeholder="Portfolio links, one per line" />
-      <Textarea className="md:col-span-2" name="portfolio_notes" placeholder="Portfolio notes, equipment, past clients, production style" />
-      <Textarea className="md:col-span-2" name="freelancer_bio" placeholder="Short freelancer bio" />
+      <MultiCheckbox className="md:col-span-2" name="skills" label="Skills" options={FREELANCER_SKILLS} maxVisible={6} />
+      <MultiCheckbox className="md:col-span-2" name="languages" label="Languages" options={LANGUAGES} />
+      <Textarea className="md:col-span-2" name="portfolio_links" placeholder="Portfolio links (one per line)" />
+      <Textarea className="md:col-span-2" name="freelancer_bio" placeholder="Short bio — equipment, past clients, style (optional)" />
     </>
   );
 }

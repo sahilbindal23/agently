@@ -5,6 +5,22 @@ import { useRouter } from "next/navigation";
 import { Save } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input, Textarea } from "@/components/ui/input";
+import { MultiCheckbox, Select } from "@/components/ui/select";
+import {
+  AUDIENCE_AGE_RANGES,
+  AVAILABILITY_STATUSES,
+  BRAND_INDUSTRIES,
+  CAMPAIGN_LENGTHS,
+  CONTENT_STYLES,
+  COUNTRIES,
+  CREATOR_SIZE_BANDS,
+  FREELANCER_SERVICES,
+  FREELANCER_SKILLS,
+  INDIAN_CITIES,
+  LANGUAGES,
+  NICHES,
+  SPONSOR_CATEGORIES
+} from "@/lib/taxonomies";
 
 type ProfileEditProps = {
   role: "creator" | "brand" | "freelancer";
@@ -66,14 +82,14 @@ function CreatorFields({ profile, platforms }: { profile: Record<string, unknown
   return (
     <>
       <Input name="display_name" placeholder="Display name" defaultValue={value(profile.display_name)} required />
-      <Input name="primary_niche" placeholder="Primary niche" defaultValue={value(profile.primary_niche)} />
-      <Input name="country" placeholder="Country" defaultValue={value(profile.country) || "IN"} />
-      <Input name="home_city" placeholder="Home city" defaultValue={value(profile.home_city)} />
-      <Input name="audience_age_range" placeholder="Audience age range" defaultValue={value(profile.audience_age_range)} />
-      <Input name="languages" placeholder="Languages, comma separated" defaultValue={arrayValue(profile.languages)} />
-      <Input name="top_indian_cities" placeholder="Top Indian cities, comma separated" defaultValue={arrayValue(profile.top_indian_cities)} />
-      <Input name="content_style" placeholder="Content style" defaultValue={value(profile.content_style)} />
-      <Input name="prior_sponsor_categories" placeholder="Sponsor categories, comma separated" defaultValue={arrayValue(profile.prior_sponsor_categories)} />
+      <Select name="primary_niche" label="Primary niche" options={NICHES} defaultValue={value(profile.primary_niche)} placeholderOption="What do you make content about?" />
+      <Select name="home_city" label="Home city" options={INDIAN_CITIES} defaultValue={value(profile.home_city)} placeholderOption="Where are you based?" />
+      <Select name="country" label="Country" options={COUNTRIES} defaultValue={value(profile.country) || "IN"} placeholderOption="Country" />
+      <Select name="audience_age_range" label="Audience age range" options={AUDIENCE_AGE_RANGES} defaultValue={value(profile.audience_age_range)} placeholderOption="Who watches your content?" />
+      <Select name="content_style" label="Content style" options={CONTENT_STYLES} defaultValue={value(profile.content_style)} placeholderOption="Format you mostly use" />
+      <MultiCheckbox className="md:col-span-2" name="languages" label="Languages you create in" options={LANGUAGES} defaultSelected={normalizeArray(profile.languages)} />
+      <MultiCheckbox className="md:col-span-2" name="top_indian_cities" label="Top Indian audience cities" options={INDIAN_CITIES} defaultSelected={normalizeArray(profile.top_indian_cities)} maxVisible={9} />
+      <MultiCheckbox className="md:col-span-2" name="prior_sponsor_categories" label="Past sponsor categories" options={SPONSOR_CATEGORIES} defaultSelected={normalizeArray(profile.prior_sponsor_categories)} maxVisible={6} />
       <ReadOnlySignal label="India audience" value={`${value(profile.india_audience_percent) || 0}%`} />
       <ReadOnlySignal label="Monetization score" value={`${value(profile.monetization_score) || 0}/100`} />
       <ReadOnlySignal label="Valuation score" value={`${value(profile.valuation_score) || 0}/100`} />
@@ -118,13 +134,13 @@ function FreelancerFields({
   return (
     <>
       <Input name="display_name" placeholder="Freelancer/studio name" defaultValue={value(profile.display_name)} required />
-      <Input name="service_category" placeholder="Service category" defaultValue={value(profile.service_category)} />
-      <Input name="home_city" placeholder="Home city" defaultValue={value(profile.home_city)} />
+      <Select name="service_category" label="Primary service" options={FREELANCER_SERVICES} defaultValue={value(profile.service_category)} placeholderOption="What's your main craft?" />
+      <Select name="home_city" label="Home city" options={INDIAN_CITIES} defaultValue={value(profile.home_city)} placeholderOption="Where are you based?" />
+      <Select name="availability_status" label="Availability" options={AVAILABILITY_STATUSES} defaultValue={value(profile.availability_status)} placeholderOption="Are you taking work?" />
       <Input name="hourly_rate_inr" placeholder="Hourly rate INR" type="number" defaultValue={String(Math.round(Number(profile.hourly_rate_cents ?? profile.day_rate_cents ?? 0) / 100))} />
-      <Input name="availability_status" placeholder="Availability status" defaultValue={value(profile.availability_status)} />
-      <Input name="languages" placeholder="Languages, comma separated" defaultValue={arrayValue(profile.languages)} />
-      <Input className="md:col-span-2" name="service_regions" placeholder="Service regions, comma separated" defaultValue={arrayValue(profile.service_regions)} />
-      <Input className="md:col-span-2" name="skills" placeholder="Skills, comma separated" defaultValue={arrayValue(profile.skills)} />
+      <MultiCheckbox className="md:col-span-2" name="languages" label="Languages" options={LANGUAGES} defaultSelected={normalizeArray(profile.languages)} />
+      <MultiCheckbox className="md:col-span-2" name="service_regions" label="Service regions" options={INDIAN_CITIES} defaultSelected={normalizeArray(profile.service_regions)} maxVisible={9} />
+      <MultiCheckbox className="md:col-span-2" name="skills" label="Skills" options={FREELANCER_SKILLS} defaultSelected={normalizeArray(profile.skills)} maxVisible={6} />
       <Textarea className="md:col-span-2" name="bio" placeholder="Freelancer bio" defaultValue={value(profile.bio)} />
       <Textarea
         className="md:col-span-2 min-h-32"
@@ -144,20 +160,20 @@ function FreelancerFields({
 
 function BrandFields({ profile, audit }: { profile: Record<string, unknown>; audit?: Record<string, unknown> | null }) {
   const result = audit?.result as Record<string, unknown> | undefined;
+  const auditInput = audit?.input as Record<string, unknown> | undefined;
   return (
     <>
       <Input name="name" placeholder="Brand name" defaultValue={value(profile.name)} required />
-      <Input name="industry" placeholder="Industry/category" defaultValue={value(profile.industry)} />
+      <Select name="industry" label="Industry" options={BRAND_INDUSTRIES} defaultValue={value(profile.industry)} placeholderOption="Pick your category" />
       <Input name="website" placeholder="Website" defaultValue={value(profile.website)} />
       <Input name="contact_email" placeholder="Contact email" defaultValue={value(profile.contact_email)} />
-      <Input name="status" placeholder="Status" defaultValue={value(profile.status) || "enrolled"} />
-      <Input name="city_focus" placeholder="Launch city or region" defaultValue={value((audit?.input as Record<string, unknown> | undefined)?.city_focus)} />
-      <Input name="creator_size_band" placeholder="Creator size band" defaultValue={value(result?.creator_size_band)} />
-      <Input name="bangalore_launch_fit_score" placeholder="Bangalore launch fit score" type="number" min="0" max="100" defaultValue={value(result?.bangalore_launch_fit_score)} />
-      <Textarea className="md:col-span-2" name="target_audience" placeholder="Target audience" defaultValue={value((audit?.input as Record<string, unknown> | undefined)?.target_audience)} />
-      <Textarea className="md:col-span-2" name="campaign_goal" placeholder="Campaign goal" defaultValue={value((audit?.input as Record<string, unknown> | undefined)?.campaign_goal)} />
-      <Textarea className="md:col-span-2" name="ideal_creator_archetypes" placeholder="Ideal creator archetypes, comma separated" defaultValue={arrayValue(result?.ideal_creator_archetypes)} />
-      <Textarea className="md:col-span-2" name="brand_notes" placeholder="Brand tone, constraints, competitors, product notes" defaultValue={value((audit?.input as Record<string, unknown> | undefined)?.brand_notes)} />
+      <Select name="city_focus" label="Launch city or region" options={INDIAN_CITIES} defaultValue={value(auditInput?.city_focus)} placeholderOption="Where are you launching?" />
+      <Select name="creator_size_band" label="Preferred creator size" options={CREATOR_SIZE_BANDS} defaultValue={value(result?.creator_size_band)} placeholderOption="What size creators?" />
+      <Select name="campaign_length" label="Campaign length" options={CAMPAIGN_LENGTHS} defaultValue={value(auditInput?.campaign_length)} placeholderOption="How long?" />
+      <ReadOnlySignal label="Bangalore launch fit" value={`${value(result?.bangalore_launch_fit_score) || 0}/100`} />
+      <Textarea className="md:col-span-2" name="target_audience" placeholder="Who is your target customer? (e.g. 25-34 urban women in metros)" defaultValue={value(auditInput?.target_audience)} />
+      <Textarea className="md:col-span-2" name="campaign_goal" placeholder="What's the campaign goal? (awareness, signups, sales, app installs…)" defaultValue={value(auditInput?.campaign_goal)} />
+      <Textarea className="md:col-span-2" name="brand_notes" placeholder="Brand tone, constraints, competitors, product notes (optional)" defaultValue={value(auditInput?.brand_notes)} />
     </>
   );
 }
@@ -168,4 +184,15 @@ function value(input: unknown) {
 
 function arrayValue(input: unknown) {
   return Array.isArray(input) ? input.map(String).join(", ") : value(input);
+}
+
+/**
+ * Coerce a profile field that may be either an array or a comma-separated
+ * string into an array of canonical lowercased values. Used to seed
+ * MultiCheckbox defaultSelected from existing profile data.
+ */
+function normalizeArray(input: unknown): string[] {
+  if (Array.isArray(input)) return input.map((v) => String(v).trim().toLowerCase()).filter(Boolean);
+  if (typeof input === "string") return input.split(",").map((s) => s.trim().toLowerCase()).filter(Boolean);
+  return [];
 }
