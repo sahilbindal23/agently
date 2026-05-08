@@ -14,6 +14,18 @@ export function socialTrustFromSource(source?: string | null) {
   if (value === "mock_api") {
     return { label: "Prototype demo metrics", tone: "blue" as const, trusted: true };
   }
+  if (value === "public_scrape") {
+    // Public scrape matched (or we had no self-report to compare to). Trust
+    // is between OAuth-grade and self-reported - we know the number is real
+    // from a real Instagram page, but Instagram could have changed their
+    // HTML or the scrape could be stale.
+    return { label: "Verified from public Instagram profile", tone: "blue" as const, trusted: true };
+  }
+  if (value === "public_scrape_unconfirmed") {
+    // Scraped number significantly disagreed with what the user self-reported.
+    // Don't count this as trusted - flag for review.
+    return { label: "Self-report doesn't match Instagram profile", tone: "amber" as const, trusted: false };
+  }
   if (value.includes("self_reported")) {
     return { label: "Pending metric review", tone: "amber" as const, trusted: false };
   }

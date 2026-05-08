@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { auditBrand, auditCreator } from "@/lib/ai/audits";
+import { classifyEmailWebsiteMatch } from "@/lib/auth/domain-match";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
 
@@ -150,14 +151,31 @@ async function createBrandEnrollment(
   profileEmail: string,
   audit: ReturnType<typeof auditBrand>
 ) {
+  const websiteUrl = String(body.website_url ?? "").trim();
+  const domainMatch = classifyEmailWebsiteMatch(profileEmail, websiteUrl);
+  // Auto-verify when the brand's contact email is on the same domain as
+  // their stated website (e.g. marketing@nykaa.com + nykaa.com). Public
+  // inboxes (gmail/yahoo) and mismatches stay 'unverified' for manual review.
+  const initialVerificationStatus = domainMatch === "match" ? "verified" : "unverified";
+  const verifiedAt = domainMatch === "match" ? new Date().toISOString() : null;
+
   const { data: brand, error: brandError } = await supabase
     .from("brands")
     .insert({
       name: String(body.brand_name ?? body.full_name ?? "Brand").trim(),
-      website: String(body.website_url ?? "").trim(),
+      website: websiteUrl,
       industry: String(body.category ?? audit.detected_category ?? "").trim(),
       contact_email: profileEmail,
-      status: "enrolled"
+      status: "enrolled",
+      verification_status: initialVerificationStatus,
+      verified_at: verifiedAt,
+      verification_notes: domainMatch === "match"
+        ? "Auto-verified: contact email domain matches website domain."
+        : domainMatch === "public_inbox"
+        ? "Public inbox provider — manual verification required for verified status."
+        : domainMatch === "mismatch"
+        ? "Email domain does not match website domain — manual verification required."
+        : null
     })
     .select("*")
     .single();
