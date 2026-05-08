@@ -1,4 +1,5 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
+import { evaluateRateObservation, recordAnomaly } from "@/lib/benchmarks/guardrails";
 
 export type BenchmarkSource = {
   id: string;
@@ -122,31 +123,74 @@ export async function recordRateObservation(admin: SupabaseClient, input: RateOb
   const source = await resolveSource(admin, input.source_slug);
   if (!source) throw new Error(`Unknown benchmark source slug: ${input.source_slug}`);
 
+  const platform = input.platform;
+  const niche = input.niche ?? "unknown";
+  const deliverable_type = input.deliverable_type ?? "unknown";
+  const tier = input.tier ?? "unknown";
+  const brandId = input.raw_metadata && typeof input.raw_metadata === "object"
+    ? (input.raw_metadata as Record<string, unknown>).brand_id
+    : null;
+
+  // Run guardrails before insert
+  const verdict = await evaluateRateObservation(admin, {
+    platform, niche, deliverable_type, tier,
+    amount_cents: input.amount_cents,
+    source_slug: input.source_slug,
+    brand_id: brandId ? String(brandId) : null,
+    raw_metadata: input.raw_metadata
+  });
+
+  if (verdict.status === "rejected") {
+    // Don't insert. Log the anomaly with no observation_id so admins can see
+    // what was attempted but never stored.
+    await recordAnomaly(admin, {
+      observation_id: null,
+      verdict,
+      candidate: { platform, niche, deliverable_type, tier, amount_cents: input.amount_cents, source_slug: input.source_slug, brand_id: brandId ? String(brandId) : null }
+    });
+    return; // silently skip — caller can re-check by querying anomalies
+  }
+
+  const adjustedConfidence = (input.confidence ?? 0.5) * verdict.confidence_adjustment;
+  const guardrailNotes = verdict.reasons.length ? verdict.reasons.join("; ") : null;
+
   const row = {
     source_id: source.id,
-    platform: input.platform,
-    niche: input.niche ?? "unknown",
-    deliverable_type: input.deliverable_type ?? "unknown",
-    tier: input.tier ?? "unknown",
+    platform,
+    niche,
+    deliverable_type,
+    tier,
     city: input.city ?? "unknown",
     market: input.market ?? "India",
     language: input.language ?? "unknown",
     follower_count: input.follower_count ?? null,
     avg_views_count: input.avg_views_count ?? null,
     amount_cents: input.amount_cents,
-    confidence: input.confidence ?? 0.5,
+    confidence: adjustedConfidence,
     deal_id: input.deal_id ?? null,
     freelancer_project_id: input.freelancer_project_id ?? null,
     observed_at: input.observed_at ?? new Date().toISOString(),
     raw_metadata: input.raw_metadata ?? null,
-    dedupe_key: input.dedupe_key ?? null
+    dedupe_key: input.dedupe_key ?? null,
+    outlier_status: verdict.status,
+    deviation_factor: verdict.deviation_factor,
+    baseline_median_at_ingest_cents: verdict.baseline_median_cents,
+    guardrail_notes: guardrailNotes
   };
 
   const query = input.dedupe_key
-    ? admin.from("rate_observations").upsert(row, { onConflict: "dedupe_key", ignoreDuplicates: true })
-    : admin.from("rate_observations").insert(row);
-  const { error } = await query;
+    ? admin.from("rate_observations").upsert(row, { onConflict: "dedupe_key", ignoreDuplicates: true }).select("id").maybeSingle()
+    : admin.from("rate_observations").insert(row).select("id").maybeSingle();
+  const { data: inserted, error } = await query;
   if (error) throw new Error(`Failed to record rate observation: ${error.message}`);
+
+  if (verdict.status === "flagged" && inserted?.id) {
+    await recordAnomaly(admin, {
+      observation_id: String(inserted.id),
+      verdict,
+      candidate: { platform, niche, deliverable_type, tier, amount_cents: input.amount_cents, source_slug: input.source_slug, brand_id: brandId ? String(brandId) : null }
+    });
+  }
 }
 
 export async function recordEngagementObservation(admin: SupabaseClient, input: EngagementObservationInput) {

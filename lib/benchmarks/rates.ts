@@ -171,7 +171,13 @@ export async function getBenchmarkBlendV2(admin: SupabaseClient | null, input: V
   const tier = tierFromFollowers(Number(input.followers ?? 0));
 
   const aggregates = await getRateAggregates(admin, { limit: 200 });
+  // Guardrail: require >= MIN_SAMPLE_SIZE observations before treating a cell
+  // as market-grade. Cells below the threshold are excluded from the V2 blend
+  // so the caller falls back to legacy/rules. This prevents single-observation
+  // cells from masquerading as "market data" with high confidence.
+  const MIN_SAMPLE_SIZE = 5;
   const observationMatches = aggregates
+    .filter((agg) => Number(agg.observation_count ?? 0) >= MIN_SAMPLE_SIZE)
     .map((agg) => ({ agg, score: aggregateMatchScore(agg, { platform, niche, deliverable, tier, input }) }))
     .filter((item) => item.score > 0)
     .sort((a, b) => b.score - a.score)
