@@ -28,7 +28,7 @@ type CreatorLike = {
 type PlatformLike = {
   creator_id: string;
   platform: string;
-  follower_count?: number | null;
+  followers?: number | null;
 };
 
 const DELIVERABLE_BY_PLATFORM: Record<string, string> = {
@@ -51,6 +51,65 @@ function normalizePlatform(raw: string | null | undefined): string {
   return raw || "Instagram";
 }
 
+export async function projectRoiForCreator(
+  admin: SupabaseClient,
+  creator: { id: string; primary_niche?: string | null },
+  platform: { platform: string; followers?: number | null },
+  brandAovInr?: number
+): Promise<ProjectedRoiSummary | null> {
+  const followerCount = Number(platform.followers ?? 0);
+  if (!followerCount) return null;
+  const platformLabel = normalizePlatform(platform.platform);
+  const niche = String(creator.primary_niche ?? "").toLowerCase().split(/\s+/)[0] || "lifestyle";
+  try {
+    const projection = await projectROI(admin, {
+      platform: platformLabel,
+      niche,
+      deliverable_type: DELIVERABLE_BY_PLATFORM[platformLabel] ?? "reel",
+      follower_count: followerCount,
+      deliverable_count: 1,
+      brand_aov_inr: brandAovInr
+    });
+    return {
+      expected_revenue_inr: projection.expected.expected_revenue_inr,
+      expected_cost_inr: projection.expected.cost_inr,
+      expected_roi_multiplier: projection.expected.roi_multiplier,
+      conservative_roi_multiplier: projection.conservative.roi_multiplier,
+      optimistic_roi_multiplier: projection.optimistic.roi_multiplier,
+      rate_source: projection.inputs_used.rate_source,
+      has_internal_deal_data: Number(projection.matched_cells.rate?.internal_deal_count ?? 0) > 0,
+      matched_niche: niche,
+      matched_platform: platformLabel,
+      matched_tier: projection.inputs_used.tier
+    };
+  } catch {
+    return null;
+  }
+}
+
+export async function buildRoiMapForCreators(
+  admin: SupabaseClient,
+  creators: Array<{ id: string; primary_niche?: string | null }>,
+  platforms: Array<{ creator_id: string; platform: string; followers?: number | null }>,
+  brandAovInr?: number
+): Promise<Map<string, ProjectedRoiSummary>> {
+  const dominantByCreator = new Map<string, { platform: string; followers?: number | null }>();
+  for (const p of platforms) {
+    const existing = dominantByCreator.get(p.creator_id);
+    if (!existing || Number(p.followers ?? 0) > Number(existing.followers ?? 0)) {
+      dominantByCreator.set(p.creator_id, p);
+    }
+  }
+  const map = new Map<string, ProjectedRoiSummary>();
+  await Promise.all(creators.map(async (c) => {
+    const platform = dominantByCreator.get(c.id);
+    if (!platform) return;
+    const summary = await projectRoiForCreator(admin, c, platform, brandAovInr);
+    if (summary) map.set(c.id, summary);
+  }));
+  return map;
+}
+
 export async function enrichRecommendationsWithRoi(
   admin: SupabaseClient,
   recommendations: CampaignRecommendation[],
@@ -61,7 +120,7 @@ export async function enrichRecommendationsWithRoi(
   const platformByCreator = new Map<string, PlatformLike>();
   for (const p of platforms) {
     const existing = platformByCreator.get(p.creator_id);
-    if (!existing || Number(p.follower_count ?? 0) > Number(existing.follower_count ?? 0)) {
+    if (!existing || Number(p.followers ?? 0) > Number(existing.followers ?? 0)) {
       platformByCreator.set(p.creator_id, p);
     }
   }
@@ -75,7 +134,7 @@ export async function enrichRecommendationsWithRoi(
 
       const platform = normalizePlatform(dominantPlatform.platform);
       const niche = String(creator.primary_niche ?? "").toLowerCase().split(/\s+/)[0] || "lifestyle";
-      const followerCount = Number(dominantPlatform.follower_count ?? 0);
+      const followerCount = Number(dominantPlatform.followers ?? 0);
       if (!followerCount) return rec;
 
       try {

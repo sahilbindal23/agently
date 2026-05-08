@@ -14,7 +14,7 @@ export async function recordObservationFromDeal(admin: SupabaseClient, dealId: s
     ? await admin.from("creators").select("id, primary_niche, home_city").eq("id", deal.creator_id).maybeSingle()
     : { data: null as Row | null };
   const { data: platforms } = deal.creator_id
-    ? await admin.from("creator_platforms").select("platform, follower_count, average_views").eq("creator_id", deal.creator_id)
+    ? await admin.from("creator_platforms").select("platform, followers, avg_views").eq("creator_id", deal.creator_id)
     : { data: [] as Row[] };
 
   const haystack = `${String(deal.title ?? "")} ${String(deal.deliverables ?? "")} ${String(deal.notes ?? "")}`;
@@ -27,9 +27,9 @@ export async function recordObservationFromDeal(admin: SupabaseClient, dealId: s
 
   // Pick the platform row that matches the extracted platform, else the highest-follower one
   const platformRow = (platforms ?? []).find((p) => String(p.platform ?? "").toLowerCase() === extracted.platform.toLowerCase())
-    ?? (platforms ?? []).sort((a, b) => Number(b.follower_count ?? 0) - Number(a.follower_count ?? 0))[0];
-  const followers = platformRow ? Number(platformRow.follower_count ?? 0) : null;
-  const avgViews = platformRow ? Number(platformRow.average_views ?? 0) : null;
+    ?? (platforms ?? []).sort((a, b) => Number(b.followers ?? 0) - Number(a.followers ?? 0))[0];
+  const followers = platformRow ? Number(platformRow.followers ?? 0) : null;
+  const avgViews = platformRow ? Number(platformRow.avg_views ?? 0) : null;
 
   await recordRateObservation(admin, {
     source_slug: "internal_deal",

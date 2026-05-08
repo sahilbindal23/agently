@@ -11,6 +11,7 @@ import { Card, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, Td, Th } from "@/components/ui/table";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
+import { buildRoiMapForCreators } from "@/lib/campaigns/enrich-roi";
 import { brandAutomationDecision, creatorAutomationDecision, freelancerAutomationDecision, isDiscoverable } from "@/lib/profile/automation";
 import { brandCompleteness } from "@/lib/profile/completeness";
 import { formatCurrency } from "@/lib/utils/format";
@@ -48,6 +49,12 @@ export default async function BrandHomePage() {
     creator,
     platforms: (platforms ?? []).filter((platform) => platform.creator_id === creator.id)
   })));
+  const roiMap = await buildRoiMapForCreators(
+    admin,
+    visibleCreators as Array<{ id: string; primary_niche?: string | null }>,
+    (platforms ?? []) as Array<{ creator_id: string; platform: string; follower_count?: number | null }>
+  );
+  const roiByCreatorId = Object.fromEntries(roiMap.entries());
   const visibleFreelancers = (freelancers ?? []).filter((freelancer) => isDiscoverable(freelancerAutomationDecision({
     freelancer,
     serviceRates: (serviceRates ?? []).filter((rate) => rate.freelancer_id === freelancer.id)
@@ -92,7 +99,7 @@ export default async function BrandHomePage() {
           <CardHeader><CardTitle>Marketplace Talent</CardTitle><Badge tone="green">{visibleCreators.length + visibleFreelancers.length}</Badge></CardHeader>
           <MarketplaceTabs
             tabs={[
-              { id: "creators", label: `Available Creators (${visibleCreators.length})`, type: "creator", items: visibleCreators, platforms: platforms ?? [] },
+              { id: "creators", label: `Available Creators (${visibleCreators.length})`, type: "creator", items: visibleCreators, platforms: platforms ?? [], roiByCreatorId },
               { id: "freelancers", label: `Available Freelancers (${visibleFreelancers.length})`, type: "freelancer", items: visibleFreelancers }
             ]}
           />
