@@ -1,5 +1,6 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { ValuationInput } from "@/lib/ai/valuation";
+import { clampAmountToTier } from "@/lib/benchmarks/guardrails";
 import { getRateAggregates, tierFromFollowers, type RateAggregate } from "@/lib/benchmarks/observations";
 
 export type RateBenchmark = {
@@ -215,14 +216,28 @@ export async function getBenchmarkBlendV2(admin: SupabaseClient | null, input: V
     );
   };
 
-  const blendedLow = blendThree(rulesEstimate.low_estimate_cents, legacy?.blended_low_estimate_cents ?? 0, observationLow);
-  const blendedBase = blendThree(rulesEstimate.base_estimate_cents, legacy?.blended_base_estimate_cents ?? 0, observationBase);
-  const blendedHigh = blendThree(rulesEstimate.high_estimate_cents, legacy?.blended_high_estimate_cents ?? 0, observationHigh);
+  const blendedLowRaw = blendThree(rulesEstimate.low_estimate_cents, legacy?.blended_low_estimate_cents ?? 0, observationLow);
+  const blendedBaseRaw = blendThree(rulesEstimate.base_estimate_cents, legacy?.blended_base_estimate_cents ?? 0, observationBase);
+  const blendedHighRaw = blendThree(rulesEstimate.high_estimate_cents, legacy?.blended_high_estimate_cents ?? 0, observationHigh);
+
+  // Read-time guardrail: clamp output to tier hard bounds. Defense in depth
+  // — even if the matview drifts somehow, downstream consumers never see
+  // recommendations outside the structurally sane range for this tier.
+  const lowClamp = clampAmountToTier(blendedLowRaw, tier);
+  const baseClamp = clampAmountToTier(blendedBaseRaw, tier);
+  const highClamp = clampAmountToTier(blendedHighRaw, tier);
+  const blendedLow = lowClamp.amount_cents;
+  const blendedBase = baseClamp.amount_cents;
+  const blendedHigh = highClamp.amount_cents;
+  const wasClamped = lowClamp.clamped !== "none" || baseClamp.clamped !== "none" || highClamp.clamped !== "none";
 
   const totalMatches = observationMatches.length + (legacy?.benchmark_match_count ?? 0);
-  const summary = internalDealCount > 0
+  const baseSummary = internalDealCount > 0
     ? `Blended ${totalMatches} benchmarks including ${internalDealCount} closed Agently deal${internalDealCount === 1 ? "" : "s"} for ${input.platform || "platform"} / ${input.niche || "niche"}.`
     : `Blended ${totalMatches} public + curated benchmarks for ${input.platform || "platform"} / ${input.niche || "niche"}. No internal deal data yet for this segment.`;
+  const summary = wasClamped
+    ? `${baseSummary} Output clamped to ${tier}-tier hard bounds.`
+    : baseSummary;
 
   return {
     blended_low_estimate_cents: blendedLow,

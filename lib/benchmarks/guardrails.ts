@@ -187,3 +187,25 @@ export const GUARDRAIL_CONSTANTS = {
   PER_BRAND_WEEKLY_CAP,
   ANCHOR_MATCH_PCT
 };
+
+/**
+ * Read-time clamp: ensure no engine output recommends an amount outside the
+ * tier's hard bounds, regardless of what the matview says. This is defense in
+ * depth — write-time guardrails reject bad observations before they get in,
+ * but if the matview ever drifts (manual inserts, future bugs, source
+ * adapter glitches) this still protects downstream consumers.
+ *
+ * Returns the clamped amount in cents along with a flag so callers can show
+ * the user "your suggestion was capped at the tier ceiling" if relevant.
+ */
+export function clampAmountToTier(
+  amountCents: number,
+  tier: "nano" | "micro" | "mid" | "macro" | "mega" | "unknown"
+): { amount_cents: number; clamped: "min" | "max" | "none" } {
+  const bounds = TIER_BOUNDS_INR[tier] ?? TIER_BOUNDS_INR.unknown;
+  const minCents = bounds.min * 100;
+  const maxCents = bounds.max * 100;
+  if (amountCents < minCents) return { amount_cents: minCents, clamped: "min" };
+  if (amountCents > maxCents) return { amount_cents: maxCents, clamped: "max" };
+  return { amount_cents: amountCents, clamped: "none" };
+}

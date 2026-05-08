@@ -5,6 +5,7 @@
 // Returns conservative (p25), expected (median), and optimistic (p75) scenarios.
 
 import type { SupabaseClient } from "@supabase/supabase-js";
+import { clampAmountToTier } from "@/lib/benchmarks/guardrails";
 import {
   getConversionAggregates,
   getEngagementAggregates,
@@ -117,11 +118,16 @@ export async function projectROI(admin: SupabaseClient, input: RoiInput): Promis
 
   // Build three scenarios using p25/median/p75 of the underlying aggregates
   const buildScenario = (multiplier: "conservative" | "expected" | "optimistic"): RoiScenario => {
-    const costInr = input.fixed_cost_inr
+    const rawCostInr = input.fixed_cost_inr
       ? input.fixed_cost_inr * deliverableCount
       : rateMatch
       ? Math.round((multiplier === "conservative" ? rateMatch.p75_cents : multiplier === "optimistic" ? rateMatch.p25_cents : rateMatch.weighted_mean_cents) * deliverableCount / 100)
       : Math.round(input.follower_count * 0.5 * deliverableCount);
+    // Clamp per-deliverable cost to tier bounds (defense in depth).
+    // Skip when brand provided a fixed cost - they own that number.
+    const costInr = input.fixed_cost_inr
+      ? rawCostInr
+      : Math.round(clampAmountToTier(Math.round(rawCostInr / deliverableCount) * 100, tier).amount_cents * deliverableCount / 100);
 
     const erPct = erMatch
       ? (multiplier === "conservative" ? erMatch.p25_pct : multiplier === "optimistic" ? erMatch.p75_pct : erMatch.weighted_mean_pct)
