@@ -32,7 +32,7 @@ export const NICHES: Option[] = [
 export const PLATFORMS: Option[] = [
   { value: "Instagram", label: "Instagram" },
   { value: "YouTube",   label: "YouTube" },
-  { value: "Twitter",   label: "Twitter / X" }
+  { value: "Facebook",  label: "Facebook" }
 ];
 
 export const INDIAN_CITIES: Option[] = [
