@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { trackEvent, userEventBase } from "@/lib/analytics/track";
+import { ensureAgreementForFreelancerProject } from "@/lib/contracts/agreements";
 import { applyLedgerEvent } from "@/lib/engines/outcome-ledger";
 import { ensurePaymentRecordForEntity } from "@/lib/payments/workflow";
 import { createAdminClient } from "@/lib/supabase/admin";
@@ -85,6 +86,7 @@ export async function POST(request: Request) {
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
   if (status === "accepted") {
     await ensurePaymentRecordForEntity(admin, "freelancer_project", data, nextPaymentStatus);
+    try { await ensureAgreementForFreelancerProject(admin, projectId); } catch (err) { console.error("[contracts] generate failed", err); }
   }
   await trackEvent(admin, {
     ...userEventBase(authData.user, profile?.role),

@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
+import { AgreementReview, type AgreementForReview } from "@/components/contracts/agreement-review";
 import { RiskBadge } from "@/components/contracts/risk-badge";
 import { DeliverableCard } from "@/components/deliverables/deliverable-card";
 import { DeliverableSubmitForm } from "@/components/deliverables/deliverable-submit-form";
@@ -101,6 +102,7 @@ export default async function OffersPage() {
   const offers = allOffers.filter((offer) => offer.offer_status !== "declined");
   const declinedOffers = allOffers.filter((offer) => offer.offer_status === "declined");
   const offerContracts = await getLatestContractsForDeals(admin, offers.map((offer) => offer.id));
+  const dealAgreements = await getDealAgreements(admin, offers.filter((o) => o.offer_status === "accepted").map((o) => o.id));
   const { data: projects } = freelancer?.id || isAdmin
     ? await admin
       .from("freelancer_projects")
@@ -111,6 +113,7 @@ export default async function OffersPage() {
   const allProjects = (projects ?? []) as ProjectRow[];
   const freelancerProjects = allProjects.filter((project) => project.status !== "declined");
   const declinedProjects = allProjects.filter((project) => project.status === "declined");
+  const projectAgreements = await getProjectAgreements(admin, freelancerProjects.filter((p) => p.status === "accepted").map((p) => p.id));
   const latestDeliverables = await getLatestDeliverables(admin, [
     ...offers.map((offer) => ({ type: "deal" as const, id: offer.id })),
     ...freelancerProjects.map((project) => ({ type: "freelancer_project" as const, id: project.id }))
@@ -202,6 +205,9 @@ export default async function OffersPage() {
                 ) : null}
                 {offer.offer_status === "accepted" ? (
                   <div className="space-y-3">
+                    {dealAgreements.get(offer.id) ? (
+                      <AgreementReview agreement={dealAgreements.get(offer.id)!} viewerSide="talent" />
+                    ) : null}
                     <DeliverableCard deliverable={latestDeliverables.get(`deal-${offer.id}`)} />
                     {["funded", "release_ready", "released"].includes(offer.payment_status) ? (
                       <DeliverableSubmitForm entityId={offer.id} entityType="deal" />
@@ -297,6 +303,9 @@ export default async function OffersPage() {
                 ) : null}
                 {project.status === "accepted" ? (
                   <div className="space-y-3">
+                    {projectAgreements.get(project.id) ? (
+                      <AgreementReview agreement={projectAgreements.get(project.id)!} viewerSide="talent" />
+                    ) : null}
                     <DeliverableCard deliverable={latestDeliverables.get(`freelancer_project-${project.id}`)} />
                     {["funded", "release_ready", "released"].includes(project.payment_status) ? (
                       <DeliverableSubmitForm entityId={project.id} entityType="freelancer_project" />
@@ -611,5 +620,51 @@ async function getLatestDeliverables(
     if (!map.has(key)) map.set(key, deliverable);
   });
 
+  return map;
+}
+
+async function getDealAgreements(admin: NonNullable<ReturnType<typeof createAdminClient>>, dealIds: string[]) {
+  const map = new Map<string, AgreementForReview>();
+  if (!dealIds.length) return map;
+  const { data } = await admin
+    .from("deal_agreements")
+    .select("id, deal_id, rendered_html, status, brand_signed_at, brand_signed_name, talent_signed_at, talent_signed_name")
+    .in("deal_id", dealIds)
+    .neq("status", "voided");
+  (data ?? []).forEach((row: Record<string, unknown>) => {
+    if (!row.deal_id) return;
+    map.set(String(row.deal_id), {
+      id: String(row.id),
+      rendered_html: String(row.rendered_html ?? ""),
+      status: String(row.status) as AgreementForReview["status"],
+      brand_signed_at: row.brand_signed_at ? String(row.brand_signed_at) : null,
+      brand_signed_name: row.brand_signed_name ? String(row.brand_signed_name) : null,
+      talent_signed_at: row.talent_signed_at ? String(row.talent_signed_at) : null,
+      talent_signed_name: row.talent_signed_name ? String(row.talent_signed_name) : null
+    });
+  });
+  return map;
+}
+
+async function getProjectAgreements(admin: NonNullable<ReturnType<typeof createAdminClient>>, projectIds: string[]) {
+  const map = new Map<string, AgreementForReview>();
+  if (!projectIds.length) return map;
+  const { data } = await admin
+    .from("deal_agreements")
+    .select("id, freelancer_project_id, rendered_html, status, brand_signed_at, brand_signed_name, talent_signed_at, talent_signed_name")
+    .in("freelancer_project_id", projectIds)
+    .neq("status", "voided");
+  (data ?? []).forEach((row: Record<string, unknown>) => {
+    if (!row.freelancer_project_id) return;
+    map.set(String(row.freelancer_project_id), {
+      id: String(row.id),
+      rendered_html: String(row.rendered_html ?? ""),
+      status: String(row.status) as AgreementForReview["status"],
+      brand_signed_at: row.brand_signed_at ? String(row.brand_signed_at) : null,
+      brand_signed_name: row.brand_signed_name ? String(row.brand_signed_name) : null,
+      talent_signed_at: row.talent_signed_at ? String(row.talent_signed_at) : null,
+      talent_signed_name: row.talent_signed_name ? String(row.talent_signed_name) : null
+    });
+  });
   return map;
 }

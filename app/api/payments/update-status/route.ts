@@ -37,9 +37,12 @@ export async function POST(request: Request) {
   const brandIds = profile?.role === "brand" ? await getBrandIdsForUser(admin, authData.user.id, authData.user.email ?? "") : [];
 
   if (entityType === "deal") {
-    const { data: dealCheck } = await admin.from("deals").select("brand_id, dispute_status").eq("id", entityId).single();
+    const { data: dealCheck } = await admin.from("deals").select("brand_id, dispute_status, agreement_status").eq("id", entityId).single();
     if (status === "released" && dealCheck?.dispute_status === "open") {
       return NextResponse.json({ error: "Cannot release payment while a dispute is open on this deal." }, { status: 409 });
+    }
+    if (status === "funded" && dealCheck?.agreement_status === "pending_signatures") {
+      return NextResponse.json({ error: "Cannot fund this deal until both parties sign the agreement." }, { status: 409 });
     }
     if (profile?.role === "brand") {
       if (!dealCheck || !brandIds.includes(String(dealCheck.brand_id))) {
@@ -78,9 +81,12 @@ export async function POST(request: Request) {
     return NextResponse.json({ data });
   }
 
-  const { data: projectCheck } = await admin.from("freelancer_projects").select("brand_id, dispute_status").eq("id", entityId).single();
+  const { data: projectCheck } = await admin.from("freelancer_projects").select("brand_id, dispute_status, agreement_status").eq("id", entityId).single();
   if (status === "released" && projectCheck?.dispute_status === "open") {
     return NextResponse.json({ error: "Cannot release payment while a dispute is open on this project." }, { status: 409 });
+  }
+  if (status === "funded" && projectCheck?.agreement_status === "pending_signatures") {
+    return NextResponse.json({ error: "Cannot fund this project until both parties sign the agreement." }, { status: 409 });
   }
   if (profile?.role === "brand") {
     if (!projectCheck || !brandIds.includes(String(projectCheck.brand_id))) {

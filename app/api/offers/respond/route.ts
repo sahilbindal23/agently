@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { trackEvent, userEventBase } from "@/lib/analytics/track";
+import { ensureAgreementForDeal } from "@/lib/contracts/agreements";
 import { offerRespondedEmail, sendEmail } from "@/lib/email/send";
 import { applyLedgerEvent } from "@/lib/engines/outcome-ledger";
 import { ensurePaymentRecordForEntity } from "@/lib/payments/workflow";
@@ -108,6 +109,10 @@ export async function POST(request: Request) {
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
   if (status === "accepted") {
     await ensurePaymentRecordForEntity(admin, "deal", data, nextPaymentStatus);
+    // Auto-generate the standard agreement so brand and talent can sign
+    // before funding. Failures here don't block the accept response - the
+    // agreement can be regenerated later.
+    try { await ensureAgreementForDeal(admin, dealId); } catch (err) { console.error("[contracts] generate failed", err); }
   }
   await trackEvent(admin, {
     ...userEventBase(authData.user, profile?.role),
