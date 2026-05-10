@@ -8,6 +8,11 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 
+// Flip to true once Meta App Review and Google OAuth verification are
+// approved. OAuth route handlers stay live regardless; this only controls
+// whether the per-provider "Connect with OAuth" button is visible.
+const SHOW_OAUTH_BUTTONS = false;
+
 export type ConnectedAccountRow = {
   id: string;
   provider: SocialProvider;
@@ -88,7 +93,7 @@ export function ConnectedAccountsPanel({
         <div>
           <p className="text-sm font-semibold">Connected social accounts</p>
           <p className="mt-1 text-xs leading-5 text-muted-foreground">
-            Connect Instagram, Facebook, and YouTube accounts for scoring signals. Manual handles are saved for context, but do not verify audience metrics.
+            Add your Instagram and YouTube handles below. We verify them against the public profile to confirm follower counts — no app authorization needed.
           </p>
         </div>
         <Badge tone={accounts.length ? "green" : "amber"}>{accounts.length ? "connected layer active" : "connect accounts"}</Badge>
@@ -110,7 +115,13 @@ export function ConnectedAccountsPanel({
               </div>
               <Badge tone={state.tone}>{state.label}</Badge>
               <p className="mt-2 text-xs leading-5 text-muted-foreground">{state.copy}</p>
-              {oauthReadyProviders[item.id] ? (
+              {/* OAuth Connect button intentionally hidden from UI while
+                  Meta/Google App Verification is in progress. The route
+                  `/api/social/connect?provider=...` remains live for when
+                  verification is approved - just flip SHOW_OAUTH_BUTTONS to
+                  true below. Users currently verify via the public-API path
+                  (Instagram scraper / YouTube Data API) instead. */}
+              {SHOW_OAUTH_BUTTONS && oauthReadyProviders[item.id] ? (
                 <a
                   className="mt-3 inline-flex h-8 items-center justify-center rounded-md border px-3 text-xs font-semibold transition hover:bg-muted dark:border-white/10 dark:hover:bg-white/6"
                   href={`/api/social/connect?provider=${item.id}&return_to=/profile`}

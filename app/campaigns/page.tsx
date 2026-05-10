@@ -47,11 +47,11 @@ export default async function CampaignsPage() {
         eyebrow="Campaign brief engine"
         title="Campaigns"
         description="Brands create a brief first. Agently ranks creators and freelancers against campaign goals, city focus, audience, category, language, budget, and production needs."
-        action={<div className="inline-flex h-10 items-center gap-2 rounded-md bg-primary px-4 text-sm font-medium text-primary-foreground"><ClipboardList className="h-4 w-4" /> New campaign</div>}
+        action={<Link className="inline-flex h-10 items-center gap-2 rounded-md bg-primary px-4 text-sm font-medium text-primary-foreground transition hover:bg-primary/90" href="#new-campaign"><ClipboardList className="h-4 w-4" /> New campaign</Link>}
       />
 
       <section className="grid gap-5 xl:grid-cols-[0.9fr_1.1fr]">
-        <Card>
+        <Card id="new-campaign" className="scroll-mt-24">
           <CardHeader>
             <div>
               <CardTitle>Create Campaign Brief</CardTitle>
