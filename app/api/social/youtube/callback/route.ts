@@ -58,23 +58,38 @@ export async function GET(request: Request) {
   const handle = channel?.snippet?.customUrl || channel?.snippet?.title || "YouTube channel";
   const expiresAt = token.expires_in ? new Date(Date.now() + token.expires_in * 1000).toISOString() : null;
 
-  const { data: account, error } = await admin
+  const accountPayload = {
+    profile_id: state.profileId,
+    [entityKey]: entityId,
+    provider: "youtube",
+    handle,
+    account_url: `https://www.youtube.com/channel/${channelId}`,
+    platform_account_id: channelId,
+    status: "oauth_connected",
+    scopes: String(token.scope ?? "").split(" ").filter(Boolean),
+    access_token_encrypted: sealToken(token.access_token),
+    refresh_token_encrypted: sealToken(token.refresh_token),
+    token_expires_at: expiresAt
+  };
+
+  const { data: existing } = await admin
     .from("connected_social_accounts")
-    .upsert({
-      profile_id: state.profileId,
-      [entityKey]: entityId,
-      provider: "youtube",
-      handle,
-      account_url: `https://www.youtube.com/channel/${channelId}`,
-      platform_account_id: channelId,
-      status: "oauth_connected",
-      scopes: String(token.scope ?? "").split(" ").filter(Boolean),
-      access_token_encrypted: sealToken(token.access_token),
-      refresh_token_encrypted: sealToken(token.refresh_token),
-      token_expires_at: expiresAt
-    }, { onConflict })
-    .select("*")
-    .single();
+    .select("id")
+    .eq(entityKey, entityId)
+    .eq("provider", "youtube")
+    .eq("handle", handle)
+    .maybeSingle();
+
+  let account: Record<string, unknown> | null = null;
+  let error: { message: string } | null = null;
+  if (existing?.id) {
+    const r = await admin.from("connected_social_accounts").update(accountPayload).eq("id", existing.id).select("*").single();
+    account = r.data; error = r.error;
+  } else {
+    const r = await admin.from("connected_social_accounts").insert(accountPayload).select("*").single();
+    account = r.data; error = r.error;
+  }
+  void onConflict;
 
   if (error || !account) return NextResponse.redirect(profileRedirect(state.returnTo, { social: "youtube_save_failed" }));
 
@@ -86,7 +101,7 @@ export async function GET(request: Request) {
     ...userEventBase({ id: state.profileId } as Parameters<typeof userEventBase>[0], role || "creator"),
     eventName: "social_oauth_connected",
     entityType: "connected_social_account",
-    entityId: account.id,
+    entityId: String(account.id),
     metadata: { provider: "youtube", [entityKey]: entityId, platform_account_id: channelId }
   });
 

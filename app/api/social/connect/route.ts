@@ -92,50 +92,66 @@ export async function POST(request: Request) {
 
   let entityKey: "creator_id" | "brand_id" | "freelancer_id";
   let entityId: string;
-  let onConflict: string;
   if (role === "brand") {
     const { data: brand } = await admin.from("brands").select("id").eq("contact_email", String(authData.user.email ?? "").toLowerCase()).maybeSingle();
     if (!brand) return NextResponse.json({ error: "Complete brand intake before connecting social accounts." }, { status: 404 });
     entityKey = "brand_id";
     entityId = String(brand.id);
-    onConflict = "brand_id,provider,handle";
   } else if (role === "freelancer") {
     const { data: freelancer } = await admin.from("freelancers").select("id").eq("profile_id", authData.user.id).maybeSingle();
     if (!freelancer) return NextResponse.json({ error: "Create a freelancer profile before connecting social accounts." }, { status: 404 });
     entityKey = "freelancer_id";
     entityId = String(freelancer.id);
-    onConflict = "freelancer_id,provider,handle";
   } else {
     const { data: creator } = await admin.from("creators").select("id").eq("profile_id", authData.user.id).maybeSingle();
     if (!creator) return NextResponse.json({ error: "Create a creator profile before connecting social accounts." }, { status: 404 });
     entityKey = "creator_id";
     entityId = String(creator.id);
-    onConflict = "creator_id,provider,handle";
   }
 
+  // Explicit lookup-then-update-or-insert. Migration 038 replaced the
+  // composite unique constraint with three partial unique indexes (one per
+  // entity type), and Postgres's ON CONFLICT (cols) doesn't accept partial
+  // indexes - so we do this manually instead of upsert.
   const providerConfig = socialProviders.find((item) => item.id === provider);
-  const { data, error } = await admin
-    .from("connected_social_accounts")
-    .upsert({
-      profile_id: authData.user.id,
-      [entityKey]: entityId,
-      provider,
-      handle,
-      account_url: accountUrl,
-      platform_account_id: `${provider}:${handle}`,
-      status: "mock_connected",
-      scopes: providerConfig?.requiredScopes ?? []
-    }, { onConflict })
-    .select("*")
-    .single();
+  const basePayload = {
+    profile_id: authData.user.id,
+    [entityKey]: entityId,
+    provider,
+    handle,
+    account_url: accountUrl,
+    platform_account_id: `${provider}:${handle}`,
+    status: "mock_connected",
+    scopes: providerConfig?.requiredScopes ?? []
+  };
 
-  if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+  const { data: existing } = await admin
+    .from("connected_social_accounts")
+    .select("id")
+    .eq(entityKey, entityId)
+    .eq("provider", provider)
+    .eq("handle", handle)
+    .maybeSingle();
+
+  let data: Record<string, unknown> | null = null;
+  let error: { message: string } | null = null;
+  if (existing?.id) {
+    const result = await admin.from("connected_social_accounts").update(basePayload).eq("id", existing.id).select("*").single();
+    data = result.data;
+    error = result.error;
+  } else {
+    const result = await admin.from("connected_social_accounts").insert(basePayload).select("*").single();
+    data = result.data;
+    error = result.error;
+  }
+
+  if (error || !data) return NextResponse.json({ error: error?.message ?? "Could not save connection." }, { status: 500 });
   await trackEvent(admin, {
     ...userEventBase(authData.user, role || "creator"),
     eventName: "social_connected",
     entityType: "connected_social_account",
-    entityId: data.id,
-    metadata: { provider, [entityKey]: entityId, status: data.status }
+    entityId: String(data.id),
+    metadata: { provider, [entityKey]: entityId, status: String(data.status ?? "") }
   });
   return NextResponse.json({ data });
 }

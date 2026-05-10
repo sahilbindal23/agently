@@ -4,7 +4,7 @@ import { Search, ShieldCheck } from "lucide-react";
 import { useMemo, useState } from "react";
 import { CreatorMarketCard, FreelancerMarketCard, BrandMarketCard } from "@/components/marketplace/marketplace-cards";
 import { Input } from "@/components/ui/input";
-import { FREELANCER_SERVICES, INDIAN_CITIES, NICHES, PLATFORMS } from "@/lib/taxonomies";
+import { BRAND_INDUSTRIES, FREELANCER_SERVICES, INDIAN_CITIES, NICHES, PLATFORMS } from "@/lib/taxonomies";
 
 type TabItem =
   | { id: string; label: string; type: "creator"; items: Array<Record<string, unknown>>; platforms?: Array<Record<string, unknown>> }
@@ -29,6 +29,7 @@ export function MarketplaceTabs({ tabs }: { tabs: TabItem[] }) {
   const [platform, setPlatform] = useState("");
   const [followerRange, setFollowerRange] = useState("any");
   const [service, setService] = useState("");
+  const [industry, setIndustry] = useState("");
 
   const active = tabs.find((tab) => tab.id === activeId) ?? tabs[0];
 
@@ -65,9 +66,15 @@ export function MarketplaceTabs({ tabs }: { tabs: TabItem[] }) {
         if (city && !matchesCity(item, city)) return false;
       }
 
+      // Brand filters
+      if (active.type === "brand") {
+        if (industry && !matchesBrandIndustry(item, industry)) return false;
+        if (city && !matchesBrandCity(item, city)) return false;
+      }
+
       return true;
     });
-  }, [active, query, verifiedOnly, niche, city, platform, followerRange, service]);
+  }, [active, query, verifiedOnly, niche, city, platform, followerRange, service, industry]);
 
   if (!active) return null;
 
@@ -113,6 +120,12 @@ export function MarketplaceTabs({ tabs }: { tabs: TabItem[] }) {
           {active.type === "freelancer" ? (
             <>
               <FilterSelect label="Service" value={service} onChange={setService} options={FREELANCER_SERVICES} />
+              <FilterSelect label="City" value={city} onChange={setCity} options={INDIAN_CITIES} />
+            </>
+          ) : null}
+          {active.type === "brand" ? (
+            <>
+              <FilterSelect label="Industry" value={industry} onChange={setIndustry} options={BRAND_INDUSTRIES} />
               <FilterSelect label="City" value={city} onChange={setCity} options={INDIAN_CITIES} />
             </>
           ) : null}
@@ -204,4 +217,14 @@ function followerCount(platforms: Array<Record<string, unknown>>, creator: Recor
 function matchesService(item: Record<string, unknown>, service: string) {
   const haystack = `${item.service_category ?? ""} ${(Array.isArray(item.skills) ? item.skills.join(" ") : "")} ${item.bio ?? ""}`.toLowerCase();
   return haystack.includes(service.toLowerCase());
+}
+
+function matchesBrandIndustry(item: Record<string, unknown>, industry: string) {
+  const haystack = `${item.industry ?? ""} ${item.category ?? ""}`.toLowerCase();
+  return haystack.includes(industry.toLowerCase());
+}
+
+function matchesBrandCity(item: Record<string, unknown>, city: string) {
+  const haystack = `${item.city_focus ?? ""} ${item.headquarters ?? ""} ${item.region_focus ?? ""}`.toLowerCase();
+  return haystack.includes(city.toLowerCase());
 }

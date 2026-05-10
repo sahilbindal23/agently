@@ -78,25 +78,42 @@ export async function GET(request: Request) {
   const expiresAt = token.expires_in ? new Date(Date.now() + token.expires_in * 1000).toISOString() : null;
   const connectionStatus = selected ? "oauth_connected" : "oauth_limited";
 
-  const { data: account, error } = await admin
+  const accountPayload = {
+    profile_id: state.profileId,
+    [entityKey]: entityId,
+    provider: state.provider,
+    handle,
+    account_url: selected
+      ? state.provider === "instagram" ? `https://www.instagram.com/${handle}` : `https://www.facebook.com/${accountId}`
+      : "https://www.facebook.com/me",
+    platform_account_id: accountId,
+    status: connectionStatus,
+    scopes: getMetaOAuthScopes(),
+    access_token_encrypted: sealToken(accountToken),
+    refresh_token_encrypted: null,
+    token_expires_at: expiresAt
+  };
+
+  // Manual lookup-then-update-or-insert (partial unique indexes don't satisfy ON CONFLICT)
+  const { data: existing } = await admin
     .from("connected_social_accounts")
-    .upsert({
-      profile_id: state.profileId,
-      [entityKey]: entityId,
-      provider: state.provider,
-      handle,
-      account_url: selected
-        ? state.provider === "instagram" ? `https://www.instagram.com/${handle}` : `https://www.facebook.com/${accountId}`
-        : "https://www.facebook.com/me",
-      platform_account_id: accountId,
-      status: connectionStatus,
-      scopes: getMetaOAuthScopes(),
-      access_token_encrypted: sealToken(accountToken),
-      refresh_token_encrypted: null,
-      token_expires_at: expiresAt
-    }, { onConflict })
-    .select("*")
-    .single();
+    .select("id")
+    .eq(entityKey, entityId)
+    .eq("provider", state.provider)
+    .eq("handle", handle)
+    .maybeSingle();
+
+  let account: Record<string, unknown> | null = null;
+  let error: { message: string } | null = null;
+  if (existing?.id) {
+    const r = await admin.from("connected_social_accounts").update(accountPayload).eq("id", existing.id).select("*").single();
+    account = r.data; error = r.error;
+  } else {
+    const r = await admin.from("connected_social_accounts").insert(accountPayload).select("*").single();
+    account = r.data; error = r.error;
+  }
+  // The unused-binding suppression for onConflict is no longer needed
+  void onConflict;
 
   if (error || !account) return NextResponse.redirect(profileRedirect(state.returnTo, { social: "meta_save_failed" }));
 
@@ -104,7 +121,7 @@ export async function GET(request: Request) {
     ...userEventBase({ id: state.profileId } as Parameters<typeof userEventBase>[0], role || "creator"),
     eventName: "social_oauth_connected",
     entityType: "connected_social_account",
-    entityId: account.id,
+    entityId: String(account.id),
     metadata: { provider: state.provider, [entityKey]: entityId, platform_account_id: accountId, status: connectionStatus }
   });
 
