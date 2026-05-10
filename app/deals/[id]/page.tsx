@@ -78,12 +78,6 @@ export default async function DealDetailPage({ params }: { params: Promise<{ id:
           <DeliverableCard deliverable={deliverable} canReview />
         </Card>
         <ContractSummaryCard contract={contract} />
-        <Card>
-          <CardHeader><CardTitle>Negotiation Advice</CardTitle></CardHeader>
-          <p className="text-sm leading-6 text-muted-foreground">
-            Counter at {formatCurrency(Math.round(deal.amount_cents * 1.18), deal.currency)}, cap usage at 30 days, and require funded payment before publication.
-          </p>
-        </Card>
       </section>
 
       <section className="mt-5">
