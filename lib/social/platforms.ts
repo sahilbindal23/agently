@@ -1,4 +1,4 @@
-export type SocialProvider = "instagram" | "facebook" | "youtube";
+export type SocialProvider = "instagram" | "facebook" | "youtube" | "twitter";
 
 export const socialProviders: Array<{
   id: SocialProvider;
@@ -15,18 +15,25 @@ export const socialProviders: Array<{
     usefulMetrics: ["followers", "reach", "impressions", "engagement", "top cities"]
   },
   {
-    id: "facebook",
-    label: "Facebook",
-    platformLabel: "Facebook page",
-    requiredScopes: ["pages_read_engagement", "read_insights"],
-    usefulMetrics: ["page followers", "reach", "engagement", "audience geography"]
-  },
-  {
     id: "youtube",
     label: "YouTube",
     platformLabel: "YouTube channel",
     requiredScopes: ["youtube.readonly", "yt-analytics.readonly"],
     usefulMetrics: ["views", "subscribers", "likes", "comments", "country reports"]
+  },
+  {
+    id: "twitter",
+    label: "Twitter / X",
+    platformLabel: "Twitter / X account",
+    requiredScopes: ["users.read", "tweet.read"],
+    usefulMetrics: ["followers", "following", "tweet count"]
+  },
+  {
+    id: "facebook",
+    label: "Facebook",
+    platformLabel: "Facebook page",
+    requiredScopes: ["pages_read_engagement", "read_insights"],
+    usefulMetrics: ["page followers", "reach", "engagement", "audience geography"]
   }
 ];
 

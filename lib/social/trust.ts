@@ -31,6 +31,11 @@ export function socialTrustFromSource(source?: string | null) {
     return { label: "Instagram verified", tone: "green" as const, trusted: true };
   }
 
+  // ----- Twitter / X -----
+  if (value === "twitter_public_api") {
+    return { label: "Twitter verified", tone: "green" as const, trusted: true };
+  }
+
   // ----- Facebook -----
   if (value.includes("facebook_graph")) {
     return { label: "Facebook verified", tone: "green" as const, trusted: true };
