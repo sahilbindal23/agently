@@ -40,6 +40,9 @@ export function socialTrustFromSource(source?: string | null) {
   if (value.includes("facebook_graph")) {
     return { label: "Facebook verified", tone: "green" as const, trusted: true };
   }
+  if (value === "facebook_public_scrape") {
+    return { label: "Facebook verified", tone: "green" as const, trusted: true };
+  }
 
   // ----- Demo / mock data (only in non-prod) -----
   if (value === "mock_api") {

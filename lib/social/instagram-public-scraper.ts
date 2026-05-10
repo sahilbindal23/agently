@@ -43,6 +43,7 @@ export type InstagramScrapeFailure = {
     | "fetch_error"
     | "no_meta_data"
     | "parse_failed"
+    | "login_wall"
     | "timeout";
   http_status?: number;
   fetched_at: string;
@@ -92,34 +93,133 @@ export async function fetchInstagramPublicMetrics(handleOrUrl: string): Promise<
     return { ok: false, handle, reason: "fetch_error", fetched_at };
   }
 
-  const description = extractMeta(html, "og:description");
-  if (!description) {
-    return { ok: false, handle, reason: "no_meta_data", fetched_at };
+  // Login-wall detection - Instagram redirects/serves a login page in some
+  // cases. Body contains "loginForm" / "Log in" prominently when this happens.
+  if (/<title>Login • Instagram<\/title>/i.test(html) || /"requireLogin":true/.test(html)) {
+    return { ok: false, handle, reason: "login_wall", fetched_at };
+  }
+
+  // Try multiple extraction strategies in order of preference
+  const strategies: Array<{ name: string; run: () => InstagramPublicMetrics | null }> = [
+    { name: "og_description", run: () => parseFromMetaDescription(html, handle, profileUrl, fetched_at) },
+    { name: "twitter_card",   run: () => parseFromTwitterCard(html, handle, profileUrl, fetched_at) },
+    { name: "json_ld",        run: () => parseFromJsonLd(html, handle, profileUrl, fetched_at) },
+    { name: "shared_data",    run: () => parseFromSharedData(html, handle, profileUrl, fetched_at) }
+  ];
+
+  for (const strategy of strategies) {
+    const result = strategy.run();
+    if (result) {
+      return { ...result, raw_description: result.raw_description || `(parsed via ${strategy.name})` };
+    }
   }
 
   // Private accounts return a generic description without follower counts
+  const description = extractMeta(html, "og:description") ?? "";
   if (/this account is private/i.test(description)) {
     return { ok: false, handle, reason: "private_profile", fetched_at };
   }
 
+  // No strategy worked; could not extract follower data
+  return { ok: false, handle, reason: "parse_failed", fetched_at };
+}
+
+// ----- parsing strategies -----
+
+function parseFromMetaDescription(html: string, handle: string, profileUrl: string, fetched_at: string): InstagramPublicMetrics | null {
+  const description = extractMeta(html, "og:description");
+  if (!description) return null;
   const stats = parseStatsFromDescription(description);
-  if (!stats || stats.followers === null) {
-    return { ok: false, handle, reason: "parse_failed", fetched_at };
-  }
-
+  if (!stats || stats.followers === null) return null;
   const titleMeta = extractMeta(html, "og:title");
-  const displayName = titleMeta ? cleanDisplayName(titleMeta) : null;
-
   return {
     ok: true,
     handle,
-    display_name: displayName,
+    display_name: titleMeta ? cleanDisplayName(titleMeta) : null,
     followers: stats.followers,
     following: stats.following,
     posts: stats.posts,
     profile_url: profileUrl,
     fetched_at,
     raw_description: description
+  };
+}
+
+function parseFromTwitterCard(html: string, handle: string, profileUrl: string, fetched_at: string): InstagramPublicMetrics | null {
+  // Twitter Card meta tags often duplicate og: data and survive when og: is dropped
+  const description = extractMeta(html, "twitter:description") ?? extractMeta(html, "twitter:title");
+  if (!description) return null;
+  const stats = parseStatsFromDescription(description);
+  if (!stats || stats.followers === null) return null;
+  return {
+    ok: true,
+    handle,
+    display_name: extractMeta(html, "twitter:title") ? cleanDisplayName(extractMeta(html, "twitter:title")!) : null,
+    followers: stats.followers,
+    following: stats.following,
+    posts: stats.posts,
+    profile_url: profileUrl,
+    fetched_at,
+    raw_description: description
+  };
+}
+
+function parseFromJsonLd(html: string, handle: string, profileUrl: string, fetched_at: string): InstagramPublicMetrics | null {
+  // Look for <script type="application/ld+json"> blocks. Instagram has used
+  // a Person schema with `mainEntityofPage` and sometimes `interactionStatistic`.
+  const blocks = html.match(/<script[^>]+type=["']application\/ld\+json["'][^>]*>([\s\S]*?)<\/script>/gi) ?? [];
+  for (const block of blocks) {
+    const inner = block.replace(/^<script[^>]*>/i, "").replace(/<\/script>$/i, "").trim();
+    try {
+      const data: unknown = JSON.parse(inner);
+      const obj = Array.isArray(data) ? data[0] : data;
+      if (!obj || typeof obj !== "object") continue;
+      const o = obj as Record<string, unknown>;
+
+      // Some IG JSON-LD blocks include text like the og:description in a `description` field
+      const desc = typeof o.description === "string" ? o.description : "";
+      if (desc) {
+        const stats = parseStatsFromDescription(desc);
+        if (stats && stats.followers !== null) {
+          const name = typeof o.name === "string" ? o.name : null;
+          return {
+            ok: true,
+            handle,
+            display_name: name,
+            followers: stats.followers,
+            following: stats.following,
+            posts: stats.posts,
+            profile_url: profileUrl,
+            fetched_at,
+            raw_description: desc
+          };
+        }
+      }
+    } catch {
+      continue;
+    }
+  }
+  return null;
+}
+
+function parseFromSharedData(html: string, handle: string, profileUrl: string, fetched_at: string): InstagramPublicMetrics | null {
+  // Older IG pages embedded a `window._sharedData = {...}` object. Some
+  // server-rendered surfaces still have it. Look for user.edge_followed_by.count.
+  const match = html.match(/"edge_followed_by"\s*:\s*\{\s*"count"\s*:\s*(\d+)/);
+  const followingMatch = html.match(/"edge_follow"\s*:\s*\{\s*"count"\s*:\s*(\d+)/);
+  const postsMatch = html.match(/"edge_owner_to_timeline_media"\s*:\s*\{\s*"count"\s*:\s*(\d+)/);
+  const fullNameMatch = html.match(/"full_name"\s*:\s*"([^"]+)"/);
+  if (!match) return null;
+  return {
+    ok: true,
+    handle,
+    display_name: fullNameMatch ? fullNameMatch[1] : null,
+    followers: Number(match[1]),
+    following: followingMatch ? Number(followingMatch[1]) : null,
+    posts: postsMatch ? Number(postsMatch[1]) : null,
+    profile_url: profileUrl,
+    fetched_at,
+    raw_description: ""
   };
 }
 
