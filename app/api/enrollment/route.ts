@@ -3,8 +3,31 @@ import { auditBrand, auditCreator } from "@/lib/ai/audits";
 import { classifyEmailWebsiteMatch } from "@/lib/auth/domain-match";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
+import { checkFreeText, sanityErrorMessage } from "@/lib/validators/sanity";
 
 type EnrollmentRole = "creator" | "brand" | "freelancer";
+
+// Free-text fields per role to sanity-check. Min lengths are tuned to be
+// permissive but block obvious garbage like "asdf" or "fuck off". Required
+// flag matters: optional fields pass when blank, only fail when filled with
+// junk.
+const FREE_TEXT_RULES: Record<EnrollmentRole, Array<{ field: string; label: string; minLength: number; optional: boolean }>> = {
+  creator: [
+    { field: "creator_name",  label: "Display name",   minLength: 2,  optional: false },
+    { field: "audience_notes", label: "Audience notes", minLength: 10, optional: true }
+  ],
+  brand: [
+    { field: "brand_name",      label: "Brand name",       minLength: 2,  optional: false },
+    { field: "target_audience", label: "Target audience",  minLength: 10, optional: true },
+    { field: "campaign_goal",   label: "Campaign goal",    minLength: 10, optional: true },
+    { field: "brand_notes",     label: "Brand notes",      minLength: 10, optional: true }
+  ],
+  freelancer: [
+    { field: "freelancer_name",  label: "Freelancer/studio name", minLength: 2,  optional: false },
+    { field: "freelancer_bio",   label: "Bio",                    minLength: 10, optional: true },
+    { field: "portfolio_notes",  label: "Portfolio notes",        minLength: 10, optional: true }
+  ]
+};
 
 export async function POST(request: Request) {
   const body = await request.json();
@@ -12,6 +35,19 @@ export async function POST(request: Request) {
 
   if (role !== "creator" && role !== "brand" && role !== "freelancer") {
     return NextResponse.json({ error: "Role must be creator, brand, or freelancer." }, { status: 400 });
+  }
+
+  // Sanity-check free-text fields before any DB writes. One bad field
+  // returns a clear actionable error to the form.
+  for (const rule of FREE_TEXT_RULES[role]) {
+    const verdict = checkFreeText((body as Record<string, unknown>)[rule.field], {
+      fieldLabel: rule.label,
+      minLength: rule.minLength,
+      optional: rule.optional
+    });
+    if (!verdict.ok) {
+      return NextResponse.json({ error: sanityErrorMessage(verdict, rule.label) }, { status: 400 });
+    }
   }
 
   const auth = await createClient();

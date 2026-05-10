@@ -21,8 +21,9 @@ const roleCopy = {
 export function AccountSignupForm() {
   const router = useRouter();
   const [role, setRole] = useState<Role>("creator");
-  const [status, setStatus] = useState<"idle" | "loading" | "error">("idle");
+  const [status, setStatus] = useState<"idle" | "loading" | "error" | "verify_email">("idle");
   const [error, setError] = useState("");
+  const [verifyEmail, setVerifyEmail] = useState<string>("");
 
   async function onSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -41,6 +42,14 @@ export function AccountSignupForm() {
       const body = await signup.json().catch(() => ({}));
       setStatus("error");
       setError(body.error ?? "Could not create account.");
+      return;
+    }
+
+    const signupBody = await signup.json().catch(() => ({}));
+    if (signupBody?.requires_email_verification) {
+      // Don't auto-login - user must verify email first
+      setStatus("verify_email");
+      setVerifyEmail(String(formData.get("email") ?? ""));
       return;
     }
 
@@ -98,17 +107,32 @@ export function AccountSignupForm() {
               </button>
             ))}
           </div>
-          <form className="grid gap-3" onSubmit={onSubmit}>
-            <Input name="full_name" placeholder="Full name" required />
-            <Input name="email" type="email" placeholder="Email" required />
-            <Input name="password" type="password" placeholder="Password" required />
-            <Button disabled={status === "loading"}>
-              <UserPlus className="h-4 w-4" />
-              {status === "loading" ? "Creating account..." : "Create account"}
-              <ArrowRight className="h-4 w-4" />
-            </Button>
-            {error ? <p className="text-sm text-red-600">{error}</p> : null}
-          </form>
+          {status === "verify_email" ? (
+            <div className="rounded-md border border-emerald-200 bg-emerald-50 p-4 text-sm dark:border-emerald-900/50 dark:bg-emerald-950/30">
+              <p className="font-semibold text-emerald-900 dark:text-emerald-200">Check your email to verify</p>
+              <p className="mt-2 leading-6 text-emerald-800 dark:text-emerald-300">
+                We sent a verification link to <strong>{verifyEmail}</strong>. Click the link to confirm your address, then come back and log in.
+              </p>
+              <p className="mt-2 text-xs leading-5 text-emerald-700 dark:text-emerald-400">
+                If the email doesn&apos;t arrive within a few minutes, check spam or try signing up again.
+              </p>
+              <Link href="/login" className="mt-3 inline-flex h-9 items-center gap-2 rounded-md bg-primary px-3 text-sm font-medium text-primary-foreground">
+                Go to login <ArrowRight className="h-4 w-4" />
+              </Link>
+            </div>
+          ) : (
+            <form className="grid gap-3" onSubmit={onSubmit}>
+              <Input name="full_name" placeholder="Full name" required />
+              <Input name="email" type="email" placeholder="Email" required />
+              <Input name="password" type="password" placeholder="Password (min 8 characters)" minLength={8} required />
+              <Button disabled={status === "loading"}>
+                <UserPlus className="h-4 w-4" />
+                {status === "loading" ? "Creating account..." : "Create account"}
+                <ArrowRight className="h-4 w-4" />
+              </Button>
+              {error ? <p className="text-sm text-red-600 dark:text-red-400">{error}</p> : null}
+            </form>
+          )}
           <p className="mt-5 text-sm text-muted-foreground">
             Already have an account? <Link className="font-medium text-primary" href="/login">Sign in</Link>
           </p>

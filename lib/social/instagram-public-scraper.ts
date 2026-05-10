@@ -1,3 +1,5 @@
+import { fetchPhylloProfile, isPhylloConfigured } from "@/lib/social/phyllo-client";
+
 // Public Instagram profile scraper. No OAuth required.
 //
 // Strategy: fetch the public profile HTML and parse the Open Graph
@@ -65,6 +67,30 @@ export async function fetchInstagramPublicMetrics(handleOrUrl: string): Promise<
 
   const profileUrl = `https://www.instagram.com/${handle}/`;
   const fetched_at = new Date().toISOString();
+
+  // 1. Try Phyllo first when configured. It's the production path - reliable,
+  //    legitimate, won't break on Meta HTML changes. Falls through to public
+  //    scraping when not configured or when Phyllo specifically fails for
+  //    this profile (unsupported platform, profile missing in their index).
+  if (isPhylloConfigured()) {
+    const phyllo = await fetchPhylloProfile("instagram", handle);
+    if (phyllo.ok) {
+      return {
+        ok: true,
+        handle,
+        display_name: phyllo.display_name,
+        followers: phyllo.followers,
+        following: phyllo.following,
+        posts: phyllo.content_count,
+        profile_url: phyllo.profile_url ?? profileUrl,
+        fetched_at: phyllo.fetched_at,
+        raw_description: "(via Phyllo Identity API)"
+      };
+    }
+    // Hard failures from Phyllo (auth_error, missing_credentials) - fall back
+    // to public scraping. Soft failures (profile_not_found) probably won't
+    // succeed via scraping either but we try anyway for thoroughness.
+  }
 
   let html: string;
   let response: Response;
