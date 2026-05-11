@@ -15,6 +15,19 @@ export type SocialTrustTone = "green" | "blue" | "amber" | "neutral";
 export function socialTrustFromSource(source?: string | null) {
   const value = String(source ?? "");
 
+  if (value === "phyllo_instagram") {
+    return { label: "Instagram verified", tone: "green" as const, trusted: true };
+  }
+  if (value === "phyllo_youtube") {
+    return { label: "YouTube verified", tone: "green" as const, trusted: true };
+  }
+  if (value === "phyllo_facebook") {
+    return { label: "Facebook verified", tone: "green" as const, trusted: true };
+  }
+  if (value === "phyllo_twitter") {
+    return { label: "Twitter verified", tone: "green" as const, trusted: true };
+  }
+
   // ----- YouTube -----
   if (value.includes("youtube_analytics")) {
     return { label: "YouTube verified", tone: "green" as const, trusted: true };

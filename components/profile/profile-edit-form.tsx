@@ -81,7 +81,7 @@ export function ProfileEditForm({ role, profile, platforms = [], serviceRates = 
 function CreatorFields({ profile, platforms }: { profile: Record<string, unknown>; platforms: Array<Record<string, unknown>> }) {
   return (
     <>
-      <Input name="display_name" placeholder="Display name" defaultValue={value(profile.display_name)} required />
+      <LabeledInput label="Display name" name="display_name" placeholder="Display name" defaultValue={value(profile.display_name)} required />
       <Select name="primary_niche" label="Primary niche" options={NICHES} defaultValue={value(profile.primary_niche)} placeholderOption="What do you make content about?" />
       <Select name="home_city" label="Home city" options={INDIAN_CITIES} defaultValue={value(profile.home_city)} placeholderOption="Where are you based?" />
       <Select name="country" label="Country" options={COUNTRIES} defaultValue={value(profile.country) || "IN"} placeholderOption="Country" />
@@ -133,7 +133,7 @@ function FreelancerFields({
 }) {
   return (
     <>
-      <Input name="display_name" placeholder="Freelancer/studio name" defaultValue={value(profile.display_name)} required />
+      <LabeledInput label="Display name" name="display_name" placeholder="Freelancer/studio name" defaultValue={value(profile.display_name)} required />
       <Select name="service_category" label="Primary service" options={FREELANCER_SERVICES} defaultValue={value(profile.service_category)} placeholderOption="What's your main craft?" />
       <Select name="home_city" label="Home city" options={INDIAN_CITIES} defaultValue={value(profile.home_city)} placeholderOption="Where are you based?" />
       <Select name="availability_status" label="Availability" options={AVAILABILITY_STATUSES} defaultValue={value(profile.availability_status)} placeholderOption="Are you taking work?" />
@@ -163,7 +163,7 @@ function BrandFields({ profile, audit }: { profile: Record<string, unknown>; aud
   const auditInput = audit?.input as Record<string, unknown> | undefined;
   return (
     <>
-      <Input name="name" placeholder="Brand name" defaultValue={value(profile.name)} required />
+      <LabeledInput label="Brand name" name="name" placeholder="Brand name" defaultValue={value(profile.name)} required />
       <Select name="industry" label="Industry" options={BRAND_INDUSTRIES} defaultValue={value(profile.industry)} placeholderOption="Pick your category" />
       <Input name="website" placeholder="Website" defaultValue={value(profile.website)} />
       <Input name="contact_email" placeholder="Contact email" defaultValue={value(profile.contact_email)} />
@@ -178,12 +178,17 @@ function BrandFields({ profile, audit }: { profile: Record<string, unknown>; aud
   );
 }
 
-function value(input: unknown) {
-  return input === null || input === undefined ? "" : String(input);
+function LabeledInput({ label, ...props }: React.InputHTMLAttributes<HTMLInputElement> & { label: string }) {
+  return (
+    <label className="block">
+      <span className="mb-1 block text-xs font-semibold uppercase tracking-wide text-muted-foreground">{label}</span>
+      <Input {...props} />
+    </label>
+  );
 }
 
-function arrayValue(input: unknown) {
-  return Array.isArray(input) ? input.map(String).join(", ") : value(input);
+function value(input: unknown) {
+  return input === null || input === undefined ? "" : String(input);
 }
 
 /**

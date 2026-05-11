@@ -35,7 +35,7 @@ export async function POST(request: Request) {
   const result = await fetchInstagramPublicMetrics(handle);
 
   // Resolve which entity is doing this so we can write the result back
-  const ownership = await resolveOwnership(admin, user.id, user.role, handle);
+  const ownership = await resolveOwnership(admin, user.id, user.role);
 
   if (!result.ok) {
     // Still log the failed attempt so we have a paper trail
@@ -122,8 +122,7 @@ async function getCachedScrape(admin: NonNullable<ReturnType<typeof createAdminC
 async function resolveOwnership(
   admin: NonNullable<ReturnType<typeof createAdminClient>>,
   profileId: string,
-  role: string | undefined,
-  _handle: string
+  role: string | undefined
 ): Promise<{ creator_id: string | null; brand_id: string | null }> {
   if (role === "creator") {
     const { data: creator } = await admin.from("creators").select("id").eq("profile_id", profileId).maybeSingle();

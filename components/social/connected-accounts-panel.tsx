@@ -43,6 +43,11 @@ type PhylloConnectInstance = {
   };
 };
 
+type PhylloSyncInput = {
+  accountId: string | null;
+  workplatformId: string | null;
+};
+
 function loadPhylloSdk(): Promise<NonNullable<Window["PhylloConnect"]>> {
   if (typeof window === "undefined") return Promise.reject(new Error("Not in browser"));
   if (window.PhylloConnect) return Promise.resolve(window.PhylloConnect);
@@ -183,50 +188,73 @@ export function ConnectedAccountsPanel({
         token: sdk_token
       });
 
-      // Phyllo callbacks must use explicit named parameters - the SDK
-      // checks each callback's arity against the event signature and
-      // throws "Please add the required number of parameters in
-      // callback" if it doesn't match.
-      phyllo.on("accountConnected", (accountId: string, workplatformId: string, _userId: string) => {
-        void _userId;
+      async function syncPhylloAccount(input: PhylloSyncInput) {
+        if (!input.accountId || !input.workplatformId) {
+          setStatus("error");
+          setMessage("Phyllo connected, but did not return enough account details to sync. Please try connecting again.");
+          return;
+        }
+
         // Tell our backend to fetch the profile and store metrics
-        fetch("/api/social/phyllo/sync-account", {
+        const res = await fetch("/api/social/phyllo/sync-account", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ account_id: accountId, work_platform_id: workplatformId })
-        }).then(async (res) => {
-          if (!res.ok) {
-            const body = await res.json().catch(() => ({}));
-            setStatus("error");
-            setMessage(body.error ?? "Connected, but failed to sync profile data. Try the Sync button.");
-          } else {
-            setStatus("idle");
-            setMessage("Account connected and synced.");
-            router.refresh();
-          }
-        }).catch(() => {
+          body: JSON.stringify({ account_id: input.accountId, work_platform_id: input.workplatformId })
+        });
+        if (!res.ok) {
+          const body = await res.json().catch(() => ({}));
+          setStatus("error");
+          setMessage(body.error ?? "Connected, but failed to sync profile data. Try the Sync button.");
+          return;
+        }
+        setStatus("idle");
+        setMessage("Account connected and synced.");
+        router.refresh();
+      }
+
+      // Phyllo's web SDK validates Function.length for every mandatory
+      // callback before opening the modal. Keep these as classic functions
+      // with explicit parameters so the arity stays exactly what the SDK
+      // expects after bundling.
+      function onAccountConnected(accountId: string, workplatformId: string, phylloUserId: string) {
+        void phylloUserId;
+        void syncPhylloAccount({ accountId, workplatformId }).catch(() => {
           setStatus("error");
           setMessage("Connected, but failed to sync profile data. Try the Sync button.");
         });
-      });
-      phyllo.on("accountDisconnected", (_accountId: string, _workplatformId: string, _userId: string) => {
-        void _accountId; void _workplatformId; void _userId;
+      }
+
+      function onAccountDisconnected(accountId: string, workplatformId: string, phylloUserId: string) {
+        void accountId;
+        void workplatformId;
+        void phylloUserId;
         router.refresh();
-      });
-      phyllo.on("tokenExpired", (_userId: string) => {
-        void _userId;
+      }
+
+      function onTokenExpired(phylloUserId: string) {
+        void phylloUserId;
         setStatus("error");
         setMessage("Phyllo session expired. Click Connect via Phyllo again.");
-      });
-      phyllo.on("exit", (_reason: string, _userId: string) => {
-        void _reason; void _userId;
+      }
+
+      function onExit(reason: string, phylloUserId: string) {
+        void reason;
+        void phylloUserId;
         setStatus("idle");
-      });
-      phyllo.on("connectionFailure", (reason: string, _workplatformId: string, _userId: string) => {
-        void _workplatformId; void _userId;
+      }
+
+      function onConnectionFailure(reason: string, workplatformId: string, phylloUserId: string) {
+        void workplatformId;
+        void phylloUserId;
         setStatus("error");
         setMessage(`Phyllo connection failed: ${reason}`);
-      });
+      }
+
+      phyllo.on("accountConnected", onAccountConnected);
+      phyllo.on("accountDisconnected", onAccountDisconnected);
+      phyllo.on("tokenExpired", onTokenExpired);
+      phyllo.on("exit", onExit);
+      phyllo.on("connectionFailure", onConnectionFailure);
 
       phyllo.open();
       setStatus("idle");
@@ -242,7 +270,7 @@ export function ConnectedAccountsPanel({
         <div>
           <p className="text-sm font-semibold">Connected social accounts</p>
           <p className="mt-1 text-xs leading-5 text-muted-foreground">
-            Add your Instagram and YouTube handles below. We verify them against the public profile to confirm follower counts — no app authorization needed.
+            Add your Instagram and YouTube handles below. Verified connections help Agently confirm follower counts and performance signals.
           </p>
         </div>
         <Badge tone={accounts.length ? "green" : "amber"}>{accounts.length ? "connected layer active" : "connect accounts"}</Badge>
@@ -299,9 +327,9 @@ export function ConnectedAccountsPanel({
       </div>
 
       <p className="mb-2 text-xs uppercase tracking-wide text-muted-foreground">Or save a handle manually (no verified metrics)</p>
-      <form className="grid gap-3 md:grid-cols-[0.7fr_1fr_1.2fr_auto]" onSubmit={connect}>
+      <form className="grid gap-3 md:grid-cols-[minmax(180px,0.7fr)_minmax(220px,1fr)_minmax(260px,1.2fr)_auto] md:items-center" onSubmit={connect}>
         <select
-          className="h-10 rounded-md border bg-white px-3 text-sm outline-none focus:ring-2 focus:ring-ring dark:border-white/10 dark:bg-card dark:text-foreground"
+          className="h-10 w-full rounded-md border bg-white px-3 text-sm outline-none focus:ring-2 focus:ring-ring dark:border-white/10 dark:bg-card dark:text-foreground"
           onChange={(event) => setProvider(event.target.value as SocialProvider)}
           value={provider}
         >
@@ -309,7 +337,7 @@ export function ConnectedAccountsPanel({
         </select>
         <Input onChange={(event) => setHandle(event.target.value)} placeholder="@handle or channel name" required value={handle} />
         <Input onChange={(event) => setAccountUrl(event.target.value)} placeholder="Profile/channel URL" value={accountUrl} />
-        <Button disabled={status === "saving"} type="submit">{status === "saving" ? "Connecting..." : "Connect"}</Button>
+        <Button className="h-10 w-full md:w-auto" disabled={status === "saving"} type="submit">{status === "saving" ? "Connecting..." : "Connect"}</Button>
       </form>
 
       {message ? <p className={`mt-3 text-sm ${status === "error" ? "text-red-600" : "text-emerald-700"}`}>{message}</p> : null}
