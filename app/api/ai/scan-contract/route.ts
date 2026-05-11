@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { trackEvent, userEventBase } from "@/lib/analytics/track";
 import { getOpenAI } from "@/lib/openai/client";
 import { contractScanPrompt } from "@/prompts/contract-scan";
+import { gateRateLimit } from "@/lib/security/rate-limit-gate";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
 import type { RiskLevel } from "@/types";
@@ -20,6 +21,9 @@ type ContractScanPayload = {
 };
 
 export async function POST(request: Request) {
+  const gate = await gateRateLimit(request, "ai:scan-contract");
+  if (gate) return gate;
+
   const auth = await createClient();
   const { data: authData } = await auth.auth.getUser();
   if (!authData.user) return NextResponse.json({ error: "Login required." }, { status: 401 });

@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { getCurrentUser } from "@/lib/auth/session";
+import { gateRateLimit } from "@/lib/security/rate-limit-gate";
 import { classifyFacebookAgainstSelfReport, fetchFacebookPublicMetrics, normalizeFacebookHandle } from "@/lib/social/facebook-public-scraper";
 import { createAdminClient } from "@/lib/supabase/admin";
 
@@ -12,6 +13,9 @@ const schema = z.object({
 const CACHE_TTL_HOURS = 24;
 
 export async function POST(request: Request) {
+  const gate = await gateRateLimit(request, "social:scrape");
+  if (gate) return gate;
+
   const user = await getCurrentUser();
   if (!user) return NextResponse.json({ error: "Login required." }, { status: 401 });
 

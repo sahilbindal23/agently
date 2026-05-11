@@ -4,8 +4,12 @@ import { getCurrentUser } from "@/lib/auth/session";
 import { getAgentlyData } from "@/lib/db/live-data";
 import { getOpenAI } from "@/lib/openai/client";
 import { brandMatchPrompt } from "@/prompts/brand-match";
+import { gateRateLimit } from "@/lib/security/rate-limit-gate";
 
 export async function POST(request: Request) {
+  const gate = await gateRateLimit(request, "ai:brand-match");
+  if (gate) return gate;
+
   const user = await getCurrentUser();
   if (!user) return NextResponse.json({ error: "Login required." }, { status: 401 });
 

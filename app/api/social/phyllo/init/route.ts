@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { getCurrentUser } from "@/lib/auth/session";
+import { gateRateLimit } from "@/lib/security/rate-limit-gate";
 import { createPhylloUser, createSdkToken, getPhylloFrontendEnvironment, getPhylloUserByExternalId, isPhylloConfigured, PHYLLO_PRODUCTS_DEFAULT } from "@/lib/social/phyllo-client";
 import { createAdminClient } from "@/lib/supabase/admin";
 
@@ -8,7 +9,10 @@ import { createAdminClient } from "@/lib/supabase/admin";
 // Connect-button click, gets back { user_id, sdk_token, environment }, and
 // hands those to the Phyllo Connect SDK.
 
-export async function POST() {
+export async function POST(request: Request) {
+  const gate = await gateRateLimit(request, "phyllo:init");
+  if (gate) return gate;
+
   const user = await getCurrentUser();
   if (!user) return NextResponse.json({ error: "Login required." }, { status: 401 });
   if (!isPhylloConfigured()) {

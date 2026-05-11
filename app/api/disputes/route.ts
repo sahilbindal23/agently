@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
+import { gateRateLimit } from "@/lib/security/rate-limit-gate";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
 
@@ -39,6 +40,9 @@ export async function GET() {
 }
 
 export async function POST(request: Request) {
+  const gate = await gateRateLimit(request, "disputes:open");
+  if (gate) return gate;
+
   const parsed = openSchema.safeParse(await request.json());
   if (!parsed.success) {
     return NextResponse.json({ error: parsed.error.issues[0]?.message ?? "Invalid dispute payload." }, { status: 400 });

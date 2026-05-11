@@ -3,8 +3,12 @@ import { auditBrand, type BrandAuditInput } from "@/lib/ai/audits";
 import { getCurrentUser } from "@/lib/auth/session";
 import { getOpenAI } from "@/lib/openai/client";
 import { brandAuditPrompt } from "@/prompts/audits";
+import { gateRateLimit } from "@/lib/security/rate-limit-gate";
 
 export async function POST(request: Request) {
+  const gate = await gateRateLimit(request, "ai:audit-brand");
+  if (gate) return gate;
+
   const user = await getCurrentUser();
   if (!user) return NextResponse.json({ error: "Login required." }, { status: 401 });
 

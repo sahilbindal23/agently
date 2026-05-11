@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { trackEvent, userEventBase } from "@/lib/analytics/track";
+import { gateRateLimit } from "@/lib/security/rate-limit-gate";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
 
@@ -22,6 +23,9 @@ const schema = z.object({
 });
 
 export async function POST(request: Request) {
+  const gate = await gateRateLimit(request, "messages:send");
+  if (gate) return gate;
+
   const auth = await createClient();
   const { data: authData } = await auth.auth.getUser();
   if (!authData.user) return NextResponse.json({ error: "Login required." }, { status: 401 });

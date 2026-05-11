@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 import { getCurrentUser } from "@/lib/auth/session";
 import { projectROI } from "@/lib/benchmarks/roi";
+import { gateRateLimit } from "@/lib/security/rate-limit-gate";
 import { createAdminClient } from "@/lib/supabase/admin";
 
 const schema = z.object({
@@ -16,6 +17,9 @@ const schema = z.object({
 });
 
 export async function POST(request: Request) {
+  const gate = await gateRateLimit(request, "ai:roi-calc");
+  if (gate) return gate;
+
   const user = await getCurrentUser();
   if (!user) return NextResponse.json({ error: "Login required." }, { status: 401 });
 

@@ -3,10 +3,14 @@ import { getCurrentUser } from "@/lib/auth/session";
 import { getBenchmarkBlend, getBenchmarkBlendV2 } from "@/lib/benchmarks/rates";
 import { getOpenAI } from "@/lib/openai/client";
 import { rulesBasedValuation, type ValuationInput } from "@/lib/ai/valuation";
+import { gateRateLimit } from "@/lib/security/rate-limit-gate";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { valuationPrompt } from "@/prompts/valuation";
 
 export async function POST(request: Request) {
+  const gate = await gateRateLimit(request, "ai:value-creator");
+  if (gate) return gate;
+
   const user = await getCurrentUser();
   if (!user) return NextResponse.json({ error: "Login required." }, { status: 401 });
 

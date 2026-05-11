@@ -3,6 +3,7 @@ import { z } from "zod";
 import { trackEvent, userEventBase } from "@/lib/analytics/track";
 import { ensurePaymentRecordForEntity } from "@/lib/payments/workflow";
 import { createRazorpayOrder, getRazorpayPublicKey, isRazorpayConfigured } from "@/lib/razorpay/client";
+import { gateRateLimit } from "@/lib/security/rate-limit-gate";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
 import { getStripe } from "@/lib/stripe/client";
@@ -15,6 +16,11 @@ const schema = z.object({
   .refine(d => d.entity_id.length > 0, { message: "Valid payment target is required." });
 
 export async function POST(request: Request) {
+  // Payment-link creation is a critical-money path - fail-closed if the rate-
+  // limit RPC is unavailable (configured in RATE_LIMITS for this bucket).
+  const gate = await gateRateLimit(request, "payments:create-link");
+  if (gate) return gate;
+
   const parsed = schema.safeParse(await request.json());
   if (!parsed.success) {
     return NextResponse.json({ error: parsed.error.issues[0]?.message ?? "Invalid request." }, { status: 400 });

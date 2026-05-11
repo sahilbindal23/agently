@@ -4,6 +4,7 @@ import { getCurrentUser } from "@/lib/auth/session";
 import { buildNegotiateContext } from "@/lib/benchmarks/negotiate-context";
 import { getOpenAI } from "@/lib/openai/client";
 import { negotiateAskPrompt, negotiatePrompt } from "@/prompts/negotiate";
+import { gateRateLimit } from "@/lib/security/rate-limit-gate";
 import { createAdminClient } from "@/lib/supabase/admin";
 
 const counterSchema = z.object({
@@ -33,6 +34,9 @@ const askSchema = z.object({
 });
 
 export async function POST(request: Request) {
+  const gate = await gateRateLimit(request, "ai:negotiate");
+  if (gate) return gate;
+
   const user = await getCurrentUser();
   if (!user || user.role === "brand") {
     return NextResponse.json({ error: "Negotiation copilot is available only to creators, freelancers, and admins." }, { status: 403 });
