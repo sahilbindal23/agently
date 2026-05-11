@@ -31,7 +31,16 @@ declare global {
 }
 type PhylloConnectInstance = {
   open: () => void;
-  on: (event: string, callback: (...args: unknown[]) => void) => void;
+  // Phyllo validates each callback's arity (Function.length) against the
+  // event it's bound to. We have to use explicit named parameters - rest
+  // args don't satisfy the check.
+  on: {
+    (event: "accountConnected", cb: (accountId: string, workplatformId: string, userId: string) => void): void;
+    (event: "accountDisconnected", cb: (accountId: string, workplatformId: string, userId: string) => void): void;
+    (event: "tokenExpired", cb: (userId: string) => void): void;
+    (event: "exit", cb: (reason: string, userId: string) => void): void;
+    (event: "connectionFailure", cb: (reason: string, workplatformId: string, userId: string) => void): void;
+  };
 };
 
 function loadPhylloSdk(): Promise<NonNullable<Window["PhylloConnect"]>> {
@@ -174,9 +183,13 @@ export function ConnectedAccountsPanel({
         token: sdk_token
       });
 
-      phyllo.on("accountConnected", (...args: unknown[]) => {
-        const [accountId, workplatformId] = args as [string, string];
-        // 4. Tell our backend to fetch the profile and store metrics
+      // Phyllo callbacks must use explicit named parameters - the SDK
+      // checks each callback's arity against the event signature and
+      // throws "Please add the required number of parameters in
+      // callback" if it doesn't match.
+      phyllo.on("accountConnected", (accountId: string, workplatformId: string, _userId: string) => {
+        void _userId;
+        // Tell our backend to fetch the profile and store metrics
         fetch("/api/social/phyllo/sync-account", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -196,11 +209,21 @@ export function ConnectedAccountsPanel({
           setMessage("Connected, but failed to sync profile data. Try the Sync button.");
         });
       });
-      phyllo.on("exit", () => {
+      phyllo.on("accountDisconnected", (_accountId: string, _workplatformId: string, _userId: string) => {
+        void _accountId; void _workplatformId; void _userId;
+        router.refresh();
+      });
+      phyllo.on("tokenExpired", (_userId: string) => {
+        void _userId;
+        setStatus("error");
+        setMessage("Phyllo session expired. Click Connect via Phyllo again.");
+      });
+      phyllo.on("exit", (_reason: string, _userId: string) => {
+        void _reason; void _userId;
         setStatus("idle");
       });
-      phyllo.on("connectionFailure", (...args: unknown[]) => {
-        const [reason] = args as [string];
+      phyllo.on("connectionFailure", (reason: string, _workplatformId: string, _userId: string) => {
+        void _workplatformId; void _userId;
         setStatus("error");
         setMessage(`Phyllo connection failed: ${reason}`);
       });
