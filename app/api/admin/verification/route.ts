@@ -1,6 +1,8 @@
 import { NextResponse } from "next/server";
+import { trackEvent } from "@/lib/analytics/track";
+import { getCurrentUser } from "@/lib/auth/session";
+import { writeAuditLog } from "@/lib/security/audit";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { createClient } from "@/lib/supabase/server";
 
 const tableByType = {
   creator: "creators",
@@ -12,15 +14,13 @@ const allowedStatuses = new Set(["unverified", "reviewing", "verified", "rejecte
 const allowedTiers = new Set(["unverified", "reviewing", "profile", "social", "performance", "rejected"]);
 
 export async function PATCH(request: Request) {
-  const auth = await createClient();
-  const { data: authData } = await auth.auth.getUser();
-  if (!authData.user) return NextResponse.json({ error: "Login required." }, { status: 401 });
+  const user = await getCurrentUser();
+  if (!user) return NextResponse.json({ error: "Login required." }, { status: 401 });
 
   const admin = createAdminClient();
   if (!admin) return NextResponse.json({ error: "Supabase service role key is not configured." }, { status: 500 });
 
-  const { data: profile } = await admin.from("profiles").select("role").eq("id", authData.user.id).single();
-  if (profile?.role !== "admin") {
+  if (user.role !== "admin") {
     return NextResponse.json({ error: "Only admins can change verification status." }, { status: 403 });
   }
 
@@ -42,7 +42,7 @@ export async function PATCH(request: Request) {
     verification_tier: tier,
     verification_checks: checks,
     verified_at: verified ? new Date().toISOString() : null,
-    verified_by: verified ? authData.user.id : null,
+    verified_by: verified ? user.id : null,
     verification_notes: notes || null
   };
 
@@ -54,6 +54,23 @@ export async function PATCH(request: Request) {
     .single();
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+  await trackEvent(admin, {
+    eventName: "admin_verification_decision",
+    profileId: user.id,
+    role: user.role,
+    entityType,
+    entityId,
+    metadata: { status: payload.verification_status, tier, notes: notes || null }
+  });
+  await writeAuditLog(admin, {
+    actorProfileId: user.id,
+    actorRole: user.role,
+    action: "admin.verification.update",
+    entityType,
+    entityId,
+    request,
+    metadata: { status: payload.verification_status, tier }
+  });
   return NextResponse.json({ data });
 }
 
