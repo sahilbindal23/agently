@@ -1,6 +1,7 @@
-import { fetchPhylloProfile, isPhylloConfigured } from "@/lib/social/phyllo-client";
-
 // Public YouTube channel lookup via the YouTube Data API v3.
+// Note: Phyllo handle-lookup is enterprise-only; YouTube Data API key is the
+// free public path. The richer creator-authorized data lives in Phyllo
+// Connect SDK and lands via /api/social/phyllo/sync-account.
 // No OAuth required - uses a server-side API key.
 //
 // Why this exists alongside the OAuth path:
@@ -63,30 +64,9 @@ const API_BASE = "https://www.googleapis.com/youtube/v3";
 export async function fetchYouTubeChannelMetrics(input: string): Promise<YouTubePublicResult> {
   const fetched_at = new Date().toISOString();
 
-  // 1. Phyllo first when configured - same legitimate-data path as IG/FB
-  if (isPhylloConfigured()) {
-    const phyllo = await fetchPhylloProfile("youtube", input);
-    if (phyllo.ok) {
-      return {
-        ok: true,
-        channel_id: phyllo.username ?? "",
-        handle: phyllo.username ?? null,
-        display_name: phyllo.display_name ?? input,
-        subscribers: phyllo.followers,
-        total_views: null,
-        video_count: phyllo.content_count,
-        country: null,
-        thumbnail_url: phyllo.image_url,
-        channel_url: phyllo.profile_url ?? `https://www.youtube.com/${input}`,
-        fetched_at: phyllo.fetched_at
-      };
-    }
-    // Fall through to YouTube Data API on Phyllo failure
-  }
-
   const apiKey = process.env.YOUTUBE_API_KEY;
   if (!apiKey) {
-    return { ok: false, reason: "missing_api_key", fetched_at, detail: "YOUTUBE_API_KEY env var is not set and Phyllo is not configured" };
+    return { ok: false, reason: "missing_api_key", fetched_at, detail: "YOUTUBE_API_KEY env var is not set. The free YouTube Data API key is required for handle-only lookups." };
   }
 
   const ident = parseChannelInput(input);

@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { Cable, CheckCircle2, RefreshCw, ShieldAlert, ShieldCheck } from "lucide-react";
+import { Cable, CheckCircle2, RefreshCw, ShieldAlert, ShieldCheck, Sparkles, Trash2 } from "lucide-react";
 import { socialProviders, type SocialProvider } from "@/lib/social/platforms";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -12,6 +12,52 @@ import { Input } from "@/components/ui/input";
 // approved. OAuth route handlers stay live regardless; this only controls
 // whether the per-provider "Connect with OAuth" button is visible.
 const SHOW_OAUTH_BUTTONS = false;
+
+// Phyllo Connect SDK loader URL. Provided by Phyllo.
+const PHYLLO_SDK_URL = "https://cdn.getphyllo.com/connect/v2/phyllo-connect.js";
+
+// Augment window with the Phyllo SDK type so TS doesn't complain.
+declare global {
+  interface Window {
+    PhylloConnect?: {
+      initialize: (config: {
+        clientDisplayName: string;
+        environment: "staging" | "sandbox" | "production";
+        userId: string;
+        token: string;
+      }) => PhylloConnectInstance;
+    };
+  }
+}
+type PhylloConnectInstance = {
+  open: () => void;
+  on: (event: string, callback: (...args: unknown[]) => void) => void;
+};
+
+function loadPhylloSdk(): Promise<NonNullable<Window["PhylloConnect"]>> {
+  if (typeof window === "undefined") return Promise.reject(new Error("Not in browser"));
+  if (window.PhylloConnect) return Promise.resolve(window.PhylloConnect);
+  return new Promise((resolve, reject) => {
+    const existing = document.querySelector<HTMLScriptElement>(`script[src="${PHYLLO_SDK_URL}"]`);
+    if (existing) {
+      existing.addEventListener("load", () => {
+        if (window.PhylloConnect) resolve(window.PhylloConnect);
+        else reject(new Error("Phyllo SDK loaded but global is missing"));
+      });
+      existing.addEventListener("error", () => reject(new Error("Phyllo SDK failed to load")));
+      return;
+    }
+    const script = document.createElement("script");
+    script.src = PHYLLO_SDK_URL;
+    script.async = true;
+    script.onload = () => {
+      if (window.PhylloConnect) resolve(window.PhylloConnect);
+      else reject(new Error("Phyllo SDK loaded but global is missing"));
+    };
+    script.onerror = () => reject(new Error("Phyllo SDK failed to load"));
+    document.head.appendChild(script);
+  });
+}
 
 export type ConnectedAccountRow = {
   id: string;
@@ -87,6 +133,86 @@ export function ConnectedAccountsPanel({
     router.refresh();
   }
 
+  async function disconnect(accountRowId: string) {
+    if (!confirm("Disconnect this account? Verified metrics will be removed.")) return;
+    setStatus("syncing");
+    setMessage("");
+    const response = await fetch(`/api/social/disconnect/${accountRowId}`, { method: "DELETE" });
+    if (!response.ok) {
+      const body = await response.json().catch(() => ({}));
+      setStatus("error");
+      setMessage(body.error ?? "Could not disconnect account.");
+      return;
+    }
+    setStatus("idle");
+    setMessage("Account disconnected.");
+    router.refresh();
+  }
+
+  async function connectViaPhyllo() {
+    setStatus("saving");
+    setMessage("");
+    try {
+      // 1. Get a fresh SDK token + user_id from our backend
+      const initRes = await fetch("/api/social/phyllo/init", { method: "POST" });
+      if (!initRes.ok) {
+        const body = await initRes.json().catch(() => ({}));
+        setStatus("error");
+        setMessage(body.error ?? "Could not start Phyllo Connect.");
+        return;
+      }
+      const { user_id, sdk_token, environment } = await initRes.json();
+
+      // 2. Load the Phyllo SDK
+      const PhylloConnect = await loadPhylloSdk();
+
+      // 3. Initialize + open the modal
+      const phyllo = PhylloConnect.initialize({
+        clientDisplayName: "Agently",
+        environment,
+        userId: user_id,
+        token: sdk_token
+      });
+
+      phyllo.on("accountConnected", (...args: unknown[]) => {
+        const [accountId, workplatformId] = args as [string, string];
+        // 4. Tell our backend to fetch the profile and store metrics
+        fetch("/api/social/phyllo/sync-account", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ account_id: accountId, work_platform_id: workplatformId })
+        }).then(async (res) => {
+          if (!res.ok) {
+            const body = await res.json().catch(() => ({}));
+            setStatus("error");
+            setMessage(body.error ?? "Connected, but failed to sync profile data. Try the Sync button.");
+          } else {
+            setStatus("idle");
+            setMessage("Account connected and synced.");
+            router.refresh();
+          }
+        }).catch(() => {
+          setStatus("error");
+          setMessage("Connected, but failed to sync profile data. Try the Sync button.");
+        });
+      });
+      phyllo.on("exit", () => {
+        setStatus("idle");
+      });
+      phyllo.on("connectionFailure", (...args: unknown[]) => {
+        const [reason] = args as [string];
+        setStatus("error");
+        setMessage(`Phyllo connection failed: ${reason}`);
+      });
+
+      phyllo.open();
+      setStatus("idle");
+    } catch (err) {
+      setStatus("error");
+      setMessage(err instanceof Error ? err.message : "Could not open Phyllo Connect.");
+    }
+  }
+
   return (
     <div className="mb-5 rounded-md border bg-muted p-4">
       <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
@@ -136,6 +262,20 @@ export function ConnectedAccountsPanel({
 
       <MetaReadinessGuide />
 
+      <div className="mb-4 rounded-md border border-primary/30 bg-primary/5 p-4 dark:border-primary/40 dark:bg-primary/10">
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+          <div>
+            <p className="text-sm font-semibold">Verify with one click via Phyllo</p>
+            <p className="mt-1 text-xs leading-5 text-muted-foreground">Opens a Phyllo-hosted login modal for Instagram, YouTube, Facebook, or Twitter. Real follower counts and engagement land here automatically. No Meta App Review needed.</p>
+          </div>
+          <Button onClick={connectViaPhyllo} disabled={status === "saving"} type="button">
+            <Sparkles className="h-4 w-4" />
+            {status === "saving" ? "Opening..." : "Connect via Phyllo"}
+          </Button>
+        </div>
+      </div>
+
+      <p className="mb-2 text-xs uppercase tracking-wide text-muted-foreground">Or save a handle manually (no verified metrics)</p>
       <form className="grid gap-3 md:grid-cols-[0.7fr_1fr_1.2fr_auto]" onSubmit={connect}>
         <select
           className="h-10 rounded-md border bg-white px-3 text-sm outline-none focus:ring-2 focus:ring-ring dark:border-white/10 dark:bg-card dark:text-foreground"
@@ -165,10 +305,16 @@ export function ConnectedAccountsPanel({
                   <Badge tone={latest ? "green" : "amber"}>{latest ? "synced" : "waiting for sync"}</Badge>
                   {latest ? <Badge tone={sourceTone(latest.source)}>{sourceLabel(latest.source)}</Badge> : null}
                 </div>
-                <Button disabled={status === "syncing"} onClick={() => sync(account.id)} size="sm" type="button" variant="secondary">
-                  <RefreshCw className="h-4 w-4" />
-                  Sync
-                </Button>
+                <div className="flex flex-wrap gap-2">
+                  <Button disabled={status === "syncing"} onClick={() => sync(account.id)} size="sm" type="button" variant="secondary">
+                    <RefreshCw className="h-4 w-4" />
+                    Sync
+                  </Button>
+                  <Button disabled={status === "syncing"} onClick={() => disconnect(account.id)} size="sm" type="button" variant="danger">
+                    <Trash2 className="h-4 w-4" />
+                    Disconnect
+                  </Button>
+                </div>
               </div>
               {latest ? (
                 <div className="grid gap-2 sm:grid-cols-3">

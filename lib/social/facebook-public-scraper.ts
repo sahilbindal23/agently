@@ -1,6 +1,6 @@
-import { fetchPhylloProfile, isPhylloConfigured } from "@/lib/social/phyllo-client";
-
 // Public Facebook page metric scraper. Same shape as instagram-public-scraper.
+// Note: Phyllo handle-lookup is enterprise-only - the real Phyllo path runs
+// through Connect SDK. DIY HTML scraping is the fallback for manual entries.
 // Tries multiple parsing strategies because Facebook (like Instagram) varies
 // what gets server-rendered vs hydrated client-side.
 //
@@ -49,24 +49,6 @@ export async function fetchFacebookPublicMetrics(handleOrUrl: string): Promise<F
   const handle = normalizeFacebookHandle(handleOrUrl);
   if (!handle) {
     return { ok: false, handle: handleOrUrl, reason: "invalid_handle", fetched_at: new Date().toISOString() };
-  }
-
-  // 1. Phyllo first if configured - production path
-  if (isPhylloConfigured()) {
-    const phyllo = await fetchPhylloProfile("facebook", handle);
-    if (phyllo.ok) {
-      return {
-        ok: true,
-        handle,
-        display_name: phyllo.display_name,
-        followers: phyllo.followers,
-        likes: null,
-        page_url: phyllo.profile_url ?? `https://www.facebook.com/${handle}`,
-        fetched_at: phyllo.fetched_at,
-        raw_description: "(via Phyllo Identity API)"
-      };
-    }
-    // Fall through to scraping on Phyllo failure
   }
 
   // Try main domain first, fall back to mbasic which sometimes serves

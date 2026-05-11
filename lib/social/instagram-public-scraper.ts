@@ -1,6 +1,10 @@
-import { fetchPhylloProfile, isPhylloConfigured } from "@/lib/social/phyllo-client";
-
 // Public Instagram profile scraper. No OAuth required.
+//
+// NOTE: Phyllo is *not* called from here anymore. Phyllo's Connect SDK is
+// creator-authorized (the creator clicks a button and logs into IG inside
+// Phyllo's modal); their handle-only lookup is a separate enterprise product.
+// So the manual-entry path stays as a DIY HTML scraper; the rich data path
+// is the Phyllo Connect button on the Connected Accounts panel.
 //
 // Strategy: fetch the public profile HTML and parse the Open Graph
 // description meta tag. Instagram puts follower/following/post counts there
@@ -68,29 +72,11 @@ export async function fetchInstagramPublicMetrics(handleOrUrl: string): Promise<
   const profileUrl = `https://www.instagram.com/${handle}/`;
   const fetched_at = new Date().toISOString();
 
-  // 1. Try Phyllo first when configured. It's the production path - reliable,
-  //    legitimate, won't break on Meta HTML changes. Falls through to public
-  //    scraping when not configured or when Phyllo specifically fails for
-  //    this profile (unsupported platform, profile missing in their index).
-  if (isPhylloConfigured()) {
-    const phyllo = await fetchPhylloProfile("instagram", handle);
-    if (phyllo.ok) {
-      return {
-        ok: true,
-        handle,
-        display_name: phyllo.display_name,
-        followers: phyllo.followers,
-        following: phyllo.following,
-        posts: phyllo.content_count,
-        profile_url: phyllo.profile_url ?? profileUrl,
-        fetched_at: phyllo.fetched_at,
-        raw_description: "(via Phyllo Identity API)"
-      };
-    }
-    // Hard failures from Phyllo (auth_error, missing_credentials) - fall back
-    // to public scraping. Soft failures (profile_not_found) probably won't
-    // succeed via scraping either but we try anyway for thoroughness.
-  }
+  // Note: Phyllo's handle-only lookup is enterprise-only. Real Phyllo data
+  // arrives via the Connect SDK (creator-authorized) and is written to
+  // connected_social_accounts + creator_platforms via /api/social/phyllo/
+  // sync-account. The DIY HTML scraping below is the fallback for manual
+  // handle entries.
 
   let html: string;
   let response: Response;

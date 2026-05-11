@@ -1,179 +1,178 @@
-// Phyllo Identity API client. Drop-in replacement for our DIY public scrapers
-// when PHYLLO_CLIENT_ID + PHYLLO_CLIENT_SECRET are set. Falls back to scraping
-// when not configured, so dev / staging / pre-billing keeps working.
+// Phyllo Connect SDK integration.
+//
+// Phyllo's core product is creator-authorized: the creator clicks a button
+// in our app, a Phyllo-hosted modal opens, they log into Instagram /
+// YouTube / Facebook there, and Phyllo manages the OAuth + data sync. We
+// receive profile data via /v1/profiles?account_id=... once the connection
+// is made.
+//
+// Three backend operations:
+//   1. createPhylloUser - register an Agently profile as a Phyllo user
+//      (idempotent - we cache the phyllo_user_id on profiles)
+//   2. createSdkToken   - mint a short-lived SDK token for the frontend
+//   3. fetchAccountProfile - pull profile data after a connection lands
+//   4. disconnectAccount - tell Phyllo to revoke a connected account
 //
 // Docs: https://docs.getphyllo.com/docs/api-reference
-//
-// API model:
-//   - Identity API: handle -> profile lookup. ~$0.10 per call. No creator
-//     action required, no OAuth, just a server-side call with Basic auth.
-//   - Endpoint: POST /v1/social/profiles/lookup
-//     body: { identifier, work_platform_id }
-//
-// Each social platform Phyllo supports has a stable work_platform_id UUID.
-// We hardcode the well-known ones here but allow override via env vars in
-// case Phyllo ever rotates them or adds new platforms.
+
+const FETCH_TIMEOUT_MS = 12_000;
+
+export const PHYLLO_PRODUCTS_DEFAULT = [
+  "IDENTITY",
+  "IDENTITY.AUDIENCE",
+  "ENGAGEMENT",
+  "ENGAGEMENT.AUDIENCE"
+] as const;
+
+export type PhylloProduct = typeof PHYLLO_PRODUCTS_DEFAULT[number] | "INCOME" | "ACTIVITY";
 
 export type PhylloPlatform = "instagram" | "youtube" | "facebook" | "twitter";
-
-export type PhylloProfile = {
-  ok: true;
-  platform: PhylloPlatform;
-  identifier: string;
-  display_name: string | null;
-  username: string | null;
-  followers: number | null;
-  following: number | null;
-  content_count: number | null;
-  is_verified: boolean | null;
-  profile_url: string | null;
-  image_url: string | null;
-  description: string | null;
-  fetched_at: string;
-  raw: Record<string, unknown>;
-};
-
-export type PhylloFailure = {
-  ok: false;
-  platform: PhylloPlatform;
-  identifier: string;
-  reason:
-    | "missing_credentials"
-    | "unsupported_platform"
-    | "profile_not_found"
-    | "rate_limited"
-    | "auth_error"
-    | "fetch_error"
-    | "parse_failed"
-    | "timeout";
-  http_status?: number;
-  detail?: string;
-  fetched_at: string;
-};
-
-export type PhylloResult = PhylloProfile | PhylloFailure;
-
-const FETCH_TIMEOUT_MS = 10_000;
-
-// Default work_platform_id values from Phyllo docs as of 2025. Override with
-// env vars if Phyllo updates them.
-const DEFAULT_PLATFORM_IDS: Record<PhylloPlatform, string> = {
-  instagram: "9bb8913b-ddd9-430b-a66a-d74d846e6c66",
-  youtube:   "14d9ddf5-51c6-415e-bde6-f8ed36ad7054",
-  facebook:  "ad2fec62-2987-40a0-89fb-23485972598c",
-  twitter:   "7645460a-96e0-4192-a3ce-a1fc30641f72"
-};
 
 export function isPhylloConfigured(): boolean {
   return Boolean(process.env.PHYLLO_CLIENT_ID && process.env.PHYLLO_CLIENT_SECRET);
 }
 
 function getPhylloBaseUrl(): string {
-  // Default to production. Phyllo's staging/sandbox is api.staging.getphyllo.com -
-  // set PHYLLO_API_URL to override during dev.
   return process.env.PHYLLO_API_URL ?? "https://api.getphyllo.com";
 }
 
-function getPlatformId(platform: PhylloPlatform): string | null {
-  const envKey = `PHYLLO_PLATFORM_ID_${platform.toUpperCase()}`;
-  const fromEnv = process.env[envKey];
-  return fromEnv || DEFAULT_PLATFORM_IDS[platform] || null;
+function getPhylloEnvironment(): "staging" | "sandbox" | "production" {
+  const url = getPhylloBaseUrl();
+  if (url.includes("staging")) return "staging";
+  if (url.includes("sandbox")) return "sandbox";
+  return "production";
 }
 
-/**
- * Identity-API lookup for a creator profile by handle.
- *
- * Returns a discriminated union. Branch on .ok.
- *
- * Falls through with reason='missing_credentials' if Phyllo env vars are
- * not set, so callers can chain with the public scraper as a fallback:
- *
- *   const phyllo = await fetchPhylloProfile("instagram", handle);
- *   if (phyllo.ok) return adaptToOurShape(phyllo);
- *   // ... fall back to DIY scraper
- */
-export async function fetchPhylloProfile(platform: PhylloPlatform, identifier: string): Promise<PhylloResult> {
-  const fetched_at = new Date().toISOString();
-  if (!isPhylloConfigured()) {
-    return { ok: false, platform, identifier, reason: "missing_credentials", fetched_at };
-  }
-  const platformId = getPlatformId(platform);
-  if (!platformId) {
-    return { ok: false, platform, identifier, reason: "unsupported_platform", fetched_at };
-  }
-
+function authHeader() {
   const auth = Buffer.from(`${process.env.PHYLLO_CLIENT_ID}:${process.env.PHYLLO_CLIENT_SECRET}`).toString("base64");
+  return `Basic ${auth}`;
+}
 
+async function phylloFetch<T = unknown>(path: string, init?: RequestInit): Promise<{ ok: true; status: number; data: T } | { ok: false; status: number; error: string }> {
+  if (!isPhylloConfigured()) {
+    return { ok: false, status: 0, error: "Phyllo credentials not configured" };
+  }
   let response: Response;
   try {
-    response = await fetch(`${getPhylloBaseUrl()}/v1/social/profiles/lookup`, {
-      method: "POST",
+    response = await fetch(`${getPhylloBaseUrl()}${path}`, {
+      ...init,
       headers: {
-        Authorization: `Basic ${auth}`,
+        Authorization: authHeader(),
         "Content-Type": "application/json",
-        Accept: "application/json"
+        Accept: "application/json",
+        ...(init?.headers ?? {})
       },
-      body: JSON.stringify({ identifier, work_platform_id: platformId }),
       signal: AbortSignal.timeout(FETCH_TIMEOUT_MS)
     });
   } catch (err) {
-    const isTimeout = err instanceof Error && err.name === "TimeoutError";
-    return {
-      ok: false,
-      platform,
-      identifier,
-      reason: isTimeout ? "timeout" : "fetch_error",
-      fetched_at,
-      detail: err instanceof Error ? err.message : undefined
-    };
+    return { ok: false, status: 0, error: err instanceof Error ? err.message : "fetch_error" };
   }
-
-  if (response.status === 401 || response.status === 403) {
-    return { ok: false, platform, identifier, reason: "auth_error", http_status: response.status, fetched_at };
-  }
-  if (response.status === 404) {
-    return { ok: false, platform, identifier, reason: "profile_not_found", http_status: 404, fetched_at };
-  }
-  if (response.status === 429) {
-    return { ok: false, platform, identifier, reason: "rate_limited", http_status: 429, fetched_at };
-  }
-
-  let body: Record<string, unknown>;
-  try {
-    body = await response.json();
-  } catch {
-    return { ok: false, platform, identifier, reason: "parse_failed", http_status: response.status, fetched_at };
-  }
-
+  let body: unknown;
+  try { body = await response.json(); } catch { body = null; }
   if (!response.ok) {
-    const detail = typeof body?.message === "string" ? body.message : undefined;
-    return { ok: false, platform, identifier, reason: "fetch_error", http_status: response.status, fetched_at, detail };
+    const message = (body && typeof body === "object" && "message" in body) ? String((body as Record<string, unknown>).message) : `Phyllo ${response.status}`;
+    return { ok: false, status: response.status, error: message };
+  }
+  return { ok: true, status: response.status, data: body as T };
+}
+
+// ---------- 1. Create / get a Phyllo user for an Agently profile ----------
+
+export async function createPhylloUser(params: { name: string; external_id: string }) {
+  return phylloFetch<{ id: string; name: string; external_id: string }>("/v1/users", {
+    method: "POST",
+    body: JSON.stringify({ name: params.name, external_id: params.external_id })
+  });
+}
+
+// ---------- 2. Mint an SDK token for the frontend ----------
+
+export async function createSdkToken(params: { user_id: string; products?: readonly PhylloProduct[] }) {
+  return phylloFetch<{ sdk_token: string; expires_at: string }>("/v1/sdk-tokens", {
+    method: "POST",
+    body: JSON.stringify({
+      user_id: params.user_id,
+      products: params.products ?? PHYLLO_PRODUCTS_DEFAULT
+    })
+  });
+}
+
+// ---------- 3. Fetch profile data for a connected account ----------
+
+export type PhylloProfileData = {
+  ok: true;
+  account_id: string;
+  user_id: string;
+  work_platform_id: string;
+  platform_username: string | null;
+  full_name: string | null;
+  followers: number | null;
+  following: number | null;
+  content_count: number | null;
+  is_verified: boolean | null;
+  url: string | null;
+  image_url: string | null;
+  introduction: string | null;
+  raw: Record<string, unknown>;
+};
+
+export async function fetchAccountProfile(accountId: string): Promise<PhylloProfileData | { ok: false; error: string; status: number }> {
+  // Phyllo's /v1/profiles endpoint takes account_id as a query param and
+  // returns the latest profile snapshot.
+  const result = await phylloFetch<{ data?: Array<Record<string, unknown>>; profile?: Record<string, unknown> } | Record<string, unknown>>(
+    `/v1/profiles?account_id=${encodeURIComponent(accountId)}`,
+    { method: "GET" }
+  );
+  if (!result.ok) return { ok: false, error: result.error, status: result.status };
+
+  // Response shape is sometimes { data: [profile] }, sometimes { profile },
+  // sometimes the profile directly. Defensive parse.
+  const body = result.data as Record<string, unknown>;
+  const profile = (Array.isArray((body as { data?: unknown[] }).data) ? ((body as { data: Record<string, unknown>[] }).data[0]) : null)
+    ?? (body.profile as Record<string, unknown> | undefined)
+    ?? body;
+  if (!profile || typeof profile !== "object") {
+    return { ok: false, error: "Phyllo profile response could not be parsed", status: result.status };
   }
 
-  // Phyllo's profile shape varies a bit by platform but the core fields are
-  // consistent. We pull out the ones we care about and keep the raw payload
-  // for downstream consumers that want richer data.
-  const profile = (body.profile as Record<string, unknown>) ?? body;
-  if (!profile || typeof profile !== "object") {
-    return { ok: false, platform, identifier, reason: "parse_failed", fetched_at };
-  }
+  const reputation = (profile.reputation as Record<string, unknown> | undefined) ?? {};
+
+  const accountNode = (profile.account as Record<string, unknown> | undefined) ?? {};
+  const userNode = (profile.user as Record<string, unknown> | undefined) ?? {};
+  const workPlatformNode = (profile.work_platform as Record<string, unknown> | undefined) ?? {};
 
   return {
     ok: true,
-    platform,
-    identifier,
-    display_name: stringOrNull(profile.full_name) ?? stringOrNull(profile.display_name),
-    username: stringOrNull(profile.username) ?? stringOrNull(profile.platform_username),
-    followers: numberOrNull(profile.reputation && (profile.reputation as Record<string, unknown>).follower_count) ?? numberOrNull(profile.follower_count),
-    following: numberOrNull(profile.reputation && (profile.reputation as Record<string, unknown>).following_count) ?? numberOrNull(profile.following_count),
-    content_count: numberOrNull(profile.reputation && (profile.reputation as Record<string, unknown>).content_count) ?? numberOrNull(profile.content_count),
+    account_id: String(accountNode.id ?? accountId),
+    user_id: String(userNode.id ?? ""),
+    work_platform_id: String(workPlatformNode.id ?? profile.work_platform_id ?? ""),
+    platform_username: stringOrNull(profile.platform_username) ?? stringOrNull(profile.username),
+    full_name: stringOrNull(profile.full_name) ?? stringOrNull(profile.name),
+    followers: numberOrNull(reputation.follower_count) ?? numberOrNull(profile.follower_count),
+    following: numberOrNull(reputation.following_count) ?? numberOrNull(profile.following_count),
+    content_count: numberOrNull(reputation.content_count) ?? numberOrNull(profile.content_count),
     is_verified: typeof profile.is_verified === "boolean" ? profile.is_verified : null,
-    profile_url: stringOrNull(profile.url),
+    url: stringOrNull(profile.url),
     image_url: stringOrNull(profile.image_url) ?? stringOrNull(profile.profile_image_url),
-    description: stringOrNull(profile.introduction) ?? stringOrNull(profile.description),
-    fetched_at,
-    raw: body
+    introduction: stringOrNull(profile.introduction) ?? stringOrNull(profile.description),
+    raw: profile
   };
+}
+
+// ---------- 4. Disconnect a connected account ----------
+
+export async function disconnectAccount(accountId: string) {
+  // Phyllo doesn't have a hard "delete" - they revoke via DELETE on the
+  // account endpoint. Returns 200/204 on success.
+  return phylloFetch(`/v1/accounts/${encodeURIComponent(accountId)}/disconnect`, {
+    method: "POST"
+  });
+}
+
+// ---------- helpers ----------
+
+export function getPhylloFrontendEnvironment() {
+  return getPhylloEnvironment();
 }
 
 function stringOrNull(value: unknown): string | null {
@@ -187,14 +186,25 @@ function numberOrNull(value: unknown): number | null {
 }
 
 /**
- * Same shape as our existing platform-specific consistency checks.
+ * Map a Phyllo platform name (instagram / youtube / facebook / twitter) to
+ * the platform string we use in connected_social_accounts.provider.
  */
-export function classifyPhylloAgainstSelfReport(scraped: number, selfReported?: number | null) {
-  if (!selfReported || selfReported <= 0) {
-    return { verdict: "no_self_report" as const, delta_pct: 0 };
+export function phylloPlatformName(workPlatformId: string, defaultName?: string): PhylloPlatform | null {
+  // Stable production UUIDs, may differ in staging
+  const map: Record<string, PhylloPlatform> = {
+    "9bb8913b-ddd9-430b-a66a-d74d846e6c66": "instagram",
+    "14d9ddf5-51c6-415e-bde6-f8ed36ad7054": "youtube",
+    "ad2fec62-2987-40a0-89fb-23485972598c": "facebook",
+    "7645460a-96e0-4192-a3ce-a1fc30641f72": "twitter"
+  };
+  if (map[workPlatformId]) return map[workPlatformId];
+  // env var override (e.g. PHYLLO_PLATFORM_ID_INSTAGRAM)
+  for (const platform of ["instagram", "youtube", "facebook", "twitter"] as const) {
+    const envId = process.env[`PHYLLO_PLATFORM_ID_${platform.toUpperCase()}`];
+    if (envId && envId === workPlatformId) return platform;
   }
-  const delta = Math.abs(scraped - selfReported) / selfReported;
-  return delta <= 0.20
-    ? { verdict: "within_tolerance" as const, delta_pct: Number((delta * 100).toFixed(1)) }
-    : { verdict: "significant_difference" as const, delta_pct: Number((delta * 100).toFixed(1)) };
+  if (defaultName === "instagram" || defaultName === "youtube" || defaultName === "facebook" || defaultName === "twitter") {
+    return defaultName;
+  }
+  return null;
 }
