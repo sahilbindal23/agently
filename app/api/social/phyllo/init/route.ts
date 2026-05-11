@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { getCurrentUser } from "@/lib/auth/session";
-import { createPhylloUser, createSdkToken, getPhylloFrontendEnvironment, isPhylloConfigured, PHYLLO_PRODUCTS_DEFAULT } from "@/lib/social/phyllo-client";
+import { createPhylloUser, createSdkToken, getPhylloFrontendEnvironment, getPhylloUserByExternalId, isPhylloConfigured, PHYLLO_PRODUCTS_DEFAULT } from "@/lib/social/phyllo-client";
 import { createAdminClient } from "@/lib/supabase/admin";
 
 // Combined endpoint: ensures a Phyllo user exists for the current Agently
@@ -21,6 +21,18 @@ export async function POST() {
   // Reuse the existing Phyllo user_id if we have one, otherwise create
   const { data: profile } = await admin.from("profiles").select("phyllo_user_id, full_name, email").eq("id", user.id).maybeSingle();
   let phylloUserId = profile?.phyllo_user_id ? String(profile.phyllo_user_id) : null;
+
+  if (!phylloUserId) {
+    const externalId = user.id;
+    const existing = await getPhylloUserByExternalId(externalId);
+    if (existing.ok && existing.data.id) {
+      phylloUserId = existing.data.id;
+      await admin.from("profiles").update({
+        phyllo_user_id: phylloUserId,
+        phyllo_user_created_at: new Date().toISOString()
+      }).eq("id", user.id);
+    }
+  }
 
   if (!phylloUserId) {
     const created = await createPhylloUser({

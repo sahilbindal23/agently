@@ -33,7 +33,7 @@ export function isPhylloConfigured(): boolean {
 }
 
 function getPhylloBaseUrl(): string {
-  return process.env.PHYLLO_API_URL ?? "https://api.getphyllo.com";
+  return process.env.PHYLLO_API_URL ?? "https://api.staging.getphyllo.com";
 }
 
 function getPhylloEnvironment(): "staging" | "sandbox" | "production" {
@@ -70,7 +70,7 @@ async function phylloFetch<T = unknown>(path: string, init?: RequestInit): Promi
   let body: unknown;
   try { body = await response.json(); } catch { body = null; }
   if (!response.ok) {
-    const message = (body && typeof body === "object" && "message" in body) ? String((body as Record<string, unknown>).message) : `Phyllo ${response.status}`;
+    const message = describePhylloError(body, response.status);
     return { ok: false, status: response.status, error: message };
   }
   return { ok: true, status: response.status, data: body as T };
@@ -83,6 +83,13 @@ export async function createPhylloUser(params: { name: string; external_id: stri
     method: "POST",
     body: JSON.stringify({ name: params.name, external_id: params.external_id })
   });
+}
+
+export async function getPhylloUserByExternalId(externalId: string) {
+  return phylloFetch<{ id: string; name?: string; external_id?: string }>(
+    `/v1/users/external_id/${encodeURIComponent(externalId)}`,
+    { method: "GET" }
+  );
 }
 
 // ---------- 2. Mint an SDK token for the frontend ----------
@@ -183,6 +190,22 @@ function numberOrNull(value: unknown): number | null {
   if (value === null || value === undefined) return null;
   const n = Number(value);
   return Number.isFinite(n) ? Math.round(n) : null;
+}
+
+function describePhylloError(body: unknown, status: number) {
+  if (!body || typeof body !== "object") return `Phyllo ${status}`;
+  const record = body as Record<string, unknown>;
+  const message =
+    stringOrNull(record.message) ??
+    stringOrNull(record.error) ??
+    stringOrNull(record.detail) ??
+    stringOrNull(record.title);
+  if (message) return `${message} (Phyllo ${status})`;
+  try {
+    return `${JSON.stringify(body).slice(0, 500)} (Phyllo ${status})`;
+  } catch {
+    return `Phyllo ${status}`;
+  }
 }
 
 /**
