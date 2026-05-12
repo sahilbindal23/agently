@@ -2,7 +2,7 @@ import type { NextRequest } from "next/server";
 import { NextResponse } from "next/server";
 import { createServerClient } from "@supabase/ssr";
 
-const publicRoutes = new Set(["/", "/login", "/signup"]);
+const publicRoutes = new Set(["/", "/login", "/signup", "/privacy", "/terms", "/data-deletion"]);
 const creatorRoutes = ["/creator-home", "/activity", "/notifications", "/messages", "/profile", "/intake", "/demo-guide", "/feedback", "/creators", "/freelancers", "/brands", "/offers", "/freelancer-home", "/ai-insights", "/payments"];
 const freelancerRoutes = ["/freelancer-home", "/activity", "/notifications", "/messages", "/profile", "/intake", "/demo-guide", "/feedback", "/creators", "/freelancers", "/brands", "/offers", "/ai-insights", "/payments"];
 const brandRoutes = ["/brand-home", "/activity", "/notifications", "/messages", "/profile", "/intake", "/demo-guide", "/feedback", "/brand-insights", "/campaigns", "/deals", "/creators", "/freelancers", "/brands", "/payments"];
