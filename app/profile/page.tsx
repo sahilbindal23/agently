@@ -2,6 +2,7 @@ import { redirect } from "next/navigation";
 import { AppShell } from "@/components/layout/app-shell";
 import { PageHeader } from "@/components/layout/page-header";
 import { AccountDeletionPanel } from "@/components/profile/account-deletion-panel";
+import { ChangePasswordPanel } from "@/components/profile/change-password-panel";
 import { PayoutReadinessCard } from "@/components/profile/payout-readiness-card";
 import { ProfileEditForm } from "@/components/profile/profile-edit-form";
 import { ProfileImageUpload } from "@/components/profile/profile-image-upload";
@@ -108,6 +109,7 @@ export default async function ProfilePage() {
           serviceRates={bundle.serviceRates}
         />
       </Card>
+      <ChangePasswordPanel />
       <AccountDeletionPanel pendingRequest={pendingDeletionRequest} />
     </AppShell>
   );
