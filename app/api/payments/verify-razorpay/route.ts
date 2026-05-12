@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { trackEvent, userEventBase } from "@/lib/analytics/track";
+import { notifyPaymentStatusChanged } from "@/lib/email/workflow";
 import { verifyRazorpayPaymentSignature } from "@/lib/razorpay/client";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
@@ -79,6 +80,7 @@ export async function POST(request: Request) {
     entityId,
     metadata: { status: "funded", source: "razorpay_checkout", razorpay_order_id: orderId, razorpay_payment_id: paymentId }
   });
+  await notifyPaymentStatusChanged(admin, entityType, entityId, "funded");
   await runWorkflowAutomations(admin);
 
   return NextResponse.json({ funded: true, status: "funded", source: "razorpay_verified" });

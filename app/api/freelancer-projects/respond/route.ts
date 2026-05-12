@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 import { trackEvent, userEventBase } from "@/lib/analytics/track";
 import { ensureAgreementForFreelancerProject } from "@/lib/contracts/agreements";
+import { notifyFreelancerProjectResponded } from "@/lib/email/workflow";
 import { applyLedgerEvent } from "@/lib/engines/outcome-ledger";
 import { ensurePaymentRecordForEntity } from "@/lib/payments/workflow";
 import { createAdminClient } from "@/lib/supabase/admin";
@@ -112,6 +113,7 @@ export async function POST(request: Request) {
     outcomeLabel: status === "accepted" ? "accepted" : status === "changes_requested" ? "countered" : "declined",
     responseStatus: status
   });
+  await notifyFreelancerProjectResponded(admin, projectId, status, response);
   return NextResponse.json({ data });
 }
 

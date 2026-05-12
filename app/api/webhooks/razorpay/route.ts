@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { notifyPaymentStatusChanged } from "@/lib/email/workflow";
 import { verifyRazorpayWebhookSignature } from "@/lib/razorpay/client";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { runWorkflowAutomations } from "@/lib/workflow/automation";
@@ -68,5 +69,6 @@ async function markFunded(
     })
     .eq(paymentColumn, entityId)
     .eq("razorpay_order_id", orderId);
+  await notifyPaymentStatusChanged(admin, entityType, entityId, "funded");
   await runWorkflowAutomations(admin);
 }

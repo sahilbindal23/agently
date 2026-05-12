@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { trackEvent, userEventBase } from "@/lib/analytics/track";
 import { applyLedgerEvent } from "@/lib/engines/outcome-ledger";
+import { notifyFreelancerProjectSent } from "@/lib/email/workflow";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
 
@@ -72,5 +73,6 @@ export async function POST(request: Request) {
     freelancerProjectId: data.id,
     outcomeLabel: "offer_sent"
   });
+  await notifyFreelancerProjectSent(admin, String(data.id));
   return NextResponse.json({ data }, { status: 201 });
 }

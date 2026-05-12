@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 import { trackEvent, userEventBase } from "@/lib/analytics/track";
 import { recordObservationFromDeal, recordObservationFromFreelancerProject } from "@/lib/benchmarks/internal-deals";
+import { notifyPaymentStatusChanged } from "@/lib/email/workflow";
 import { applyLedgerEvent } from "@/lib/engines/outcome-ledger";
 import { ensurePaymentRecordForEntity } from "@/lib/payments/workflow";
 import { createAdminClient } from "@/lib/supabase/admin";
@@ -78,6 +79,7 @@ export async function POST(request: Request) {
     if (status === "released") {
       try { await recordObservationFromDeal(admin, entityId); } catch (err) { console.error("[benchmarks] deal observation failed", err); }
     }
+    await notifyPaymentStatusChanged(admin, "deal", entityId, status);
     return NextResponse.json({ data });
   }
 
@@ -122,6 +124,7 @@ export async function POST(request: Request) {
   if (status === "released") {
     try { await recordObservationFromFreelancerProject(admin, entityId); } catch (err) { console.error("[benchmarks] project observation failed", err); }
   }
+  await notifyPaymentStatusChanged(admin, "freelancer_project", entityId, status);
   return NextResponse.json({ data });
 }
 

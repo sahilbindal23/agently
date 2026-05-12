@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
+import { notifyPaymentStatusChanged } from "@/lib/email/workflow";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
 import { getStripe } from "@/lib/stripe/client";
@@ -72,6 +73,7 @@ export async function POST(request: Request) {
       .update({ status: "funded", funded_at: new Date().toISOString() })
       .eq(paymentCol, entityId)
       .eq("stripe_checkout_session_id", sessionId);
+    await notifyPaymentStatusChanged(admin, entityType, entityId, "funded");
 
     return NextResponse.json({ funded: true, status: "funded", source: "stripe_verified" });
   } catch {

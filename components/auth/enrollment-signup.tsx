@@ -143,7 +143,7 @@ export function EnrollmentSignup({ initialMode = "creator" }: { initialMode?: Mo
 function CreatorEnrollmentFields() {
   return (
     <>
-      <Input name="creator_name" placeholder="Display name" required />
+      <Input className="md:col-span-2" name="creator_name" placeholder="Display name" required />
       <Select name="primary_niche" label="Primary niche" options={NICHES} placeholderOption="What do you make content about?" />
       <MultiCheckbox className="md:col-span-2" name="languages" label="Languages you create in" options={LANGUAGES} />
       <Input name="instagram_url" placeholder="Instagram URL (optional)" />
@@ -156,7 +156,7 @@ function CreatorEnrollmentFields() {
 function BrandEnrollmentFields() {
   return (
     <>
-      <Input name="brand_name" placeholder="Brand name" required />
+      <Input className="md:col-span-2" name="brand_name" placeholder="Brand name" required />
       <Select name="category" label="Industry" options={BRAND_INDUSTRIES} placeholderOption="What does your brand do?" />
       <Input name="website_url" placeholder="Website URL" />
       <Input name="instagram_url" placeholder="Instagram URL (optional)" />
@@ -174,7 +174,7 @@ function BrandEnrollmentFields() {
 function FreelancerEnrollmentFields() {
   return (
     <>
-      <Input name="freelancer_name" placeholder="Freelancer or studio name" required />
+      <Input className="md:col-span-2" name="freelancer_name" placeholder="Freelancer or studio name" required />
       <Select name="service_category" label="Primary service" options={FREELANCER_SERVICES} placeholderOption="What's your main craft?" />
       <Select name="availability_status" label="Availability" options={AVAILABILITY_STATUSES} placeholderOption="Are you taking work?" />
       <Input name="hourly_rate_inr" placeholder="Hourly rate INR" type="number" />

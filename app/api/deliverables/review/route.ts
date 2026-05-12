@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { trackEvent, userEventBase } from "@/lib/analytics/track";
+import { notifyDeliverableReviewed } from "@/lib/email/workflow";
 import { applyLedgerEvent } from "@/lib/engines/outcome-ledger";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
@@ -67,6 +68,7 @@ export async function POST(request: Request) {
     metadata: { deliverable_id: deliverableId, has_review_notes: Boolean(reviewNotes) }
   });
   await applyDeliverableLedgerEvent(admin, deliverable, status, reviewNotes);
+  await notifyDeliverableReviewed(admin, deliverableId, status, reviewNotes);
   await runWorkflowAutomations(admin);
 
   return NextResponse.json({ data });

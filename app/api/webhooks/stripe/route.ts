@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { notifyPaymentStatusChanged } from "@/lib/email/workflow";
 import { getStripe } from "@/lib/stripe/client";
 import { createAdminClient } from "@/lib/supabase/admin";
 
@@ -39,4 +40,5 @@ async function markFunded(entityType: "deal" | "freelancer_project", entityId: s
     .update({ status: "funded", funded_at: new Date().toISOString() })
     .eq(entityType === "deal" ? "deal_id" : "freelancer_project_id", entityId)
     .eq("stripe_checkout_session_id", sessionId);
+  await notifyPaymentStatusChanged(admin, entityType, entityId, "funded");
 }

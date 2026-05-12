@@ -19,10 +19,11 @@ export function ProfileImageUpload({
 
   async function onSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
+    const form = event.currentTarget;
     setStatus("uploading");
     setError("");
 
-    const formData = new FormData(event.currentTarget);
+    const formData = new FormData(form);
     formData.set("entity_id", entityId);
     formData.set("entity_type", entityType);
 
@@ -40,7 +41,7 @@ export function ProfileImageUpload({
 
     setStatus("idle");
     setFileName("");
-    event.currentTarget.reset();
+    form.reset();
     router.refresh();
   }
 

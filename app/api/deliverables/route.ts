@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { trackEvent, userEventBase } from "@/lib/analytics/track";
+import { notifyDeliverableSubmitted } from "@/lib/email/workflow";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
 
@@ -62,6 +63,7 @@ export async function POST(request: Request) {
     entityId,
     metadata: { deliverable_id: data.id, platform, has_notes: Boolean(notes) }
   });
+  await notifyDeliverableSubmitted(admin, String(data.id));
 
   return NextResponse.json({ data }, { status: 201 });
 }
