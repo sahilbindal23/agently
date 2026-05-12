@@ -53,7 +53,7 @@ export default async function EngineRoomPage() {
 
       <section className="mb-5 grid gap-3 md:grid-cols-2 xl:grid-cols-4">
         <EngineMetric icon={<BrainCircuit className="h-4 w-4" />} label="Core engine" value="Recommendations" copy="Campaign fit, trust, behavior, and ROI signals." />
-        <EngineMetric icon={<Calculator className="h-4 w-4" />} label="Pricing engine" value="INR bands" copy="Platform-specific valuation with rights and usage multipliers." />
+        <EngineMetric icon={<Calculator className="h-4 w-4" />} label="Pricing engine" value="INR bands" copy="Platform-specific base valuation. Usage rights, paid usage, and exclusivity negotiated case-by-case in the offer." />
         <EngineMetric icon={<ShieldCheck className="h-4 w-4" />} label="Trust engine" value="API + outcomes" copy="Social verification and completed Agently workflow signals." />
         <EngineMetric icon={<SlidersHorizontal className="h-4 w-4" />} label="Calibration mode" value="Read-only" copy="Weights are documented now; editable controls can come next." />
       </section>

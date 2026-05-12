@@ -1,11 +1,11 @@
 export const engineWeights = {
   campaignRecommendation: [
-    { key: "category_fit", label: "Category fit", weight: 0.22, description: "How closely niche, content style, or freelancer service maps to the campaign brief." },
-    { key: "audience_fit", label: "Audience fit", weight: 0.18, description: "How well the talent reaches the requested audience or campaign goal." },
-    { key: "city_fit", label: "City fit", weight: 0.16, description: "Bangalore and India relevance, including local city signals." },
-    { key: "budget_fit", label: "Budget fit", weight: 0.14, description: "Whether the campaign budget is realistic for the expected work or reach." },
+    { key: "category_fit", label: "Category fit", weight: 0.24, description: "How closely niche, content style, or freelancer service maps to the campaign brief." },
+    { key: "audience_fit", label: "Audience fit", weight: 0.20, description: "Topic overlap between the campaign brief and the talent's self-reported niche/bio/content style. Demographics-based audience matching (age/gender/geo from Phyllo) is a planned upgrade — current weight is a placeholder for that." },
+    { key: "budget_fit", label: "Budget fit", weight: 0.16, description: "Whether the campaign budget is realistic for the expected work or reach." },
     { key: "platform_fit", label: "Platform fit", weight: 0.12, description: "Fit against requested creator channel or production format." },
-    { key: "language_fit", label: "Language fit", weight: 0.1, description: "Overlap between campaign languages and talent languages." },
+    { key: "language_fit", label: "Language fit", weight: 0.12, description: "Overlap between campaign languages and talent languages. Higher weight reflects India-wide language diversity." },
+    { key: "city_fit", label: "City fit", weight: 0.08, description: "Bangalore-specific local signals. Lowered from 0.16 because the product is India-first even though launch is Bangalore." },
     { key: "data_confidence", label: "Data confidence", weight: 0.08, description: "How much Agently trusts the underlying profile, API, and performance data." }
   ],
   creatorValuation: [
@@ -19,9 +19,6 @@ export const engineWeights = {
     { label: "India audience premium", value: "+18% if India audience >= 80%; -18% if below 45%", description: "India-first relevance matters for Bangalore launch campaigns." },
     { label: "Bangalore fit premium", value: "+12% if Bangalore fit >= 80%; -10% if below 45%", description: "Local creator proof has extra value for city launches." },
     { label: "High engagement", value: "+12% if engagement >= 5%; -14% if below 2%", description: "Engagement improves sponsor confidence." },
-    { label: "Usage rights", value: "Up to +60% for usage beyond 30 days", description: "Longer licensing should cost more." },
-    { label: "Paid usage/whitelisting", value: "+35%", description: "Paid usage changes the economics and should be time-capped." },
-    { label: "Exclusivity", value: "Up to +50% based on exclusivity days", description: "Category restrictions block future revenue." },
     { label: "Revisions", value: "+8% per extra revision, capped at +24%", description: "More revision rounds increase production burden." },
     { label: "Rush turnaround", value: "+18% if under 5 days", description: "Fast timelines should carry a premium." }
   ],
@@ -33,10 +30,10 @@ export const engineWeights = {
     { label: "Education/career", value: "1.08x", description: "Lead quality can support higher budgets." }
   ],
   trustAndBehavior: [
-    { label: "Performance trust tier", value: "+18 data confidence", description: "Strongest verification tier." },
-    { label: "Social trust tier", value: "+12 data confidence", description: "Social/API-backed profile signals." },
-    { label: "Profile verified", value: "+7 data confidence", description: "Manual/profile verification." },
-    { label: "API-synced metrics", value: "+5 data confidence and +7 sort boost", description: "Social platform data is more trustworthy than self-reported metrics." },
+    { label: "Verified by Agently", value: "+10 data confidence", description: "Profile passed Agently verification (admin review and/or Phyllo Connect). Collapsed from prior performance/social/profile tiers — beta-stage simplification until we have enough closed deals to justify finer granularity." },
+    { label: "Reviewing", value: "+3 data confidence", description: "Verification is in flight." },
+    { label: "Rejected", value: "-18 data confidence", description: "Profile failed verification." },
+    { label: "API-synced metrics", value: "+5 data confidence and +7 sort boost", description: "Social platform data (Phyllo) is more trustworthy than self-reported metrics." },
     { label: "Completed work", value: "+4 to +10 data confidence", description: "Past completed Agently work increases trust." },
     { label: "Shortlisted", value: "+3 to +5 ranking points", description: "Brand intent signal, stronger within the same campaign." },
     { label: "Accepted offer", value: "+8 ranking points", description: "Talent has shown willingness to close deals." },
@@ -59,7 +56,7 @@ export const engineWeights = {
 export const enginePrinciples = [
   "API-synced and completed-work data should outrank self-reported data.",
   "The engine should reward realistic fit, not vanity follower counts.",
-  "Bangalore and India relevance should matter more than US audience for this launch phase.",
+  "India audience should matter more than US audience. Bangalore launch is a wedge, not a constraint — most of the weight goes to category, audience, budget, language.",
   "Closed deals, payment outcomes, counter outcomes, and delivery outcomes should become the long-term moat.",
   "Every score must be explainable enough for an admin to defend and tune.",
   "User-facing screens should show enough reasoning to build trust, while admin screens can expose deeper math."

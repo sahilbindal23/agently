@@ -8,13 +8,8 @@ export type ValuationInput = {
   niche: string;
   deliverable_type?: string;
   deliverable_count?: number;
-  usage_rights_days?: number;
-  exclusivity_days?: number;
   revisions?: number;
   turnaround_days?: number;
-  whitelisting?: boolean;
-  paid_usage?: boolean;
-  growth_trend?: string;
 };
 
 export function rulesBasedValuation(input: ValuationInput) {
@@ -26,26 +21,26 @@ export function rulesBasedValuation(input: ValuationInput) {
   let baseInr = 0;
   const adjustments: string[] = [];
   const chargeExtras: string[] = [];
-  let packageRecommendation = "Creator-friendly package with clear deliverables, one revision round, capped usage, and payment funded before publishing.";
+  let packageRecommendation = "Creator-friendly package with clear deliverables, one revision round, and payment funded before publishing.";
 
   if (platform.includes("youtube")) {
     const cpv = deliverable.includes("dedicated") ? 0.9 : 0.38;
     baseInr = input.avg_views * cpv;
     if (deliverable.includes("dedicated")) baseInr *= 1.9;
     packageRecommendation = deliverable.includes("dedicated")
-      ? "Dedicated YouTube video with capped 30-day organic usage, pinned comment, one revision round, and separate pricing for paid usage."
-      : "90-second YouTube integration with pinned comment, one revision round, and 30-day organic usage.";
+      ? "Dedicated YouTube video with pinned comment and one revision round. Negotiate usage rights, paid usage, and exclusivity separately in the offer."
+      : "90-second YouTube integration with pinned comment and one revision round. Negotiate usage rights and paid usage separately in the offer.";
   } else if (platform.includes("instagram")) {
     if (deliverable.includes("story")) {
       baseInr = Math.max(input.followers * 0.012 * Math.max(0.8, input.engagement_rate / 5), input.avg_views * 0.28);
-      packageRecommendation = "Three-story frame package with link sticker, one revision round, and 14-30 day usage cap.";
+      packageRecommendation = "Three-story frame package with link sticker and one revision round. Negotiate usage rights separately in the offer.";
     } else {
       baseInr = Math.max(input.avg_views * 0.65, input.followers * 0.18);
-      packageRecommendation = "One Reel plus three story frames, one revision round, 30-day organic usage, and separate paid usage pricing.";
+      packageRecommendation = "One Reel plus three story frames with one revision round. Negotiate usage rights, paid usage, and exclusivity separately in the offer.";
     }
   } else if (platform.includes("tiktok") || platform.includes("short")) {
     baseInr = Math.max(input.avg_views * 0.45, input.followers * 0.035);
-    packageRecommendation = "One short-form sponsored video with one revision round and 30-day organic usage.";
+    packageRecommendation = "One short-form sponsored video with one revision round. Negotiate usage rights separately in the offer.";
   } else {
     baseInr = Math.max(input.avg_views * 0.4, input.followers * 0.025);
   }
@@ -80,23 +75,11 @@ export function rulesBasedValuation(input: ValuationInput) {
   baseInr *= categoryMultiplier.multiplier;
   adjustments.push(categoryMultiplier.reason);
 
-  const usageDays = Number(input.usage_rights_days ?? 30);
-  if (usageDays > 30) {
-    const uplift = Math.min(0.6, (usageDays - 30) / 180);
-    baseInr *= 1 + uplift;
-    chargeExtras.push(`Charge extra for ${usageDays}-day usage rights.`);
-  }
-
-  if (input.whitelisting || input.paid_usage) {
-    baseInr *= 1.35;
-    chargeExtras.push("Paid usage or whitelisting should be priced separately and time-capped.");
-  }
-
-  const exclusivityDays = Number(input.exclusivity_days ?? 0);
-  if (exclusivityDays > 0) {
-    baseInr *= 1 + Math.min(0.5, exclusivityDays / 180);
-    chargeExtras.push(`Exclusivity for ${exclusivityDays} days needs a category-specific premium.`);
-  }
+  // Commercial-rights multipliers (usage rights, paid usage / whitelisting,
+  // exclusivity) intentionally removed. Those are case-by-case commercial
+  // terms a creator should negotiate in the offer flow, not baked into a
+  // base sponsorship estimate. Keeping them in the model encouraged users
+  // to think of the estimate as a final price rather than a starting band.
 
   const revisions = Number(input.revisions ?? 1);
   if (revisions > 1) {
@@ -123,7 +106,7 @@ export function rulesBasedValuation(input: ValuationInput) {
     negotiation_floor_cents: Math.round(base * 0.68),
     charge_extra_for: chargeExtras,
     adjustments,
-    rationale: `${input.platform} ${input.deliverable_type ?? "sponsored deliverable"} estimate based on Indian market heuristics, average views, followers, engagement, ${indiaAudience}% India audience, ${bangaloreFit}/100 Bangalore fit, category demand, usage rights, and production constraints. This is a starting band until Agently has enough closed Bangalore/India deal outcomes to calibrate the model.`
+    rationale: `${input.platform} ${input.deliverable_type ?? "sponsored deliverable"} estimate based on Indian market heuristics: average views, followers, engagement, ${indiaAudience}% India audience, ${bangaloreFit}/100 Bangalore fit, category demand, revision rounds, and turnaround. Commercial-rights terms (usage, paid usage, exclusivity) are excluded - those should be negotiated case-by-case in the offer. This is a starting band until Agently has enough closed Bangalore/India deal outcomes to calibrate the model.`
   };
 }
 
@@ -145,6 +128,5 @@ function getConfidence(input: ValuationInput, indiaAudience: number, bangaloreFi
   if (indiaAudience >= 60) confidence += 0.08;
   if (bangaloreFit >= 60) confidence += 0.08;
   if (input.deliverable_type) confidence += 0.04;
-  if (input.usage_rights_days !== undefined) confidence += 0.03;
   return Math.min(0.86, confidence);
 }

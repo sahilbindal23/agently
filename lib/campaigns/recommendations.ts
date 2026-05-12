@@ -87,7 +87,7 @@ export function rankCreators(campaign: Campaign, creators: Creator[], platforms:
     const budgetFit = getCreatorBudgetFit(campaign.budget_cents, primary?.avg_views ?? 0);
     const trustBoost = trustScore(creator.verification_tier, creator.verification_status) + completedWorkTrustBoost(Number(creator.completed_deal_count ?? 0));
     const syncedMetrics = isTrustedMetricSource(primary?.metric_source);
-    const trustSource: TrustSource = syncedMetrics ? "api_synced" : creator.verification_tier && creator.verification_tier !== "unverified" ? "verified_profile" : "self_reported";
+    const trustSource: TrustSource = syncedMetrics ? "api_synced" : isVerifiedTier(creator.verification_tier, creator.verification_status) ? "verified_profile" : "self_reported";
     const sourceConfidence = syncedMetrics ? 82 : primary?.metric_source ? 38 : 42;
     const dataConfidence = Math.min(96, Math.max(primary?.data_confidence ?? 0, sourceConfidence) + trustBoost + (syncedMetrics ? 7 : 0));
     const scoreBreakdown = {
@@ -165,7 +165,7 @@ export function rankFreelancers(campaign: Campaign, freelancers: FreelancerRecom
       score_breakdown: scoreBreakdown,
       watchouts,
       roi_estimate: roi,
-      trust_source: freelancer.verification_tier && freelancer.verification_tier !== "unverified" ? "verified_profile" as const : "self_reported" as const
+      trust_source: isVerifiedTier(freelancer.verification_tier, freelancer.verification_status) ? "verified_profile" as const : "self_reported" as const
     };
   }).sort((a, b) => b.score - a.score);
 }
@@ -259,23 +259,47 @@ function getFreelancerBudgetFit(budgetCents: number, hourlyRateCents: number) {
 }
 
 function weightedScore(score: ScoreBreakdown) {
+  // Weight rationale:
+  //   - Bangalore launch is happening but the product is India-first, so
+  //     city_fit dropped from 0.16 to 0.08. The freed weight redistributed
+  //     to category_fit / audience_fit / budget_fit / language_fit.
+  //   - audience_fit is currently a keyword-match against self-reported
+  //     niche + bio + content_style. The label is somewhat misleading —
+  //     real audience demographics (age, gender, geo) from Phyllo are not
+  //     yet wired into ranking. Upgrade item.
   return Math.max(35, Math.min(96, Math.round(
-    score.category_fit * 0.22 +
-    score.audience_fit * 0.18 +
+    score.category_fit * 0.24 +
+    score.audience_fit * 0.20 +
     score.platform_fit * 0.12 +
-    score.city_fit * 0.16 +
-    score.language_fit * 0.1 +
-    score.budget_fit * 0.14 +
+    score.city_fit * 0.08 +
+    score.language_fit * 0.12 +
+    score.budget_fit * 0.16 +
     score.data_confidence * 0.08
   )));
 }
 
+// Collapsed verification model: two tiers.
+//
+//   "verified"   → admin/Phyllo confirmed the creator (any non-unverified,
+//                  non-reviewing, non-rejected DB value maps here, so legacy
+//                  "performance" / "social" / "profile" rows still get the
+//                  boost without a backfill migration)
+//   "unverified" → no signal yet
+//
+// We keep "reviewing" and "rejected" as transient states so admins can see
+// what's mid-flight or actively blocked — they don't earn the boost.
+export function isVerifiedTier(tier?: string | null, status?: string | null) {
+  if (!tier && !status) return false;
+  if (tier === "rejected" || status === "rejected") return false;
+  if (tier === "reviewing" || status === "reviewing") return false;
+  if (tier === "unverified" || (!tier && status !== "verified")) return false;
+  return true;
+}
+
 function trustScore(tier?: string, status?: string) {
-  if (tier === "performance") return 18;
-  if (tier === "social") return 12;
-  if (tier === "profile" || status === "verified") return 7;
-  if (tier === "reviewing" || status === "reviewing") return 3;
   if (tier === "rejected" || status === "rejected") return -18;
+  if (tier === "reviewing" || status === "reviewing") return 3;
+  if (isVerifiedTier(tier, status)) return 10;
   return 0;
 }
 
@@ -283,14 +307,14 @@ function creatorMatchType(campaign: Campaign, breakdown: ScoreBreakdown, creator
   if (breakdown.category_fit >= 80 && breakdown.audience_fit >= 70) return "Direct category fit";
   if (breakdown.audience_fit >= 75 && breakdown.category_fit < 70) return "Bridge audience fit";
   if (breakdown.city_fit >= 75 && includesAny(`${campaign.city_focus} ${campaign.region_focus}`, ["Bangalore", "Bengaluru"])) return "Bangalore activation fit";
-  if (creator.verification_tier === "performance") return "Performance-backed fit";
+  if (isVerifiedTier(creator.verification_tier, creator.verification_status)) return "Verified creator fit";
   return "Pilot test fit";
 }
 
 function freelancerMatchType(campaign: Campaign, freelancer: FreelancerRecommendationInput, breakdown: ScoreBreakdown) {
   if (breakdown.category_fit >= 80 && breakdown.budget_fit >= 65) return "Production need fit";
   if (breakdown.city_fit >= 75) return "Local execution fit";
-  if ((freelancer.verification_tier ?? "") === "performance") return "Performance-backed vendor";
+  if (isVerifiedTier(freelancer.verification_tier, freelancer.verification_status)) return "Verified vendor fit";
   if (campaign.freelancer_needs.length === 0) return "Optional production support";
   return "Pilot vendor fit";
 }
@@ -298,7 +322,7 @@ function freelancerMatchType(campaign: Campaign, freelancer: FreelancerRecommend
 function creatorBestUseCase(matchType: string, campaign: Campaign, creator: Creator) {
   if (matchType === "Bridge audience fit") return `Use ${creator.display_name} to introduce the brand to ${campaign.target_audience || "a new audience"} without forcing a generic category ad.`;
   if (matchType === "Bangalore activation fit") return `Use for a city-first Bangalore launch, store/event push, or regional creator proof point.`;
-  if (matchType === "Performance-backed fit") return `Use for a higher-confidence campaign where delivery reliability matters more than experimentation.`;
+  if (matchType === "Verified creator fit") return `Use for a higher-confidence campaign where the creator's profile has been verified by Agently.`;
   if (matchType === "Direct category fit") return `Use for a straightforward sponsor integration where the creator's niche already matches the brief.`;
   return `Use as a smaller paid pilot before committing larger budget or exclusivity.`;
 }
@@ -306,7 +330,7 @@ function creatorBestUseCase(matchType: string, campaign: Campaign, creator: Crea
 function freelancerBestUseCase(matchType: string, campaign: Campaign, freelancer: FreelancerRecommendationInput) {
   if (matchType === "Local execution fit") return `Use ${freelancer.display_name} for Bangalore/India production where speed, local context, and coordination matter.`;
   if (matchType === "Production need fit") return `Use for ${campaign.freelancer_needs.join(", ") || freelancer.service_category || "campaign production"} with clear scope and rate cards.`;
-  if (matchType === "Performance-backed vendor") return `Use for critical production work where past Agently delivery should reduce execution risk.`;
+  if (matchType === "Verified vendor fit") return `Use for higher-confidence production where Agently has verified the freelancer profile.`;
   if (matchType === "Optional production support") return `Use if the campaign needs editing, design, shooting, or repurposing support after creator selection.`;
   return `Use for a small scoped project before increasing budget or campaign responsibility.`;
 }
@@ -336,7 +360,7 @@ function creatorProofPoints(creator: Creator, platform: CreatorPlatform | undefi
     `${breakdown.city_fit}/100 city fit`,
     platform ? `${compactNumber(platform.avg_views)} avg views on ${platform.platform}` : "Platform metrics missing",
     `Metrics trust: ${trust.label}`,
-    creator.verification_tier ? `Trust tier: ${creator.verification_tier}` : "Trust tier: unverified"
+    isVerifiedTier(creator.verification_tier, creator.verification_status) ? "Verified by Agently" : "Unverified"
   ];
 }
 
@@ -356,7 +380,7 @@ function freelancerProofPoints(freelancer: FreelancerRecommendationInput, rates:
     `${breakdown.category_fit}/100 skill fit`,
     `${breakdown.city_fit}/100 city fit`,
     rates.length ? `${rates.length} service rate card${rates.length === 1 ? "" : "s"} listed` : "No service rates listed",
-    freelancer.verification_tier ? `Trust tier: ${freelancer.verification_tier}` : "Trust tier: unverified"
+    isVerifiedTier(freelancer.verification_tier, freelancer.verification_status) ? "Verified by Agently" : "Unverified"
   ];
 }
 

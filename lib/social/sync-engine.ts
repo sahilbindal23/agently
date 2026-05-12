@@ -4,12 +4,16 @@ type AdminClient = NonNullable<ReturnType<typeof createAdminClient>>;
 
 export async function refreshCreatorScoresFromSnapshots(admin: AdminClient, creatorId: string) {
   const latestSignals = await getCreatorLatestSignals(admin, creatorId);
+  // Verification tiers collapsed to 2: a creator with API-synced metrics
+  // (Phyllo, etc.) is "verified", everything else stays where it was.
+  // Storing the literal "verified" keeps the legacy isVerifiedTier()
+  // helper happy and matches the new admin UX.
   await admin.from("creators").update({
     india_audience_percent: latestSignals.indiaAudience,
     monetization_score: latestSignals.monetizationScore,
     valuation_score: latestSignals.valuationScore,
     verification_status: "verified",
-    verification_tier: latestSignals.highConfidence ? "social" : "profile"
+    verification_tier: "verified"
   }).eq("id", creatorId);
   return latestSignals;
 }

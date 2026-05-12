@@ -62,12 +62,8 @@ export function ValuationEngine() {
       india_audience_percent: Number(formData.get("india_audience_percent") ?? 0),
       bangalore_fit: Number(formData.get("bangalore_fit") ?? 0),
       deliverable_count: Number(formData.get("deliverable_count") ?? 1),
-      usage_rights_days: Number(formData.get("usage_rights_days") ?? 30),
-      exclusivity_days: Number(formData.get("exclusivity_days") ?? 0),
       revisions: Number(formData.get("revisions") ?? 1),
-      turnaround_days: Number(formData.get("turnaround_days") ?? 14),
-      whitelisting: formData.get("whitelisting") === "on",
-      paid_usage: formData.get("paid_usage") === "on"
+      turnaround_days: Number(formData.get("turnaround_days") ?? 14)
     };
     setTargetInr(Number(formData.get("target_sponsorship_inr") ?? 0));
     setCurrentInr(Number(formData.get("current_sponsorship_inr") ?? 0));
@@ -112,18 +108,11 @@ export function ValuationEngine() {
           <Input name="bangalore_fit" placeholder="Bangalore fit /100" type="number" />
           <Input name="niche" placeholder="Niche/category" />
           <Input name="deliverable_count" placeholder="Deliverable count" type="number" />
-          <Input name="usage_rights_days" placeholder="Usage rights days" type="number" />
-          <Input name="exclusivity_days" placeholder="Exclusivity days" type="number" />
           <Input name="revisions" placeholder="Revision rounds" type="number" />
           <Input name="turnaround_days" placeholder="Turnaround days" type="number" />
-          <label className="flex h-10 items-center gap-2 rounded-md border bg-white px-3 text-sm dark:border-white/10 dark:bg-card">
-            <input name="paid_usage" type="checkbox" />
-            Paid usage
-          </label>
-          <label className="flex h-10 items-center gap-2 rounded-md border bg-white px-3 text-sm dark:border-white/10 dark:bg-card">
-            <input name="whitelisting" type="checkbox" />
-            Whitelisting
-          </label>
+          <p className="md:col-span-2 rounded-md border bg-muted px-3 py-2 text-xs leading-5 text-muted-foreground">
+            Usage rights, paid usage / whitelisting, and exclusivity aren&apos;t included in this base estimate. Negotiate them case-by-case in the offer flow — that&apos;s where they belong.
+          </p>
           <Button className="md:col-span-2" disabled={status === "loading"}>
             <Bot className="h-4 w-4" />
             {status === "loading" ? "Estimating..." : "Estimate sponsorship value"}
@@ -200,7 +189,7 @@ function TargetGap({ targetInr, currentInr, baseCents }: { targetInr: number; cu
       <p className="text-xs font-semibold uppercase text-sky-800">Target sponsorship path</p>
       <p className="mt-2 text-sm leading-6 text-sky-950">
         Target: <span className="font-semibold">{formatCurrency(targetInr * 100, "inr")}</span>. Current estimate: <span className="font-semibold">{formatCurrency(baseCents, "inr")}</span>.
-        {multiplier > 1.05 ? ` You likely need about ${multiplier.toFixed(1)}x stronger pricing power through higher average views, stronger India/Bangalore audience proof, better engagement, premium category fit, or more valuable deliverables/usage terms.` : " Your current estimate is already close to or above that target, so focus on protecting usage rights and payment terms."}
+        {multiplier > 1.05 ? ` You likely need about ${multiplier.toFixed(1)}x stronger pricing power through higher average views, stronger India/Bangalore audience proof, better engagement, premium category fit, or more valuable deliverables.` : " Your current estimate is already close to or above that target. Focus on negotiating usage rights, paid usage, and exclusivity as separate paid add-ons in the offer."}
       </p>
       {currentGap > 0 ? <p className="mt-2 text-sm text-sky-900">Gap from your current typical deal: {formatCurrency(currentGap * 100, "inr")}.</p> : null}
     </div>

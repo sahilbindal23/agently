@@ -6,8 +6,7 @@ export const valuationInputSchema = z.object({
   followers: z.coerce.number().nonnegative(),
   engagement_rate: z.coerce.number().nonnegative(),
   us_audience_percent: z.coerce.number().min(0).max(100),
-  niche: z.string(),
-  growth_trend: z.string().optional()
+  niche: z.string()
 });
 
 export const dealInputSchema = z.object({
