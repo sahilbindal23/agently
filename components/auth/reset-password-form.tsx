@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { CheckCircle2, KeyRound, ShieldCheck } from "lucide-react";
+import { AuthLegalFooter } from "@/components/auth/auth-legal-footer";
 import { HomeLogo } from "@/components/layout/home-logo";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -96,6 +97,7 @@ export function ResetPasswordForm({ userEmail }: { userEmail: string }) {
           <p className="mt-6 text-sm text-muted-foreground">
             Changed your mind? <Link className="font-medium text-primary" href="/login">Back to login</Link>
           </p>
+          <AuthLegalFooter className="mt-5" />
         </Card>
       </div>
     </main>

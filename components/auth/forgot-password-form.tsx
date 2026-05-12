@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useState } from "react";
 import { ArrowRight, KeyRound, Mail } from "lucide-react";
+import { AuthLegalFooter } from "@/components/auth/auth-legal-footer";
 import { HomeLogo } from "@/components/layout/home-logo";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -80,6 +81,7 @@ export function ForgotPasswordForm() {
           <p className="mt-6 text-sm text-muted-foreground">
             Remembered it? <Link className="font-medium text-primary" href="/login">Sign in</Link>
           </p>
+          <AuthLegalFooter className="mt-5" />
         </Card>
       </div>
     </main>

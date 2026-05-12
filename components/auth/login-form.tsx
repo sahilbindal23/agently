@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
+import { AuthLegalFooter } from "@/components/auth/auth-legal-footer";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -102,6 +103,7 @@ export function LoginForm() {
         <p className="mt-5 text-sm text-muted-foreground">
           New to Agently? <Link className="font-medium text-primary" href="/signup">Start intake</Link>
         </p>
+        <AuthLegalFooter className="mt-5" />
       </Card>
       </div>
     </main>

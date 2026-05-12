@@ -22,8 +22,19 @@ export async function POST(request: Request) {
 
   const admin = createAdminClient();
   const profileResult = admin
-    ? await admin.from("profiles").select("role").eq("id", data.user.id).single()
+    ? await admin.from("profiles").select("role, account_status").eq("id", data.user.id).single()
     : { data: null };
+
+  // Frozen accounts cannot log in. Sign them out of the session we just
+  // created and return a friendly 403 — generic enough that we don't tell
+  // an attacker exactly why their password worked but login was denied.
+  if (profileResult.data?.account_status === "frozen") {
+    await supabase.auth.signOut();
+    return NextResponse.json({
+      error: "This account is currently suspended. Contact support@agently.in for help."
+    }, { status: 403 });
+  }
+
   const role = profileResult.data?.role ?? "admin";
   if (admin) {
     await admin.auth.admin.updateUserById(data.user.id, {
