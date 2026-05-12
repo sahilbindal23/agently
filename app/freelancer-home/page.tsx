@@ -143,20 +143,33 @@ export default async function FreelancerHomePage() {
         </Card>
         <Card>
           <CardHeader><CardTitle>Project Offers</CardTitle><Badge tone="green">{projects?.length ?? 0}</Badge></CardHeader>
-          <div className="overflow-x-auto">
-            <Table>
-              <thead><tr><Th>Project</Th><Th>Status</Th><Th className="text-right">Amount</Th></tr></thead>
-              <tbody>
-                {(projects ?? []).map((project) => (
-                  <tr key={project.id}>
-                    <Td className="font-medium">{project.title}</Td>
-                    <Td><Badge>{project.status}</Badge></Td>
-                    <Td className="text-right font-semibold">{formatCurrency(project.amount_cents ?? 0, "inr")}</Td>
-                  </tr>
-                ))}
-              </tbody>
-            </Table>
-          </div>
+          {(projects ?? []).length === 0 ? (
+            <div className="rounded-md border border-dashed bg-muted/40 p-5 text-center dark:border-white/8">
+              <p className="text-sm font-semibold">No project offers yet</p>
+              <p className="mx-auto mt-1 max-w-md text-sm leading-6 text-muted-foreground">
+                Brands send project offers (editing, design, shooting, production support) here. Make sure your service pricing and portfolio are filled — that&apos;s what brands see when they shortlist you.
+              </p>
+              <div className="mt-3 flex flex-wrap justify-center gap-2">
+                <Link className="inline-flex h-9 items-center gap-2 rounded-md bg-primary px-4 text-sm font-medium text-primary-foreground hover:bg-primary/90" href="/profile">Update service pricing</Link>
+                <Link className="inline-flex h-9 items-center gap-2 rounded-md border bg-white px-4 text-sm font-medium hover:bg-muted dark:border-white/10 dark:bg-card" href="/offers">View offer inbox</Link>
+              </div>
+            </div>
+          ) : (
+            <div className="overflow-x-auto">
+              <Table>
+                <thead><tr><Th>Project</Th><Th>Status</Th><Th className="text-right">Amount</Th></tr></thead>
+                <tbody>
+                  {(projects ?? []).map((project) => (
+                    <tr key={project.id}>
+                      <Td className="font-medium">{project.title}</Td>
+                      <Td><Badge>{project.status}</Badge></Td>
+                      <Td className="text-right font-semibold">{formatCurrency(project.amount_cents ?? 0, "inr")}</Td>
+                    </tr>
+                  ))}
+                </tbody>
+              </Table>
+            </div>
+          )}
         </Card>
       </section>
     </AppShell>

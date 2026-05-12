@@ -110,21 +110,34 @@ export default async function CreatorHomePage() {
 
         <Card>
           <CardHeader><CardTitle>Active Deals</CardTitle><Badge tone="green">{deals?.length ?? 0}</Badge></CardHeader>
-          <div className="overflow-x-auto">
-            <Table>
-              <thead><tr><Th>Deal</Th><Th>Stage</Th><Th>Payment</Th><Th className="text-right">Amount</Th></tr></thead>
-              <tbody>
-                {(deals ?? []).map((deal) => (
-                  <tr key={deal.id}>
-                    <Td className="font-medium">{deal.title}</Td>
-                    <Td><Badge>{deal.offer_status ?? deal.stage}</Badge></Td>
-                    <Td>{deal.payment_status}</Td>
-                    <Td className="text-right font-semibold">{formatCurrency(deal.amount_cents, deal.currency ?? "inr")}</Td>
-                  </tr>
-                ))}
-              </tbody>
-            </Table>
-          </div>
+          {(deals ?? []).length === 0 ? (
+            <div className="rounded-md border border-dashed bg-muted/40 p-5 text-center dark:border-white/8">
+              <p className="text-sm font-semibold">No deals yet</p>
+              <p className="mx-auto mt-1 max-w-md text-sm leading-6 text-muted-foreground">
+                When a brand sends you an offer and you accept, it lands here. Connect Instagram or YouTube and finish your intake — verified creators with strong engagement quality rank higher in brand recommendations.
+              </p>
+              <div className="mt-3 flex flex-wrap justify-center gap-2">
+                <Link className="inline-flex h-9 items-center gap-2 rounded-md bg-primary px-4 text-sm font-medium text-primary-foreground hover:bg-primary/90" href="/profile">Finish profile</Link>
+                <Link className="inline-flex h-9 items-center gap-2 rounded-md border bg-white px-4 text-sm font-medium hover:bg-muted dark:border-white/10 dark:bg-card" href="/offers">View offer inbox</Link>
+              </div>
+            </div>
+          ) : (
+            <div className="overflow-x-auto">
+              <Table>
+                <thead><tr><Th>Deal</Th><Th>Stage</Th><Th>Payment</Th><Th className="text-right">Amount</Th></tr></thead>
+                <tbody>
+                  {(deals ?? []).map((deal) => (
+                    <tr key={deal.id}>
+                      <Td className="font-medium">{deal.title}</Td>
+                      <Td><Badge>{deal.offer_status ?? deal.stage}</Badge></Td>
+                      <Td>{deal.payment_status}</Td>
+                      <Td className="text-right font-semibold">{formatCurrency(deal.amount_cents, deal.currency ?? "inr")}</Td>
+                    </tr>
+                  ))}
+                </tbody>
+              </Table>
+            </div>
+          )}
         </Card>
       </section>
     </AppShell>

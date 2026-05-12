@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
+import { Inbox } from "lucide-react";
 import { AgreementReview, type AgreementForReview } from "@/components/contracts/agreement-review";
 import { RiskBadge } from "@/components/contracts/risk-badge";
 import { DeliverableCard } from "@/components/deliverables/deliverable-card";
@@ -7,6 +8,7 @@ import { DeliverableSubmitForm } from "@/components/deliverables/deliverable-sub
 import { OfferResponseActions } from "@/components/offers/offer-response-actions";
 import { OpenDisputeButton } from "@/components/disputes/open-dispute-button";
 import { AppShell } from "@/components/layout/app-shell";
+import { EmptyState } from "@/components/layout/empty-state";
 import { PageHeader } from "@/components/layout/page-header";
 import { MessageRecipientButton } from "@/components/messages/message-recipient-button";
 import { DealProtectionTimeline } from "@/components/protection/deal-protection-timeline";
@@ -330,10 +332,21 @@ export default async function OffersPage() {
           ))}
         </section>
       ) : (
-        <Card>
-          <p className="font-semibold">No offers yet</p>
-          <p className="mt-1 text-sm leading-6 text-muted-foreground">When a brand sends an offer from a campaign recommendation, it will appear here.</p>
-        </Card>
+        <EmptyState
+          icon={<Inbox className="h-6 w-6" />}
+          title="No offers yet"
+          description="When a brand sends you an offer from a campaign recommendation, it will appear here. To get discovered faster:"
+          bullets={[
+            "Finish your profile — bio, rates, target audience, India regions",
+            "Connect Instagram, YouTube, or Facebook via Phyllo for verified metrics (much higher engine_quality score)",
+            "Browse campaigns and reach out to brands directly from /campaigns",
+            "Higher engagement quality and verified accounts get ranked higher in brand recommendations"
+          ]}
+          actions={[
+            { label: "Finish profile", href: "/profile" },
+            { label: "Browse campaigns", href: "/campaigns", variant: "secondary" }
+          ]}
+        />
       )}
 
       {hasDeclined ? (

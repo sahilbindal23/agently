@@ -123,21 +123,34 @@ export default async function BrandHomePage() {
 
         <Card>
           <CardHeader><CardTitle>Submitted Offers</CardTitle><Badge tone="green">{deals?.length ?? 0}</Badge></CardHeader>
-          <div className="overflow-x-auto">
-            <Table>
-              <thead><tr><Th>Deal</Th><Th>Stage</Th><Th>Payment</Th><Th className="text-right">Amount</Th></tr></thead>
-              <tbody>
-                {(deals ?? []).map((deal) => (
-                  <tr key={deal.id}>
-                    <Td className="font-medium">{deal.title}</Td>
-                    <Td><Badge>{deal.stage}</Badge></Td>
-                    <Td>{deal.payment_status}</Td>
-                    <Td className="text-right font-semibold">{formatCurrency(deal.amount_cents, deal.currency ?? "inr")}</Td>
-                  </tr>
-                ))}
-              </tbody>
-            </Table>
-          </div>
+          {(deals ?? []).length === 0 ? (
+            <div className="rounded-md border border-dashed bg-muted/40 p-5 text-center dark:border-white/8">
+              <p className="text-sm font-semibold">No offers sent yet</p>
+              <p className="mx-auto mt-1 max-w-md text-sm leading-6 text-muted-foreground">
+                Create a campaign brief, find creators that match, then send your first offer. Offers track through accept → fund → deliver → release inside Agently.
+              </p>
+              <div className="mt-3 flex flex-wrap justify-center gap-2">
+                <Link className="inline-flex h-9 items-center gap-2 rounded-md bg-primary px-4 text-sm font-medium text-primary-foreground hover:bg-primary/90" href="/campaigns">Create campaign</Link>
+                <Link className="inline-flex h-9 items-center gap-2 rounded-md border bg-white px-4 text-sm font-medium hover:bg-muted dark:border-white/10 dark:bg-card" href="/creators">Browse creators</Link>
+              </div>
+            </div>
+          ) : (
+            <div className="overflow-x-auto">
+              <Table>
+                <thead><tr><Th>Deal</Th><Th>Stage</Th><Th>Payment</Th><Th className="text-right">Amount</Th></tr></thead>
+                <tbody>
+                  {(deals ?? []).map((deal) => (
+                    <tr key={deal.id}>
+                      <Td className="font-medium">{deal.title}</Td>
+                      <Td><Badge>{deal.stage}</Badge></Td>
+                      <Td>{deal.payment_status}</Td>
+                      <Td className="text-right font-semibold">{formatCurrency(deal.amount_cents, deal.currency ?? "inr")}</Td>
+                    </tr>
+                  ))}
+                </tbody>
+              </Table>
+            </div>
+          )}
         </Card>
       </section>
     </AppShell>
