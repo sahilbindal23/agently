@@ -2,10 +2,19 @@
 
 import { useEffect } from "react";
 import Link from "next/link";
+import * as Sentry from "@sentry/nextjs";
 import { AlertTriangle, RefreshCw } from "lucide-react";
 
 export default function GlobalError({ error, reset }: { error: Error & { digest?: string }; reset: () => void }) {
   useEffect(() => {
+    // Forward to Sentry so per-route errors land alongside global-error.tsx
+    // captures. Without this, only React's root-level error boundary
+    // (app/global-error.tsx) reports to Sentry - route-level errors stay
+    // invisible.
+    Sentry.captureException(error, {
+      tags: { boundary: "app_error_tsx" },
+      extra: { digest: error.digest }
+    });
     console.error("[Agently error]", error);
   }, [error]);
 

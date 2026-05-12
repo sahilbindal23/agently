@@ -9,6 +9,11 @@ export default withSentryConfig(nextConfig, {
   authToken: process.env.SENTRY_AUTH_TOKEN,
   silent: true,
   widenClientFileUpload: true,
+  // Tunnel Sentry events through our own domain. Ad blockers and many
+  // corporate firewalls block direct sentry.io requests; tunnelling
+  // proxies them via /monitoring so we don't lose error telemetry from
+  // users on uBlock / Brave / strict network policies.
+  tunnelRoute: "/monitoring",
   webpack: {
     treeshake: {
       removeDebugLogging: true
