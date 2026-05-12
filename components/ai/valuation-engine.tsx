@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { Bot } from "lucide-react";
+import { AiDisclaimer } from "@/components/ai/ai-disclaimer";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardHeader, CardTitle } from "@/components/ui/card";
@@ -184,6 +185,7 @@ export function ValuationEngine() {
             Run an estimate to see INR pricing bands, package recommendation, negotiation floor, pricing caveats, and the metric gap to reach your target sponsorship amount.
           </div>
         )}
+        <AiDisclaimer kind="valuation" />
       </Card>
     </section>
   );

@@ -24,14 +24,31 @@ export function AccountSignupForm() {
   const [status, setStatus] = useState<"idle" | "loading" | "error" | "verify_email">("idle");
   const [error, setError] = useState("");
   const [verifyEmail, setVerifyEmail] = useState<string>("");
+  const [agreedToTerms, setAgreedToTerms] = useState(false);
 
   async function onSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
+    if (!agreedToTerms) {
+      setError("Please agree to the Privacy Policy and Terms of Service to continue.");
+      setStatus("error");
+      return;
+    }
     setStatus("loading");
     setError("");
 
     const formData = new FormData(event.currentTarget);
-    const payload = { role, ...Object.fromEntries(formData.entries()) };
+    // Capture the explicit consent timestamp so we have a defensible record
+    // of when the user agreed (required under India's DPDP Act 2023).
+    const payload = {
+      role,
+      ...Object.fromEntries(formData.entries()),
+      consent: {
+        accepted: true,
+        accepted_at: new Date().toISOString(),
+        privacy_version: "2025-05-12",
+        terms_version: "2025-05-12"
+      }
+    };
     const signup = await fetch("/api/auth/signup", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -125,7 +142,24 @@ export function AccountSignupForm() {
               <Input name="full_name" placeholder="Full name" required />
               <Input name="email" type="email" placeholder="Email" required />
               <Input name="password" type="password" placeholder="Password (min 8 characters)" minLength={8} required />
-              <Button disabled={status === "loading"}>
+              <label className="flex cursor-pointer items-start gap-2 rounded-md border bg-white p-3 text-sm leading-5 dark:bg-card dark:border-white/10">
+                <input
+                  checked={agreedToTerms}
+                  className="mt-0.5 h-4 w-4 rounded border-gray-300 text-primary focus:ring-primary"
+                  name="consent_terms_privacy"
+                  onChange={(event) => setAgreedToTerms(event.target.checked)}
+                  required
+                  type="checkbox"
+                />
+                <span className="text-muted-foreground">
+                  I agree to the{" "}
+                  <Link className="font-medium text-primary underline" href="/privacy" target="_blank" rel="noopener noreferrer">Privacy Policy</Link>
+                  {" "}and{" "}
+                  <Link className="font-medium text-primary underline" href="/terms" target="_blank" rel="noopener noreferrer">Terms of Service</Link>
+                  . I understand my data is processed per India&apos;s DPDP Act 2023.
+                </span>
+              </label>
+              <Button disabled={status === "loading" || !agreedToTerms}>
                 <UserPlus className="h-4 w-4" />
                 {status === "loading" ? "Creating account..." : "Create account"}
                 <ArrowRight className="h-4 w-4" />

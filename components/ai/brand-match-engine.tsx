@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { SearchCheck } from "lucide-react";
+import { AiDisclaimer } from "@/components/ai/ai-disclaimer";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardHeader, CardTitle } from "@/components/ui/card";
@@ -140,6 +141,7 @@ export function BrandMatchEngine({ creators, role }: { creators: Creator[]; role
             Run a brief to see ranked matches, realistic reasons, outreach angles, and practical objections.
           </div>
         )}
+        <AiDisclaimer kind="match" />
       </Card>
     </section>
   );

@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { Handshake, MessageCircle } from "lucide-react";
+import { AiDisclaimer } from "@/components/ai/ai-disclaimer";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardHeader, CardTitle } from "@/components/ui/card";
@@ -183,6 +184,7 @@ export function NegotiationCopilot({ role, initialValues }: { role: "admin" | "c
               : "Ask anything about deal structure, deliverable mix, or pricing fairness. The copilot uses Agently market data."}
           </div>
         )}
+        <AiDisclaimer kind="negotiation" />
       </Card>
     </section>
   );

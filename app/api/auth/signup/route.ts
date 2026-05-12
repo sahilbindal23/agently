@@ -11,9 +11,18 @@ export async function POST(request: Request) {
   const email = String(body.email ?? "").trim().toLowerCase();
   const password = String(body.password ?? "");
   const fullName = String(body.full_name ?? "").trim();
+  const consent = body.consent as { accepted?: boolean; accepted_at?: string; privacy_version?: string; terms_version?: string } | undefined;
 
   if (!email || !password || !fullName) {
     return NextResponse.json({ error: "Full name, email, and password are required." }, { status: 400 });
+  }
+
+  // DPDP Act 2023 (India) and good practice everywhere: do not create an
+  // account without an explicit, recorded consent to Privacy + Terms.
+  if (!consent?.accepted) {
+    return NextResponse.json({
+      error: "You must agree to the Privacy Policy and Terms of Service to create an account."
+    }, { status: 400 });
   }
 
   if (role !== "creator" && role !== "brand" && role !== "freelancer") {
@@ -91,11 +100,23 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: error?.message ?? "Could not create account." }, { status: 400 });
   }
 
+  // Capture IP + UA server-side so the consent record can't be faked by a
+  // client that just sets accepted=true in the JSON payload.
+  const signupConsent = {
+    accepted: true,
+    accepted_at: consent.accepted_at ?? new Date().toISOString(),
+    privacy_version: consent.privacy_version ?? "unknown",
+    terms_version: consent.terms_version ?? "unknown",
+    ip_address: request.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ?? request.headers.get("x-real-ip") ?? null,
+    user_agent: request.headers.get("user-agent") ?? null
+  };
+
   const { error: profileError } = await supabase.from("profiles").insert({
     id: data.user.id,
     email,
     full_name: nameCheck.cleaned,
-    role
+    role,
+    signup_consent: signupConsent
   });
 
   if (profileError) {

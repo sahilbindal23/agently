@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { ClipboardCheck } from "lucide-react";
+import { AiDisclaimer } from "@/components/ai/ai-disclaimer";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardHeader, CardTitle } from "@/components/ui/card";
@@ -71,6 +72,7 @@ export function AuditWorkbench() {
             Run an audit to generate Bangalore fit, India relevance, content categories, creator archetypes, budget realism, risk flags, and next data to request.
           </div>
         )}
+        <AiDisclaimer kind="generic" />
       </Card>
     </section>
   );

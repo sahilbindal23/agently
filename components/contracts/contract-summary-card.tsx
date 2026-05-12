@@ -1,5 +1,6 @@
 import { ExternalLink, FileText, ShieldCheck } from "lucide-react";
 import type React from "react";
+import { AiDisclaimer } from "@/components/ai/ai-disclaimer";
 import { RiskBadge } from "@/components/contracts/risk-badge";
 import { Card, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -61,6 +62,7 @@ export function ContractSummaryCard({ contract }: { contract?: Contract | null }
           ))}
         </div>
       ) : null}
+      {contract ? <AiDisclaimer kind="contract" /> : null}
     </Card>
   );
 }
