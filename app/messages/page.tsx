@@ -36,7 +36,7 @@ export default async function MessagesPage({ searchParams }: { searchParams: Pro
         description="Message creators, freelancers, and brands from discovery, campaign recommendations, and profile pages."
       />
 
-      <section className="grid gap-5 xl:grid-cols-[0.75fr_1.25fr]">
+      <section className="grid gap-5 lg:grid-cols-[0.75fr_1.25fr]">
         <Card>
           <CardHeader>
             <CardTitle>Inbox</CardTitle>
@@ -49,7 +49,7 @@ export default async function MessagesPage({ searchParams }: { searchParams: Pro
             {threads.map((thread) => (
               <a
                 className={`block rounded-md border p-3 text-sm transition hover:bg-muted dark:border-white/8 ${thread.id === selectedThreadId ? "border-primary bg-primary/5" : "bg-card"}`}
-                href={`/messages?thread=${thread.id}`}
+                href={`/messages?thread=${thread.id}#conversation`}
                 key={thread.id}
               >
                 <div className="flex items-start justify-between gap-3">
@@ -66,7 +66,7 @@ export default async function MessagesPage({ searchParams }: { searchParams: Pro
           </div>
         </Card>
 
-        <Card>
+        <Card id="conversation" className="scroll-mt-4">
           <CardHeader>
             <div>
               <CardTitle>{recipient ? `Message ${recipient.name}` : selectedThread?.other_names || "New conversation"}</CardTitle>
