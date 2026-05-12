@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { sendEmail, signupConfirmationEmail } from "@/lib/email/send";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { checkFreeText, sanityErrorMessage } from "@/lib/validators/sanity";
 
@@ -54,21 +55,30 @@ export async function POST(request: Request) {
     }, { status: 409 });
   }
 
-  // Create the user. email_confirm: false sends a verification email - the
-  // user can't log in until they click the link. Configure the email
-  // template in Supabase Dashboard -> Auth -> Email Templates.
-  // (Set NEXT_PUBLIC_SKIP_EMAIL_VERIFICATION=true in dev to bypass.)
   const skipVerification = process.env.NEXT_PUBLIC_SKIP_EMAIL_VERIFICATION === "true";
-  const { data, error } = await supabase.auth.admin.createUser({
-    email,
-    password,
-    email_confirm: skipVerification,
-    user_metadata: {
-      full_name: nameCheck.cleaned,
-      role,
-      intake_completed: false
-    }
-  });
+  const appUrl = process.env.APP_URL || process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
+  const metadata = {
+    full_name: nameCheck.cleaned,
+    role,
+    intake_completed: false
+  };
+
+  const { data, error } = skipVerification
+    ? await supabase.auth.admin.createUser({
+      email,
+      password,
+      email_confirm: true,
+      user_metadata: metadata
+    })
+    : await supabase.auth.admin.generateLink({
+      type: "signup",
+      email,
+      password,
+      options: {
+        data: metadata,
+        redirectTo: `${appUrl}/login?verified=1`
+      }
+    });
 
   if (error || !data.user) {
     const message = String(error?.message ?? "");
@@ -94,10 +104,31 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: profileError.message }, { status: 500 });
   }
 
-  // When email verification is required, the user must check their inbox
-  // and click the link before they can log in. The signup form should show
-  // a "check your email" success state rather than redirecting straight in.
   if (!skipVerification) {
+    const confirmationUrl = (data as { properties?: { action_link?: string } }).properties?.action_link;
+    if (!confirmationUrl) {
+      await supabase.from("profiles").delete().eq("id", data.user.id);
+      await supabase.auth.admin.deleteUser(data.user.id).catch(() => null);
+      return NextResponse.json({ error: "Could not generate verification link." }, { status: 500 });
+    }
+
+    const emailResult = await sendEmail({
+      to: email,
+      subject: "Verify your Agently account",
+      html: signupConfirmationEmail({
+        fullName: nameCheck.cleaned,
+        confirmationUrl
+      })
+    });
+
+    if (!emailResult.sent) {
+      await supabase.from("profiles").delete().eq("id", data.user.id);
+      await supabase.auth.admin.deleteUser(data.user.id).catch(() => null);
+      return NextResponse.json({
+        error: `Account was not created because the verification email could not be sent: ${emailResult.error ?? "email provider error"}`
+      }, { status: 500 });
+    }
+
     return NextResponse.json({
       user_id: data.user.id,
       role,

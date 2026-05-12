@@ -151,6 +151,17 @@ export default async function HomePage() {
           ))}
         </div>
       </section>
+
+      <footer className="border-t bg-card/40">
+        <div className="mx-auto flex max-w-7xl flex-col gap-3 px-4 py-8 text-sm text-muted-foreground sm:flex-row sm:items-center sm:justify-between sm:px-6 lg:px-8">
+          <p>Agently helps creators, freelancers, and brands manage campaign workflow with more trust.</p>
+          <div className="flex flex-wrap gap-4 font-semibold text-foreground">
+            <Link href="/privacy">Privacy</Link>
+            <Link href="/terms">Terms</Link>
+            <Link href="/data-deletion">Data deletion</Link>
+          </div>
+        </div>
+      </footer>
     </main>
   );
 }
