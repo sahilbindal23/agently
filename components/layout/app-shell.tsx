@@ -3,6 +3,7 @@ import { Activity, AlertOctagon, BarChart3, Bell, Bot, BrainCircuit, BriefcaseBu
 import { LogoutButton } from "@/components/auth/logout-button";
 import { HomeLogo } from "@/components/layout/home-logo";
 import { MobileNav } from "@/components/layout/mobile-nav";
+import { SentryUserContext } from "@/components/monitoring/sentry-user-context";
 import { NotificationBell } from "@/components/notifications/notification-bell";
 import { ThemeToggle } from "@/components/layout/theme-toggle";
 import { GuidedWalkthrough } from "@/components/onboarding/guided-walkthrough";
@@ -99,6 +100,7 @@ export async function AppShell({ children }: { children: React.ReactNode }) {
 
   return (
     <div className="min-h-screen lg:grid lg:grid-cols-[260px_1fr]">
+      <SentryUserContext user={user} />
       <aside className="hidden border-r bg-white/85 backdrop-blur dark:border-white/8 dark:bg-card/80 lg:flex lg:min-h-screen lg:flex-col">
         <div className="px-3 py-3"><HomeLogo className="w-full px-2" /></div>
         <nav className="flex flex-col gap-1 overflow-y-auto px-3 pb-3">

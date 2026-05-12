@@ -9,6 +9,8 @@ import { Card, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, Td, Th } from "@/components/ui/table";
 import { enrichRecommendationsWithRoi } from "@/lib/campaigns/enrich-roi";
 import { applyEventInformedRanking, rankCreators, rankFreelancers, type CampaignRecommendation, type FreelancerRecommendationInput, type RecommendationEventSignal, type ServiceRateInput } from "@/lib/campaigns/recommendations";
+import { getCurrentUser } from "@/lib/auth/session";
+import { canSeeDemoData, withoutDemoRows } from "@/lib/db/demo-visibility";
 import { getAgentlyData } from "@/lib/db/live-data";
 import { creatorAutomationDecision, freelancerAutomationDecision, isDiscoverable } from "@/lib/profile/automation";
 import { createAdminClient } from "@/lib/supabase/admin";
@@ -16,7 +18,12 @@ import { formatCurrency } from "@/lib/utils/format";
 import type { Campaign, CampaignShortlist } from "@/types";
 
 export default async function CampaignsPage() {
-  const [{ creators, creatorPlatforms }, campaignData] = await Promise.all([getAgentlyData(), getCampaignData()]);
+  const user = await getCurrentUser();
+  const includeDemo = canSeeDemoData(user);
+  const [{ creators, creatorPlatforms }, campaignData] = await Promise.all([
+    getAgentlyData({ includeDemo }),
+    getCampaignData(includeDemo)
+  ]);
   const latestCampaign = campaignData.campaigns[0];
   const latestInvites = latestCampaign ? campaignData.invites.filter((invite) => invite.campaign_id === latestCampaign.id) : [];
   const creatorPool = latestCampaign?.visibility === "invite_only" && latestInvites.length
@@ -146,7 +153,7 @@ function RecommendationColumn({
   );
 }
 
-async function getCampaignData() {
+async function getCampaignData(includeDemo: boolean) {
   const admin = createAdminClient();
   if (!admin) {
     return { campaigns: [] as Campaign[], freelancers: [] as FreelancerRecommendationInput[], serviceRates: [] as ServiceRateInput[], shortlists: [] as CampaignShortlist[], invites: [] as { campaign_id: string; creator_id: string }[], productEvents: [] as RecommendationEventSignal[] };
@@ -162,8 +169,8 @@ async function getCampaignData() {
   ]);
 
   return {
-    campaigns: (campaignsResult.data ?? []).map(normalizeCampaign),
-    freelancers: (freelancersResult.data ?? []) as FreelancerRecommendationInput[],
+    campaigns: withoutDemoRows((campaignsResult.data ?? []).map(normalizeCampaign), includeDemo),
+    freelancers: withoutDemoRows((freelancersResult.data ?? []) as FreelancerRecommendationInput[], includeDemo),
     serviceRates: (serviceRatesResult.data ?? []) as ServiceRateInput[],
     shortlists: (shortlistsResult.data ?? []).map(normalizeShortlist),
     invites: (invitesResult.data ?? []).map((row) => ({ campaign_id: String(row.campaign_id), creator_id: String(row.creator_id) })),
@@ -187,6 +194,7 @@ async function getProductEvents(admin: NonNullable<ReturnType<typeof createAdmin
 function normalizeCampaign(row: Record<string, unknown>): Campaign {
   return {
     id: String(row.id),
+    is_demo: Boolean(row.is_demo ?? false),
     brand_id: row.brand_id ? String(row.brand_id) : null,
     profile_id: row.profile_id ? String(row.profile_id) : null,
     title: String(row.title ?? "Untitled campaign"),

@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { matchBrandsForCreator, matchCreatorsForBrand, type BrandMatchInput, type CreatorBrandMatchInput } from "@/lib/ai/brand-match";
 import { getCurrentUser } from "@/lib/auth/session";
+import { canSeeDemoData } from "@/lib/db/demo-visibility";
 import { getAgentlyData } from "@/lib/db/live-data";
 import { getOpenAI } from "@/lib/openai/client";
 import { brandMatchPrompt } from "@/prompts/brand-match";
@@ -14,7 +15,7 @@ export async function POST(request: Request) {
   if (!user) return NextResponse.json({ error: "Login required." }, { status: 401 });
 
   const input = (await request.json()) as BrandMatchInput | CreatorBrandMatchInput;
-  const { brands, creators, creatorPlatforms } = await getAgentlyData();
+  const { brands, creators, creatorPlatforms } = await getAgentlyData({ includeDemo: canSeeDemoData(user) });
   const fallback = input.direction === "creator_to_brands"
     ? matchBrandsForCreator(input, creators, creatorPlatforms, brands)
     : matchCreatorsForBrand(input as BrandMatchInput, creators, creatorPlatforms);

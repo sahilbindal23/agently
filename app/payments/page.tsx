@@ -9,6 +9,7 @@ import { DealProtectionTimeline } from "@/components/protection/deal-protection-
 import { Badge } from "@/components/ui/badge";
 import { Card, CardHeader, CardTitle } from "@/components/ui/card";
 import { getCurrentUser } from "@/lib/auth/session";
+import { canSeeDemoData } from "@/lib/db/demo-visibility";
 import { getAgentlyData } from "@/lib/db/live-data";
 import { calculatePaymentSplit } from "@/lib/payments/workflow";
 import { createAdminClient } from "@/lib/supabase/admin";
@@ -22,7 +23,7 @@ export const dynamic = "force-dynamic";
 export default async function PaymentsPage() {
   const user = await getCurrentUser();
   const admin = createAdminClient();
-  const { deals, payments } = await getAgentlyData();
+  const { deals, payments } = await getAgentlyData({ includeDemo: canSeeDemoData(user) });
   const scope = admin && user ? await getPaymentScope(admin, user) : { dealIds: [], brandIds: [], creatorIds: [], freelancerIds: [], projectIds: [] };
   const visibleDeals = filterDealsForUser(deals, user?.role, scope);
   const paymentDeals = visibleDeals.filter((deal) => deal.offer_status === "accepted" || user?.role === "admin");

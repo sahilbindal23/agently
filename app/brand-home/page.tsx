@@ -11,6 +11,8 @@ import { Card, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, Td, Th } from "@/components/ui/table";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
+import { getCurrentUser } from "@/lib/auth/session";
+import { canSeeDemoData, withoutDemoRows } from "@/lib/db/demo-visibility";
 import { brandAutomationDecision, creatorAutomationDecision, freelancerAutomationDecision, isDiscoverable } from "@/lib/profile/automation";
 import { brandCompleteness } from "@/lib/profile/completeness";
 import { formatCurrency } from "@/lib/utils/format";
@@ -22,6 +24,8 @@ export default async function BrandHomePage() {
 
   const admin = createAdminClient();
   if (!admin) redirect("/dashboard");
+  const currentUser = await getCurrentUser();
+  const includeDemo = canSeeDemoData(currentUser);
 
   const { data: audit } = await admin.from("brand_audits").select("*").eq("profile_id", data.user.id).order("created_at", { ascending: false }).limit(1).single();
   const { data: brand } = audit?.brand_id
@@ -31,9 +35,9 @@ export default async function BrandHomePage() {
     brand?.id
     ? await admin.from("deals").select("*").eq("brand_id", brand.id).order("created_at", { ascending: false })
     : { data: [] },
-    admin.from("creators").select("*").order("created_at", { ascending: false }).limit(6),
+    admin.from("creators").select("*").order("created_at", { ascending: false }).limit(24),
     admin.from("creator_platforms").select("*"),
-    admin.from("freelancers").select("*").order("created_at", { ascending: false }).limit(6),
+    admin.from("freelancers").select("*").order("created_at", { ascending: false }).limit(24),
     admin.from("freelancer_service_rates").select("*"),
     admin.from("campaigns").select("*").eq("profile_id", data.user.id).order("created_at", { ascending: false }),
     brand?.id
@@ -47,14 +51,14 @@ export default async function BrandHomePage() {
     : { data: [] };
   const completeness = brandCompleteness({ brand, audit: audit ?? null, campaigns: campaigns ?? [], deals: deals ?? [], projects: projects ?? [], connectedAccounts: brandConnectedAccounts ?? [] });
   const automation = brand ? brandAutomationDecision({ brand, audit: audit ?? null, campaigns: campaigns ?? [] }) : null;
-  const visibleCreators = (creators ?? []).filter((creator) => isDiscoverable(creatorAutomationDecision({
+  const visibleCreators = withoutDemoRows(creators ?? [], includeDemo).filter((creator) => isDiscoverable(creatorAutomationDecision({
     creator,
     platforms: (platforms ?? []).filter((platform) => platform.creator_id === creator.id)
-  })));
-  const visibleFreelancers = (freelancers ?? []).filter((freelancer) => isDiscoverable(freelancerAutomationDecision({
+  }))).slice(0, 6);
+  const visibleFreelancers = withoutDemoRows(freelancers ?? [], includeDemo).filter((freelancer) => isDiscoverable(freelancerAutomationDecision({
     freelancer,
     serviceRates: (serviceRates ?? []).filter((rate) => rate.freelancer_id === freelancer.id)
-  })));
+  }))).slice(0, 6);
 
   if (!brand) {
     return (

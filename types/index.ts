@@ -6,6 +6,7 @@ export type VerificationStatus = "unverified" | "reviewing" | "verified" | "reje
 
 export type Creator = {
   id: string;
+  is_demo?: boolean;
   profile_id?: string | null;
   display_name: string;
   primary_niche: string;
@@ -46,6 +47,7 @@ export type CreatorPlatform = {
 
 export type Brand = {
   id: string;
+  is_demo?: boolean;
   profile_id?: string | null;
   name: string;
   website: string;
@@ -60,6 +62,7 @@ export type Brand = {
 
 export type Freelancer = {
   id: string;
+  is_demo?: boolean;
   profile_id: string | null;
   display_name: string;
   service_category: string;
@@ -101,6 +104,7 @@ export type PortfolioItem = {
 
 export type Deal = {
   id: string;
+  is_demo?: boolean;
   creator_id: string;
   brand_id: string;
   title: string;
@@ -197,6 +201,7 @@ export type AiValuation = {
 
 export type Campaign = {
   id: string;
+  is_demo?: boolean;
   brand_id: string | null;
   profile_id: string | null;
   title: string;

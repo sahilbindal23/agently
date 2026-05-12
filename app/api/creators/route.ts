@@ -30,7 +30,11 @@ export async function GET() {
   const { data: authData } = await auth.auth.getUser();
   if (!authData.user) return NextResponse.json({ error: "Login required." }, { status: 401 });
 
-  const { creators, source } = await getAgentlyData();
+  const admin = createAdminClient();
+  const { data: profile } = admin
+    ? await admin.from("profiles").select("role").eq("id", authData.user.id).maybeSingle()
+    : { data: null };
+  const { creators, source } = await getAgentlyData({ includeDemo: profile?.role === "admin" });
   return NextResponse.json({ data: creators, source });
 }
 

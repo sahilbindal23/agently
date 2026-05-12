@@ -4,6 +4,7 @@ import type { Campaign, Creator, CreatorPlatform } from "@/types";
 
 export type FreelancerRecommendationInput = {
   id: string;
+  is_demo?: boolean;
   display_name: string;
   service_category: string;
   home_city: string;

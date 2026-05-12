@@ -7,12 +7,15 @@ import { Badge } from "@/components/ui/badge";
 import { Card, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { VerificationBadge } from "@/components/verification/verification-badge";
+import { getCurrentUser } from "@/lib/auth/session";
+import { canSeeDemoData } from "@/lib/db/demo-visibility";
 import { getAgentlyData } from "@/lib/db/live-data";
 import { getBangaloreFit, getIndiaAudiencePercent } from "@/lib/utils/creator-metrics";
 import { formatCurrency, formatNumber, formatPercent } from "@/lib/utils/format";
 
 export default async function CreatorsPage() {
-  const { creatorPlatforms, creators } = await getAgentlyData();
+  const user = await getCurrentUser();
+  const { creatorPlatforms, creators } = await getAgentlyData({ includeDemo: canSeeDemoData(user) });
 
   return (
     <AppShell>

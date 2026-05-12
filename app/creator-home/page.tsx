@@ -11,6 +11,8 @@ import { Card, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, Td, Th } from "@/components/ui/table";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
+import { getCurrentUser } from "@/lib/auth/session";
+import { canSeeDemoData, withoutDemoRows } from "@/lib/db/demo-visibility";
 import { brandAutomationDecision, creatorAutomationDecision, freelancerAutomationDecision, isDiscoverable } from "@/lib/profile/automation";
 import { creatorCompleteness } from "@/lib/profile/completeness";
 import { getBangaloreFit, getIndiaAudiencePercent } from "@/lib/utils/creator-metrics";
@@ -23,6 +25,8 @@ export default async function CreatorHomePage() {
 
   const admin = createAdminClient();
   if (!admin) redirect("/dashboard");
+  const currentUser = await getCurrentUser();
+  const includeDemo = canSeeDemoData(currentUser);
 
   const { data: creator } = await admin.from("creators").select("*").eq("profile_id", data.user.id).single();
   if (!creator) {
@@ -47,8 +51,8 @@ export default async function CreatorHomePage() {
   const [{ data: audits }, { data: deals }, { data: brands }, { data: freelancers }, { data: serviceRates }, { data: platforms }] = await Promise.all([
     admin.from("creator_audits").select("*").eq("creator_id", creator.id).order("created_at", { ascending: false }).limit(1),
     admin.from("deals").select("*").eq("creator_id", creator.id).order("created_at", { ascending: false }),
-    admin.from("brands").select("*").order("created_at", { ascending: false }).limit(6),
-    admin.from("freelancers").select("*").order("created_at", { ascending: false }).limit(6),
+    admin.from("brands").select("*").order("created_at", { ascending: false }).limit(24),
+    admin.from("freelancers").select("*").order("created_at", { ascending: false }).limit(24),
     admin.from("freelancer_service_rates").select("*"),
     admin.from("creator_platforms").select("*").eq("creator_id", creator.id)
   ]);
@@ -56,11 +60,11 @@ export default async function CreatorHomePage() {
   const latestAudit = audits?.[0]?.result as Record<string, unknown> | undefined;
   const completeness = creatorCompleteness({ creator, platforms: platforms ?? [], deals: deals ?? [], hasAudit: Boolean(latestAudit) });
   const automation = creatorAutomationDecision({ creator, platforms: platforms ?? [] });
-  const visibleBrands = (brands ?? []).filter((brand) => isDiscoverable(brandAutomationDecision({ brand })));
-  const visibleFreelancers = (freelancers ?? []).filter((freelancer) => isDiscoverable(freelancerAutomationDecision({
+  const visibleBrands = withoutDemoRows(brands ?? [], includeDemo).filter((brand) => isDiscoverable(brandAutomationDecision({ brand }))).slice(0, 6);
+  const visibleFreelancers = withoutDemoRows(freelancers ?? [], includeDemo).filter((freelancer) => isDiscoverable(freelancerAutomationDecision({
     freelancer,
     serviceRates: (serviceRates ?? []).filter((rate) => rate.freelancer_id === freelancer.id)
-  })));
+  }))).slice(0, 6);
 
   return (
     <AppShell>

@@ -10,6 +10,7 @@ import { Badge } from "@/components/ui/badge";
 import { Card, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, Td, Th } from "@/components/ui/table";
 import { getCurrentUser } from "@/lib/auth/session";
+import { canSeeDemoData } from "@/lib/db/demo-visibility";
 import { getAgentlyData } from "@/lib/db/live-data";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { formatCurrency } from "@/lib/utils/format";
@@ -19,7 +20,7 @@ export const dynamic = "force-dynamic";
 export default async function DealsPage() {
   const user = await getCurrentUser();
   const admin = createAdminClient();
-  const { brands, creators, deals } = await getAgentlyData();
+  const { brands, creators, deals } = await getAgentlyData({ includeDemo: canSeeDemoData(user) });
   const isBrand = user?.role === "brand";
   const brandIds = isBrand && admin && user ? await getBrandIdsForUser(admin, user.id, user.email) : [];
   const visibleDeals = isBrand ? deals.filter((deal) => brandIds.includes(deal.brand_id)) : deals;

@@ -7,6 +7,7 @@ import { AppShell } from "@/components/layout/app-shell";
 import { PageHeader } from "@/components/layout/page-header";
 import { Card, CardTitle } from "@/components/ui/card";
 import { getCurrentUser } from "@/lib/auth/session";
+import { canSeeDemoData } from "@/lib/db/demo-visibility";
 import { getAgentlyData } from "@/lib/db/live-data";
 import { createAdminClient } from "@/lib/supabase/admin";
 
@@ -22,7 +23,7 @@ export default async function AiInsightsPage({ searchParams }: { searchParams: P
   const params = await searchParams;
   const user = await getCurrentUser();
   if (user?.role === "brand") redirect("/campaigns");
-  const { creators } = await getAgentlyData();
+  const { creators } = await getAgentlyData({ includeDemo: canSeeDemoData(user) });
   const visibleCreators = await getVisibleCreators(creators, user);
   const showNegotiationCopilot = user?.role === "admin" || user?.role === "creator" || user?.role === "freelancer";
   const negotiationRole = user?.role === "creator" || user?.role === "freelancer" ? user.role : "admin";

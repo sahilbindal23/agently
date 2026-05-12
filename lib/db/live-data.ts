@@ -1,3 +1,4 @@
+import { withoutDemoRows } from "@/lib/db/demo-visibility";
 import { createAdminClient } from "@/lib/supabase/admin";
 import {
   aiValuations as demoAiValuations,
@@ -35,9 +36,22 @@ const fallbackData: AgentlyData = {
   source: "demo"
 };
 
-export async function getAgentlyData(): Promise<AgentlyData> {
+const emptySupabaseData: AgentlyData = {
+  creators: [],
+  creatorPlatforms: [],
+  brands: [],
+  brandMatches: [],
+  deals: [],
+  contracts: [],
+  payments: [],
+  aiValuations: [],
+  source: "supabase"
+};
+
+export async function getAgentlyData(options: { includeDemo?: boolean } = {}): Promise<AgentlyData> {
+  const includeDemo = options.includeDemo ?? true;
   const supabase = createAdminClient();
-  if (!supabase) return fallbackData;
+  if (!supabase) return includeDemo ? fallbackData : emptySupabaseData;
 
   try {
     const [
@@ -67,14 +81,23 @@ export async function getAgentlyData(): Promise<AgentlyData> {
     ]);
 
     if (creatorsResult.error || platformsResult.error || brandsResult.error || dealsResult.error) {
-      return fallbackData;
+      return includeDemo ? fallbackData : emptySupabaseData;
     }
 
-    const creators = (creatorsResult.data ?? []).map(normalizeCreator);
-    if (creators.length === 0) return fallbackData;
+    const rawCreators = (creatorsResult.data ?? []).map(normalizeCreator);
+    if (rawCreators.length === 0) return includeDemo ? fallbackData : emptySupabaseData;
+    const creators = withoutDemoRows(rawCreators, includeDemo);
+    const creatorIds = new Set(creators.map((creator) => creator.id));
+    const brands = withoutDemoRows((brandsResult.data ?? []).map(normalizeBrand), includeDemo);
+    const brandIds = new Set(brands.map((brand) => brand.id));
+    const deals = withoutDemoRows((dealsResult.data ?? []).map(normalizeDeal), includeDemo)
+      .filter((deal) => creatorIds.has(deal.creator_id) && brandIds.has(deal.brand_id));
+    const dealIds = new Set(deals.map((deal) => deal.id));
 
     const flags = (flagsResult.data ?? []).map(normalizeContractFlag);
-    const contracts = (contractsResult.data ?? []).map((contract) => normalizeContract(contract, flags));
+    const contracts = (contractsResult.data ?? [])
+      .map((contract) => normalizeContract(contract, flags))
+      .filter((contract) => dealIds.has(contract.deal_id));
 
     return {
       creators,
@@ -82,17 +105,23 @@ export async function getAgentlyData(): Promise<AgentlyData> {
         (platformsResult.data ?? []).map(normalizeCreatorPlatform),
         connectedAccountsResult.data ?? [],
         socialSnapshotsResult.data ?? []
-      ),
-      brands: (brandsResult.data ?? []).map(normalizeBrand),
-      brandMatches: (matchesResult.data ?? []).map(normalizeBrandMatch),
-      deals: (dealsResult.data ?? []).map(normalizeDeal),
-      payments: (paymentsResult.data ?? []).map(normalizePayment),
+      ).filter((platform) => creatorIds.has(platform.creator_id)),
+      brands,
+      brandMatches: (matchesResult.data ?? [])
+        .map(normalizeBrandMatch)
+        .filter((match) => creatorIds.has(match.creator_id) && brandIds.has(match.brand_id)),
+      deals,
+      payments: (paymentsResult.data ?? [])
+        .map(normalizePayment)
+        .filter((payment) => !payment.deal_id || dealIds.has(payment.deal_id)),
       contracts,
-      aiValuations: (valuationsResult.data ?? []).map(normalizeAiValuation),
+      aiValuations: (valuationsResult.data ?? [])
+        .map(normalizeAiValuation)
+        .filter((valuation) => creatorIds.has(valuation.creator_id)),
       source: "supabase"
     };
   } catch {
-    return fallbackData;
+    return includeDemo ? fallbackData : emptySupabaseData;
   }
 }
 
@@ -125,6 +154,7 @@ export async function getDealBundle(id: string) {
 function normalizeCreator(row: Record<string, unknown>): Creator {
   return {
     id: String(row.id),
+    is_demo: Boolean(row.is_demo ?? false),
     profile_id: row.profile_id ? String(row.profile_id) : null,
     display_name: String(row.display_name ?? "Untitled creator"),
     primary_niche: String(row.primary_niche ?? "General creator"),
@@ -230,6 +260,7 @@ function providerLabel(provider: string) {
 function normalizeBrand(row: Record<string, unknown>): Brand {
   return {
     id: String(row.id),
+    is_demo: Boolean(row.is_demo ?? false),
     profile_id: row.profile_id ? String(row.profile_id) : null,
     name: String(row.name ?? "Brand"),
     website: String(row.website ?? ""),
@@ -258,6 +289,7 @@ function normalizeBrandMatch(row: Record<string, unknown>): BrandMatch {
 function normalizeDeal(row: Record<string, unknown>): Deal {
   return {
     id: String(row.id),
+    is_demo: Boolean(row.is_demo ?? false),
     creator_id: String(row.creator_id),
     brand_id: String(row.brand_id),
     title: String(row.title ?? "Untitled deal"),
@@ -283,6 +315,10 @@ function normalizeContract(row: Record<string, unknown>, flags: ContractFlag[]):
     id,
     deal_id: String(row.deal_id),
     file_path: row.file_path ? String(row.file_path) : null,
+    file_name: row.file_name ? String(row.file_name) : null,
+    file_type: row.file_type ? String(row.file_type) : null,
+    file_size: row.file_size ? Number(row.file_size) : null,
+    uploaded_by: row.uploaded_by ? String(row.uploaded_by) : null,
     raw_text: String(row.raw_text ?? ""),
     scan_status: String(row.scan_status ?? "pending"),
     risk_level: String(row.risk_level ?? "safe") as Contract["risk_level"],

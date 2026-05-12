@@ -9,6 +9,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardHeader, CardTitle } from "@/components/ui/card";
 import { getCurrentUser } from "@/lib/auth/session";
+import { canSeeDemoData } from "@/lib/db/demo-visibility";
 import { getAgentlyData } from "@/lib/db/live-data";
 import { createAdminClient } from "@/lib/supabase/admin";
 import type { Deal } from "@/types";
@@ -16,7 +17,7 @@ import type { Deal } from "@/types";
 export default async function ContractsPage() {
   const user = await getCurrentUser();
   const admin = createAdminClient();
-  const { brands, contracts, creators, deals } = await getAgentlyData();
+  const { brands, contracts, creators, deals } = await getAgentlyData({ includeDemo: canSeeDemoData(user) });
   const scope = admin && user ? await getContractScope(admin, user) : { brandIds: [], creatorIds: [] };
   const visibleDeals = filterDealsForContracts(deals, user?.role, scope);
   const visibleContracts = contracts.filter((contract) => visibleDeals.some((deal) => deal.id === contract.deal_id));
@@ -71,7 +72,16 @@ export default async function ContractsPage() {
                     <p className="mt-1 text-sm text-muted-foreground">{contract.summary}</p>
                     <div className="mt-2 flex flex-wrap gap-2 text-xs font-medium text-muted-foreground">
                       <span>{contractGuidance(contract.risk_level)}</span>
-                      {contract.file_name ? <span className="rounded-full bg-muted px-2 py-0.5">file: {contract.file_name}</span> : null}
+                      {contract.file_name ? (
+                        <a
+                          className="rounded-full bg-muted px-2 py-0.5 text-primary underline-offset-4 hover:underline"
+                          href={`/api/storage/contracts/${contract.id}`}
+                          rel="noreferrer"
+                          target="_blank"
+                        >
+                          file: {contract.file_name}
+                        </a>
+                      ) : null}
                       {contract.review_status ? <span className="rounded-full bg-muted px-2 py-0.5">gate: {contract.review_status}</span> : null}
                     </div>
                   </div>

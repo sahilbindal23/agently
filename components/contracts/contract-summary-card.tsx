@@ -1,4 +1,4 @@
-import { FileText, ShieldCheck } from "lucide-react";
+import { ExternalLink, FileText, ShieldCheck } from "lucide-react";
 import type React from "react";
 import { RiskBadge } from "@/components/contracts/risk-badge";
 import { Card, CardHeader, CardTitle } from "@/components/ui/card";
@@ -20,7 +20,19 @@ export function ContractSummaryCard({ contract }: { contract?: Contract | null }
           <PacketDetail icon={<FileText className="h-4 w-4" />} label="Attachment">
             {contract.file_name ? (
               <>
-                <p className="truncate font-semibold">{contract.file_name}</p>
+                {contract.file_path ? (
+                  <a
+                    className="inline-flex max-w-full items-center gap-1 font-semibold text-primary underline-offset-4 hover:underline"
+                    href={`/api/storage/contracts/${contract.id}`}
+                    rel="noreferrer"
+                    target="_blank"
+                  >
+                    <span className="truncate">{contract.file_name}</span>
+                    <ExternalLink className="h-3.5 w-3.5 shrink-0" />
+                  </a>
+                ) : (
+                  <p className="truncate font-semibold">{contract.file_name}</p>
+                )}
                 <p className="mt-1 text-xs text-muted-foreground">{formatFileMeta(contract.file_type, contract.file_size)}</p>
               </>
             ) : (

@@ -10,6 +10,8 @@ import { Card, CardHeader, CardTitle } from "@/components/ui/card";
 import { enrichRecommendationsWithRoi } from "@/lib/campaigns/enrich-roi";
 import { projectCampaignPerformance, type CampaignPerformanceProjection } from "@/lib/campaigns/performance";
 import { applyEventInformedRanking, rankCreators, rankFreelancers, type CampaignRecommendation, type FreelancerRecommendationInput, type RecommendationEventSignal, type ServiceRateInput } from "@/lib/campaigns/recommendations";
+import { getCurrentUser } from "@/lib/auth/session";
+import { canSeeDemoData, withoutDemoRows } from "@/lib/db/demo-visibility";
 import { getAgentlyData } from "@/lib/db/live-data";
 import { upsertRecommendationLedgerRows } from "@/lib/engines/outcome-ledger";
 import { creatorAutomationDecision, freelancerAutomationDecision, isDiscoverable } from "@/lib/profile/automation";
@@ -28,7 +30,12 @@ export default async function CampaignDetailPage({
 }) {
   const { id } = await params;
   const query = await searchParams;
-  const [{ creators, creatorPlatforms, deals }, campaignData] = await Promise.all([getAgentlyData(), getCampaignData(id)]);
+  const user = await getCurrentUser();
+  const includeDemo = canSeeDemoData(user);
+  const [{ creators, creatorPlatforms, deals }, campaignData] = await Promise.all([
+    getAgentlyData({ includeDemo }),
+    getCampaignData(id, includeDemo)
+  ]);
   if (!campaignData.campaign) notFound();
 
   const campaign = campaignData.campaign;
@@ -297,7 +304,7 @@ function BriefItem({ label, value }: { label: string; value: string }) {
   );
 }
 
-async function getCampaignData(id: string) {
+async function getCampaignData(id: string, includeDemo: boolean) {
   const admin = createAdminClient();
   if (!admin) {
     return { campaign: null, freelancers: [] as FreelancerRecommendationInput[], serviceRates: [] as ServiceRateInput[], shortlists: [] as CampaignShortlist[], invites: [] as CampaignInvite[], projects: [] as Array<Record<string, unknown>>, productEvents: [] as RecommendationEventSignal[] };
@@ -314,8 +321,8 @@ async function getCampaignData(id: string) {
   ]);
 
   return {
-    campaign: campaignResult.data ? normalizeCampaign(campaignResult.data) : null,
-    freelancers: (freelancersResult.data ?? []) as FreelancerRecommendationInput[],
+    campaign: campaignResult.data && (includeDemo || !campaignResult.data.is_demo) ? normalizeCampaign(campaignResult.data) : null,
+    freelancers: withoutDemoRows((freelancersResult.data ?? []) as FreelancerRecommendationInput[], includeDemo),
     serviceRates: (serviceRatesResult.data ?? []) as ServiceRateInput[],
     shortlists: (shortlistsResult.data ?? []).map(normalizeShortlist),
     invites: (invitesResult.data ?? []).map(normalizeInvite),
@@ -364,6 +371,7 @@ function isCompletedFreelancerProject(project: Record<string, unknown>) {
 function normalizeCampaign(row: Record<string, unknown>): Campaign {
   return {
     id: String(row.id),
+    is_demo: Boolean(row.is_demo ?? false),
     brand_id: row.brand_id ? String(row.brand_id) : null,
     profile_id: row.profile_id ? String(row.profile_id) : null,
     title: String(row.title ?? "Untitled campaign"),

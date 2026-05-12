@@ -138,18 +138,18 @@ export default async function AuditLogsPage({ searchParams }: AuditLogsPageProps
                     {log.actor_role ? <span className="ml-1 text-muted-foreground">({log.actor_role})</span> : null}
                   </Td>
                   <Td className="font-mono text-xs">
-                    {log.entity_type ? `${log.entity_type}` : "—"}
+                    {log.entity_type ? `${log.entity_type}` : "-"}
                     {log.entity_id ? <span className="ml-1 text-muted-foreground">{String(log.entity_id).slice(0, 16)}</span> : null}
                   </Td>
-                  <Td className="text-xs">{log.ip_address ?? "—"}</Td>
+                  <Td className="text-xs">{log.ip_address ?? "-"}</Td>
                   <Td className="max-w-md truncate text-xs text-muted-foreground" title={JSON.stringify(log.metadata)}>
-                    {log.metadata ? JSON.stringify(log.metadata).slice(0, 80) : "—"}
+                    {log.metadata ? JSON.stringify(log.metadata).slice(0, 80) : "-"}
                   </Td>
                 </tr>
               ))}
               {logs.length === 0 ? (
                 <tr>
-                  <Td className="text-muted-foreground" colSpan={6}>No audit entries yet. As admins, rate-limit blocks, contract signs, and dispute resolutions happen, they'll appear here.</Td>
+                  <Td className="text-muted-foreground" colSpan={6}>No audit entries yet. As admins, rate-limit blocks, contract signs, and dispute resolutions happen, they&apos;ll appear here.</Td>
                 </tr>
               ) : null}
             </tbody>
