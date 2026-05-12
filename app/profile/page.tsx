@@ -1,6 +1,7 @@
 import { redirect } from "next/navigation";
 import { AppShell } from "@/components/layout/app-shell";
 import { PageHeader } from "@/components/layout/page-header";
+import { AccountDeletionPanel } from "@/components/profile/account-deletion-panel";
 import { PayoutReadinessCard } from "@/components/profile/payout-readiness-card";
 import { ProfileEditForm } from "@/components/profile/profile-edit-form";
 import { ProfileImageUpload } from "@/components/profile/profile-image-upload";
@@ -27,6 +28,24 @@ export default async function ProfilePage() {
   if (!bundle.profile) {
     redirect("/intake");
   }
+
+  // Has the user already submitted a deletion request that's waiting for
+  // admin review? If so, render the read-only "under review" card instead
+  // of the active form.
+  const { data: pendingDeletionRows } = await admin
+    .from("account_deletion_requests")
+    .select("id, requested_at, blockers")
+    .eq("profile_id", data.user.id)
+    .eq("status", "pending_review")
+    .order("requested_at", { ascending: false })
+    .limit(1);
+  const pendingDeletionRequest = pendingDeletionRows?.[0]
+    ? {
+        id: String(pendingDeletionRows[0].id),
+        requested_at: String(pendingDeletionRows[0].requested_at),
+        blockers: (pendingDeletionRows[0].blockers as Array<{ title?: string; reason?: string }> | null) ?? null
+      }
+    : null;
 
   return (
     <AppShell>
@@ -89,6 +108,7 @@ export default async function ProfilePage() {
           serviceRates={bundle.serviceRates}
         />
       </Card>
+      <AccountDeletionPanel pendingRequest={pendingDeletionRequest} />
     </AppShell>
   );
 }

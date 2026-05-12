@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { Activity, AlertOctagon, BarChart3, Bell, Bot, BrainCircuit, BriefcaseBusiness, ClipboardList, CreditCard, FileText, HelpCircle, Home, LayoutDashboard, MessageSquare, MessageSquareText, Palette, ScrollText, ShieldAlert, Users } from "lucide-react";
+import { Activity, AlertOctagon, BarChart3, Bell, Bot, BrainCircuit, BriefcaseBusiness, ClipboardList, CreditCard, FileText, HelpCircle, Home, LayoutDashboard, MessageSquare, MessageSquareText, Palette, ScrollText, ShieldAlert, Trash2, Users } from "lucide-react";
 import { LogoutButton } from "@/components/auth/logout-button";
 import { HomeLogo } from "@/components/layout/home-logo";
 import { MobileNav } from "@/components/layout/mobile-nav";
@@ -32,6 +32,7 @@ const adminNav = [
   { href: "/disputes", label: "Disputes", icon: AlertOctagon, tour: "disputes" },
   { href: "/benchmarks/anomalies", label: "Anomalies", icon: ShieldAlert, tour: "anomalies" },
   { href: "/admin/audit-logs", label: "Audit logs", icon: ScrollText, tour: "audit_logs" },
+  { href: "/admin/deletion-requests", label: "Deletion requests", icon: Trash2, tour: "deletion_requests" },
   { href: "/payments", label: "Payments", icon: CreditCard, tour: "payments" },
   { href: "/ai-insights", label: "AI Insights", icon: Bot, tour: "ai" },
   { href: "/demo-guide", label: "Walkthrough", icon: HelpCircle, tour: "walkthrough" },
