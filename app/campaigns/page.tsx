@@ -11,7 +11,7 @@ import { enrichRecommendationsWithRoi } from "@/lib/campaigns/enrich-roi";
 import { applyEventInformedRanking, rankCreators, rankFreelancers, type CampaignRecommendation, type FreelancerRecommendationInput, type RecommendationEventSignal, type ServiceRateInput } from "@/lib/campaigns/recommendations";
 import { getCurrentUser } from "@/lib/auth/session";
 import { canSeeDemoData, withoutDemoRows } from "@/lib/db/demo-visibility";
-import { getAgentlyData } from "@/lib/db/live-data";
+import { getAgentlyData, getCreatorMetricSnapshots } from "@/lib/db/live-data";
 import { creatorAutomationDecision, freelancerAutomationDecision, isDiscoverable } from "@/lib/profile/automation";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { formatCurrency } from "@/lib/utils/format";
@@ -38,8 +38,9 @@ export default async function CampaignsPage() {
     serviceRates: campaignData.serviceRates.filter((rate) => rate.freelancer_id === freelancer.id) as unknown as Array<Record<string, unknown>>
   })));
   const adminClientForRoi = createAdminClient();
+  const snapshots = await getCreatorMetricSnapshots(eligibleCreators.map((c) => c.id));
   const creatorRecommendationsBase = latestCampaign
-    ? applyEventInformedRanking(rankCreators(latestCampaign, eligibleCreators, creatorPlatforms), "creator", campaignData.productEvents, latestCampaign.id).slice(0, 5)
+    ? applyEventInformedRanking(rankCreators(latestCampaign, eligibleCreators, creatorPlatforms, snapshots), "creator", campaignData.productEvents, latestCampaign.id).slice(0, 5)
     : [];
   const creatorRecommendations = adminClientForRoi && creatorRecommendationsBase.length
     ? await enrichRecommendationsWithRoi(adminClientForRoi, creatorRecommendationsBase, eligibleCreators, creatorPlatforms)

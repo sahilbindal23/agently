@@ -1,11 +1,12 @@
 export const engineWeights = {
   campaignRecommendation: [
     { key: "category_fit", label: "Category fit", weight: 0.24, description: "How closely niche, content style, or freelancer service maps to the campaign brief." },
-    { key: "audience_fit", label: "Audience fit", weight: 0.20, description: "Topic overlap between the campaign brief and the talent's self-reported niche/bio/content style. Demographics-based audience matching (age/gender/geo from Phyllo) is a planned upgrade — current weight is a placeholder for that." },
-    { key: "budget_fit", label: "Budget fit", weight: 0.16, description: "Whether the campaign budget is realistic for the expected work or reach." },
+    { key: "budget_fit", label: "Budget fit", weight: 0.14, description: "Whether the campaign budget is realistic for the expected work or reach." },
+    { key: "audience_fit", label: "Audience fit", weight: 0.12, description: "70% Phyllo demographic match (India %, city overlap, age range) + 30% topic keyword overlap when snapshots exist; falls back to keyword-only when none. Deliberately capped low — follower demographics are the most botable signal." },
     { key: "platform_fit", label: "Platform fit", weight: 0.12, description: "Fit against requested creator channel or production format." },
     { key: "language_fit", label: "Language fit", weight: 0.12, description: "Overlap between campaign languages and talent languages. Higher weight reflects India-wide language diversity." },
-    { key: "city_fit", label: "City fit", weight: 0.08, description: "Bangalore-specific local signals. Lowered from 0.16 because the product is India-first even though launch is Bangalore." },
+    { key: "engagement_quality", label: "Engagement quality (anti-bot)", weight: 0.10, description: "Real-engagement signals harder to fake than audience numbers: engagement rate vs follower-tier sanity band, view-to-follower ratio, consistency variance across historical snapshots." },
+    { key: "city_fit", label: "City fit", weight: 0.08, description: "Bangalore-specific local signals. Bangalore launch is a wedge, not a constraint." },
     { key: "data_confidence", label: "Data confidence", weight: 0.08, description: "How much Agently trusts the underlying profile, API, and performance data." }
   ],
   creatorValuation: [
@@ -21,6 +22,12 @@ export const engineWeights = {
     { label: "High engagement", value: "+12% if engagement >= 5%; -14% if below 2%", description: "Engagement improves sponsor confidence." },
     { label: "Revisions", value: "+8% per extra revision, capped at +24%", description: "More revision rounds increase production burden." },
     { label: "Rush turnaround", value: "+18% if under 5 days", description: "Fast timelines should carry a premium." }
+  ],
+  engagementQuality: [
+    { label: "ER vs follower-tier sanity", value: "weight 0.45-0.6 of score", description: "Engagement rate should fall in the expected band for that follower count: 0-10k → 6-12%, 10k-100k → 3-8%, 100k-1M → 1.5-5%, 1M+ → 0.5-3%. Too high suggests engagement pods or bought engagement; too low suggests inflated followers without real audience." },
+    { label: "View-to-follower ratio", value: "weight 0.30-0.40", description: "avg_views_30d / followers. <3% strongly suggests bought followers, 10-35% is healthy for India IG/YT, 35%+ is exceptional viral performance." },
+    { label: "Engagement consistency", value: "weight 0.25 when history available", description: "Coefficient of variation of engagement_rate_30d across snapshots. <0.15 = stable real audience, 0.35-0.6 = spiky (possible bot purchases or content luck), >0.6 = highly volatile and not yet trustworthy." },
+    { label: "Default for new creators", value: "60 (neutral)", description: "Creators without synced metrics get a neutral score so they aren't penalized for not having connected accounts yet." }
   ],
   categoryDemand: [
     { label: "Fintech/finance", value: "1.28x", description: "Higher CAC-backed budgets." },

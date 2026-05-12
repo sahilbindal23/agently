@@ -1,6 +1,9 @@
+import { audienceFitScore, engagementQualityScore, type SocialMetricSnapshot } from "@/lib/campaigns/engagement-quality";
 import { getBangaloreFit, getCreatorLanguages } from "@/lib/utils/creator-metrics";
 import { isTrustedMetricSource, socialTrustFromSource } from "@/lib/social/trust";
 import type { Campaign, Creator, CreatorPlatform } from "@/types";
+
+export type { SocialMetricSnapshot } from "@/lib/campaigns/engagement-quality";
 
 export type FreelancerRecommendationInput = {
   id: string;
@@ -29,6 +32,7 @@ export type ServiceRateInput = {
 export type ScoreBreakdown = {
   category_fit: number;
   audience_fit: number;
+  engagement_quality: number;
   platform_fit: number;
   city_fit: number;
   language_fit: number;
@@ -74,14 +78,27 @@ export type RecommendationEventSignal = {
 
 type TrustSource = CampaignRecommendation["trust_source"];
 
-export function rankCreators(campaign: Campaign, creators: Creator[], platforms: CreatorPlatform[]): CampaignRecommendation[] {
+export function rankCreators(
+  campaign: Campaign,
+  creators: Creator[],
+  platforms: CreatorPlatform[],
+  snapshots: SocialMetricSnapshot[] = []
+): CampaignRecommendation[] {
   const briefText = briefKeywords(campaign);
   return creators.map((creator) => {
     const creatorPlatforms = platforms.filter((platform) => platform.creator_id === creator.id);
     const primary = creatorPlatforms[0];
+    const creatorSnapshots = snapshots.filter((snap) => snap.creator_id === creator.id);
     const platformFit = campaign.platforms.length && creatorPlatforms.some((platform) => includesAny(platform.platform, campaign.platforms)) ? 88 : campaign.platforms.length ? 45 : 70;
     const categoryFit = includesAny(creator.primary_niche, campaign.creator_categories) || includesAny(creator.content_style, campaign.creator_categories) ? 90 : 48;
-    const audienceFit = includesAny(`${creator.primary_niche} ${creator.bio} ${creator.content_style}`, briefText) ? 82 : 52;
+    // audience_fit V2: blend Phyllo demographic snapshots with the legacy
+    // topic-keyword check. Falls back to keyword-only when no snapshots.
+    const topicKeywordHit = includesAny(`${creator.primary_niche} ${creator.bio} ${creator.content_style}`, briefText);
+    const audienceFit = audienceFitScore({ campaign, creator, snapshots: creatorSnapshots, topicKeywordHit });
+    // engagement_quality (anti-bot): ER sanity, view-to-follower ratio,
+    // consistency across history. Stays neutral when no snapshots exist.
+    const engagementQualityResult = engagementQualityScore(creatorSnapshots);
+    const engagementQuality = engagementQualityResult.score;
     const languageFit = campaign.languages.length && creator.languages.some((language) => includesAny(language, campaign.languages)) ? 86 : campaign.languages.length ? 42 : 68;
     const cityFit = getBangaloreFit(creator);
     const budgetFit = getCreatorBudgetFit(campaign.budget_cents, primary?.avg_views ?? 0);
@@ -93,6 +110,7 @@ export function rankCreators(campaign: Campaign, creators: Creator[], platforms:
     const scoreBreakdown = {
       category_fit: categoryFit,
       audience_fit: audienceFit,
+      engagement_quality: engagementQuality,
       platform_fit: platformFit,
       city_fit: cityFit,
       language_fit: languageFit,
@@ -101,7 +119,13 @@ export function rankCreators(campaign: Campaign, creators: Creator[], platforms:
     };
     const score = weightedScore(scoreBreakdown);
     const roi = estimateCreatorRoi(campaign, primary);
-    const watchouts = creatorWatchouts(campaign, creator, primary, scoreBreakdown);
+    // Surface engagement-quality flags into watchouts so brands and admins
+    // see WHY a creator got a low engagement_quality score, not just the
+    // number. Bot signals beat surprise penalties.
+    const watchouts = [
+      ...creatorWatchouts(campaign, creator, primary, scoreBreakdown),
+      ...engagementQualityResult.reasons.filter((r) => /pod|bot|inflated|volatile/i.test(r))
+    ];
     const matchType = creatorMatchType(campaign, scoreBreakdown, creator);
 
     return {
@@ -138,6 +162,10 @@ export function rankFreelancers(campaign: Campaign, freelancers: FreelancerRecom
     const scoreBreakdown = {
       category_fit: skillFit,
       audience_fit: 55,
+      // Freelancers don't have audience metrics — engagement_quality stays
+      // neutral so the dimension exists in the breakdown shape but doesn't
+      // bias the ranking against vendors.
+      engagement_quality: 60,
       platform_fit: 65,
       city_fit: cityFit,
       language_fit: languageFit,
@@ -259,21 +287,24 @@ function getFreelancerBudgetFit(budgetCents: number, hourlyRateCents: number) {
 }
 
 function weightedScore(score: ScoreBreakdown) {
-  // Weight rationale:
-  //   - Bangalore launch is happening but the product is India-first, so
-  //     city_fit dropped from 0.16 to 0.08. The freed weight redistributed
-  //     to category_fit / audience_fit / budget_fit / language_fit.
-  //   - audience_fit is currently a keyword-match against self-reported
-  //     niche + bio + content_style. The label is somewhat misleading —
-  //     real audience demographics (age, gender, geo) from Phyllo are not
-  //     yet wired into ranking. Upgrade item.
+  // Weight rationale (sums to 1.00):
+  //   - audience_fit deliberately capped at 0.12 because audience numbers
+  //     are the most botable signal on social platforms today. A creator
+  //     with bought followers in the right city should not outrank one
+  //     with real, engaged viewers.
+  //   - engagement_quality (new, 0.10) absorbs the weight cut from
+  //     audience_fit. ER-vs-follower-tier, view-to-follower ratio, and
+  //     consistency across snapshots are harder to fake than raw demographics.
+  //   - city_fit stays at 0.08 (Bangalore is a wedge, not a constraint).
+  //   - category_fit keeps the largest single weight at 0.24.
   return Math.max(35, Math.min(96, Math.round(
     score.category_fit * 0.24 +
-    score.audience_fit * 0.20 +
+    score.audience_fit * 0.12 +
+    score.engagement_quality * 0.10 +
     score.platform_fit * 0.12 +
     score.city_fit * 0.08 +
     score.language_fit * 0.12 +
-    score.budget_fit * 0.16 +
+    score.budget_fit * 0.14 +
     score.data_confidence * 0.08
   )));
 }
@@ -357,7 +388,8 @@ function creatorProofPoints(creator: Creator, platform: CreatorPlatform | undefi
   const trust = socialTrustFromSource(platform?.metric_source);
   return [
     `${breakdown.category_fit}/100 category fit`,
-    `${breakdown.city_fit}/100 city fit`,
+    `${breakdown.audience_fit}/100 audience fit`,
+    `${breakdown.engagement_quality}/100 engagement quality`,
     platform ? `${compactNumber(platform.avg_views)} avg views on ${platform.platform}` : "Platform metrics missing",
     `Metrics trust: ${trust.label}`,
     isVerifiedTier(creator.verification_tier, creator.verification_status) ? "Verified by Agently" : "Unverified"

@@ -7,7 +7,7 @@ import { Card, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, Td, Th } from "@/components/ui/table";
 import { applyEventInformedRanking, rankCreators, rankFreelancers, type CampaignRecommendation, type FreelancerRecommendationInput, type RecommendationEventSignal, type ServiceRateInput } from "@/lib/campaigns/recommendations";
 import { getCurrentUser } from "@/lib/auth/session";
-import { getAgentlyData } from "@/lib/db/live-data";
+import { getAgentlyData, getCreatorMetricSnapshots } from "@/lib/db/live-data";
 import { enginePrinciples, engineWeights } from "@/lib/engines/math";
 import { createAdminClient } from "@/lib/supabase/admin";
 import type { Campaign, CampaignInvite, CampaignShortlist } from "@/types";
@@ -35,9 +35,10 @@ export default async function EngineRoomPage() {
   }
 
   const [{ creators, creatorPlatforms }, campaignData] = await Promise.all([getAgentlyData(), getCampaignData()]);
+  const snapshots = await getCreatorMetricSnapshots(creators.map((c) => c.id));
   const latestCampaign = campaignData.campaigns[0];
   const creatorRecommendations = latestCampaign
-    ? applyEventInformedRanking(rankCreators(latestCampaign, creators, creatorPlatforms), "creator", campaignData.productEvents, latestCampaign.id).slice(0, 6)
+    ? applyEventInformedRanking(rankCreators(latestCampaign, creators, creatorPlatforms, snapshots), "creator", campaignData.productEvents, latestCampaign.id).slice(0, 6)
     : [];
   const freelancerRecommendations = latestCampaign
     ? applyEventInformedRanking(rankFreelancers(latestCampaign, campaignData.freelancers, campaignData.serviceRates), "freelancer", campaignData.productEvents, latestCampaign.id).slice(0, 6)
@@ -76,8 +77,16 @@ export default async function EngineRoomPage() {
         />
       </section>
 
-      <section className="mb-5 grid gap-5 xl:grid-cols-3">
+      <section className="mb-5 grid gap-5 xl:grid-cols-2">
+        <FormulaCard
+          description="Anti-bot health score. Real engagement signals are harder to fake than audience numbers, so this dimension gets weight even though follower demographics are capped."
+          items={engineWeights.engagementQuality}
+          title="Engagement Quality (anti-bot)"
+        />
         <FormulaCard description="Category demand assumptions used in pricing." items={engineWeights.categoryDemand} title="Category Demand" />
+      </section>
+
+      <section className="mb-5 grid gap-5 xl:grid-cols-2">
         <FormulaCard description="Trust and marketplace behavior boosts that make the engine self-improving." items={engineWeights.trustAndBehavior} title="Trust + Behavior" />
         <FormulaCard description="Signals used during creator and brand audit intake." items={engineWeights.auditSignals} title="Audit Signals" />
       </section>

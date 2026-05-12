@@ -125,6 +125,37 @@ export async function getAgentlyData(options: { includeDemo?: boolean } = {}): P
   }
 }
 
+/**
+ * Fetch social_metric_snapshots for use by the recommendation engine's
+ * audience_fit and engagement_quality dimensions. Returns rows in the
+ * shape the engine expects. Pulls a generous slice of recent history so
+ * the consistency/variance signal has data to chew on.
+ */
+export async function getCreatorMetricSnapshots(creatorIds?: string[]) {
+  const admin = createAdminClient();
+  if (!admin) return [];
+
+  let query = admin
+    .from("social_metric_snapshots")
+    .select("creator_id, provider, followers, avg_views_30d, engagement_rate_30d, india_audience_percent, bangalore_audience_percent, top_cities, audience_age_range, synced_at")
+    .order("synced_at", { ascending: false })
+    .limit(800);
+  if (creatorIds && creatorIds.length) query = query.in("creator_id", creatorIds);
+  const { data } = await query;
+  return (data ?? []).map((row) => ({
+    creator_id: row.creator_id ? String(row.creator_id) : null,
+    provider: String(row.provider ?? ""),
+    followers: Number(row.followers ?? 0),
+    avg_views_30d: Number(row.avg_views_30d ?? 0),
+    engagement_rate_30d: Number(row.engagement_rate_30d ?? 0),
+    india_audience_percent: Number(row.india_audience_percent ?? 0),
+    bangalore_audience_percent: Number(row.bangalore_audience_percent ?? 0),
+    top_cities: Array.isArray(row.top_cities) ? row.top_cities.map(String) : [],
+    audience_age_range: row.audience_age_range ? String(row.audience_age_range) : null,
+    synced_at: row.synced_at ? String(row.synced_at) : new Date().toISOString()
+  }));
+}
+
 export async function getCreatorBundle(id: string) {
   const data = await getAgentlyData();
   const creator = data.creators.find((item) => item.id === id);

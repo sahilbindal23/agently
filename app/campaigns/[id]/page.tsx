@@ -12,7 +12,7 @@ import { projectCampaignPerformance, type CampaignPerformanceProjection } from "
 import { applyEventInformedRanking, rankCreators, rankFreelancers, type CampaignRecommendation, type FreelancerRecommendationInput, type RecommendationEventSignal, type ServiceRateInput } from "@/lib/campaigns/recommendations";
 import { getCurrentUser } from "@/lib/auth/session";
 import { canSeeDemoData, withoutDemoRows } from "@/lib/db/demo-visibility";
-import { getAgentlyData } from "@/lib/db/live-data";
+import { getAgentlyData, getCreatorMetricSnapshots } from "@/lib/db/live-data";
 import { upsertRecommendationLedgerRows } from "@/lib/engines/outcome-ledger";
 import { creatorAutomationDecision, freelancerAutomationDecision, isDiscoverable } from "@/lib/profile/automation";
 import { createAdminClient } from "@/lib/supabase/admin";
@@ -53,7 +53,8 @@ export default async function CampaignDetailPage({
     serviceRates: campaignData.serviceRates.filter((rate) => rate.freelancer_id === freelancer.id) as unknown as Array<Record<string, unknown>>
   })));
   const creatorTrustFilter = ["verified", "api_synced"].includes(String(first(query.creatorTrust))) ? "verified" : "all";
-  const allCreatorRecommendations = applyEventInformedRanking(rankCreators(campaign, eligibleCreators, creatorPlatforms), "creator", campaignData.productEvents, campaign.id);
+  const snapshots = await getCreatorMetricSnapshots(eligibleCreators.map((c) => c.id));
+  const allCreatorRecommendations = applyEventInformedRanking(rankCreators(campaign, eligibleCreators, creatorPlatforms, snapshots), "creator", campaignData.productEvents, campaign.id);
   const adminClientForRoi = createAdminClient();
   const creatorRecommendationsBase = filterCreatorRecommendations(allCreatorRecommendations, creatorTrustFilter).slice(0, 8);
   const creatorRecommendations = adminClientForRoi
