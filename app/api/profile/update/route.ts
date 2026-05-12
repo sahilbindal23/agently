@@ -42,12 +42,6 @@ async function updateCreator(admin: NonNullable<ReturnType<typeof createAdminCli
   const { data, error } = await admin.from("creators").update(payload).eq("id", creator.id).select("*").single();
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
 
-  const platforms = parsePlatforms(body.platforms);
-  await admin.from("creator_platforms").delete().eq("creator_id", creator.id);
-  if (platforms.length) {
-    await admin.from("creator_platforms").insert(platforms.map((platform) => ({ ...platform, creator_id: creator.id })));
-  }
-
   return NextResponse.json({ data, next_url: "/creator-home" });
 }
 
@@ -144,21 +138,6 @@ function list(value: unknown) {
 
 function lines(value: unknown) {
   return text(value).split(/\r?\n/).map((item) => item.trim()).filter(Boolean);
-}
-
-function parsePlatforms(value: unknown) {
-  return lines(value).map((line) => {
-    const [platform, handle, url, followers, avgViews, engagementRate, postingFrequency] = line.split("|").map((item) => item.trim());
-    return {
-      platform: platform || "Platform",
-      handle: handle || "",
-      url: url || "",
-      followers: Number(followers ?? 0),
-      avg_views: Number(avgViews ?? 0),
-      engagement_rate: Number(engagementRate ?? 0),
-      posting_frequency: postingFrequency || ""
-    };
-  });
 }
 
 function parseServiceRates(value: unknown) {

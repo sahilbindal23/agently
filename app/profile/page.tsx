@@ -66,18 +66,18 @@ export default async function ProfilePage() {
             <VerificationBadge status={bundle.profile.verification_status} tier={bundle.profile.verification_tier} />
           </div>
         </CardHeader>
-        <div className="mb-5 rounded-md border bg-muted p-4">
-          <div className="mb-3 flex items-center justify-between gap-3">
-            <div>
-              <p className="text-sm font-semibold">Profile image</p>
-              <p className="mt-1 text-xs text-muted-foreground">Shown on marketplace cards, recommendations, and profile pages.</p>
-            </div>
-            {bundle.profile.image_url ? (
-              // eslint-disable-next-line @next/next/no-img-element
-              <img alt="Profile" className="h-14 w-14 rounded-md object-cover" src={String(bundle.profile.image_url)} />
-            ) : null}
+        <div className="mb-5 grid gap-3 rounded-md border bg-muted p-3 md:grid-cols-[auto_minmax(260px,1fr)_auto] md:items-center">
+          {bundle.profile.image_url ? (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img alt="Profile" className="h-12 w-12 rounded-md object-cover" src={String(bundle.profile.image_url)} />
+          ) : (
+            <div className="hidden h-12 w-12 rounded-md border bg-background md:block" />
+          )}
+          <div>
+            <p className="text-sm font-semibold">Profile image</p>
+            <p className="mt-1 text-xs text-muted-foreground">Used on cards, recommendations, and profile pages.</p>
           </div>
-        <ProfileImageUpload entityId={String(bundle.profile.id)} entityType={role as "creator" | "brand" | "freelancer"} />
+          <ProfileImageUpload entityId={String(bundle.profile.id)} entityType={role as "creator" | "brand" | "freelancer"} />
         </div>
         {role === "creator" ? (
           <>

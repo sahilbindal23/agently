@@ -31,7 +31,7 @@ type ProfileEditProps = {
   audit?: Record<string, unknown> | null;
 };
 
-export function ProfileEditForm({ role, profile, platforms = [], serviceRates = [], portfolio = [], audit }: ProfileEditProps) {
+export function ProfileEditForm({ role, profile, serviceRates = [], portfolio = [], audit }: ProfileEditProps) {
   const router = useRouter();
   const [status, setStatus] = useState<"idle" | "saving" | "saved" | "error">("idle");
   const [message, setMessage] = useState("");
@@ -63,7 +63,7 @@ export function ProfileEditForm({ role, profile, platforms = [], serviceRates = 
   return (
     <form className="grid gap-3 md:grid-cols-2" onSubmit={onSubmit}>
       {role === "creator" ? (
-        <CreatorFields profile={profile} platforms={platforms} />
+        <CreatorFields profile={profile} />
       ) : role === "freelancer" ? (
         <FreelancerFields profile={profile} portfolio={portfolio} serviceRates={serviceRates} />
       ) : (
@@ -78,7 +78,7 @@ export function ProfileEditForm({ role, profile, platforms = [], serviceRates = 
   );
 }
 
-function CreatorFields({ profile, platforms }: { profile: Record<string, unknown>; platforms: Array<Record<string, unknown>> }) {
+function CreatorFields({ profile }: { profile: Record<string, unknown> }) {
   return (
     <>
       <LabeledInput label="Display name" name="display_name" placeholder="Display name" defaultValue={value(profile.display_name)} required />
@@ -94,20 +94,6 @@ function CreatorFields({ profile, platforms }: { profile: Record<string, unknown
       <ReadOnlySignal label="Monetization score" value={`${value(profile.monetization_score) || 0}/100`} />
       <ReadOnlySignal label="Valuation score" value={`${value(profile.valuation_score) || 0}/100`} />
       <Textarea className="md:col-span-2" name="bio" placeholder="Creator bio and positioning" defaultValue={value(profile.bio)} />
-      <Textarea
-        className="md:col-span-2 min-h-36"
-        name="platforms"
-        placeholder="One platform per line: Platform | Handle | URL | Followers | Avg views | Engagement rate | Posting frequency"
-        defaultValue={platforms.map((platform) => [
-          platform.platform,
-          platform.handle,
-          platform.url,
-          platform.followers,
-          platform.avg_views,
-          platform.engagement_rate,
-          platform.posting_frequency
-        ].map(value).join(" | ")).join("\n")}
-      />
     </>
   );
 }

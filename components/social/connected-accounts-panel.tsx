@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { Cable, CheckCircle2, RefreshCw, ShieldAlert, ShieldCheck, Sparkles, Trash2 } from "lucide-react";
+import { Cable, RefreshCw, ShieldAlert, ShieldCheck, Sparkles, Trash2 } from "lucide-react";
 import { socialProviders, type SocialProvider } from "@/lib/social/platforms";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -311,8 +311,6 @@ export function ConnectedAccountsPanel({
         })}
       </div>
 
-      <MetaReadinessGuide />
-
       <div className="mb-4 rounded-md border border-primary/30 bg-primary/5 p-4 dark:border-primary/40 dark:bg-primary/10">
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <div>
@@ -396,37 +394,6 @@ function Signal({ label, value }: { label: string; value: string }) {
     <div className="rounded-md bg-muted px-3 py-2">
       <p className="text-[11px] font-semibold uppercase text-muted-foreground">{label}</p>
       <p className="mt-1 text-sm font-semibold">{value}</p>
-    </div>
-  );
-}
-
-function MetaReadinessGuide() {
-  const items = [
-    "Use an Instagram Creator or Business account for useful insights.",
-    "Keep the Instagram account linked to a Facebook Page.",
-    "Grant insights permissions during OAuth once the Meta app is approved for them.",
-    "If the creator is not ready, use prototype connect until their account setup is fixed."
-  ];
-
-  return (
-    <div className="mb-4 rounded-md border border-blue-200 bg-blue-50/70 p-3 dark:border-sky-900/60 dark:bg-sky-950/25">
-      <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
-        <div>
-          <p className="text-sm font-semibold text-blue-950 dark:text-sky-100">Instagram/Facebook setup checklist</p>
-          <p className="mt-1 text-xs leading-5 text-blue-800 dark:text-sky-300">
-            Meta works best when the creator has a professional Instagram account connected to a Facebook Page.
-          </p>
-        </div>
-        <Badge tone="blue">Meta ready path</Badge>
-      </div>
-      <div className="mt-3 grid gap-2 md:grid-cols-2">
-        {items.map((item) => (
-          <div className="flex items-start gap-2 rounded-md bg-white/70 p-2 text-xs leading-5 text-blue-900 dark:bg-white/5 dark:text-sky-200" key={item}>
-            <CheckCircle2 className="mt-0.5 h-3.5 w-3.5 shrink-0 text-primary" />
-            <span>{item}</span>
-          </div>
-        ))}
-      </div>
     </div>
   );
 }
