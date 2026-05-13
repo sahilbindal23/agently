@@ -60,10 +60,10 @@ https://your-vercel-url.vercel.app
 Use the demo accounts already created in Supabase Auth:
 
 ```txt
-admin@agently.demo / DemoPassword123!
-brand@agently.demo / DemoPassword123!
-creator@agently.demo / DemoPassword123!
-freelancer@agently.demo / DemoPassword123!
+admin.demo@agently.co.in / AgentlyBeta@2026
+brand.demo@agently.co.in / AgentlyBeta@2026
+creator.demo@agently.co.in / AgentlyBeta@2026
+freelancer.demo@agently.co.in / AgentlyBeta@2026
 ```
 
 ## 5. What to ask testers to try

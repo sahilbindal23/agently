@@ -104,10 +104,10 @@ alter table campaigns add column if not exists is_demo boolean not null default 
 alter table deals add column if not exists is_demo boolean not null default false;
 alter table freelancer_projects add column if not exists is_demo boolean not null default false;
 
-update profiles set is_demo = true where lower(email) like '%@agently.demo';
+update profiles set is_demo = true where lower(email) like '%@agently.demo' or lower(email) like '%.demo@agently.co.in';
 update creators set is_demo = true where profile_id in (select id from profiles where is_demo);
 update freelancers set is_demo = true where profile_id in (select id from profiles where is_demo);
-update brands set is_demo = true where lower(contact_email) like '%@agently.demo' or status like 'demo%';
+update brands set is_demo = true where lower(contact_email) like '%@agently.demo' or lower(contact_email) like '%.demo@agently.co.in' or status like 'demo%';
 update campaigns set is_demo = true where profile_id in (select id from profiles where is_demo);
 update deals set is_demo = true where creator_id in (select id from creators where is_demo) or brand_id in (select id from brands where is_demo);
 update freelancer_projects set is_demo = true where freelancer_id in (select id from freelancers where is_demo) or brand_id in (select id from brands where is_demo);

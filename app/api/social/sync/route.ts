@@ -76,7 +76,8 @@ function socialAccountStatusAfterSync(source: string) {
 }
 
 function isDemoProfile(email: string) {
-  return email.endsWith("@agently.demo");
+  const normalized = email.toLowerCase();
+  return normalized.endsWith("@agently.demo") || normalized.endsWith(".demo@agently.co.in");
 }
 
 function buildSelfReportedSnapshot({

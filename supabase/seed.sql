@@ -1,5 +1,5 @@
 insert into profiles (id, email, full_name, role) values
-  ('00000000-0000-0000-0000-000000000001', 'admin@agently.demo', 'Agently Admin', 'admin'),
+  ('00000000-0000-0000-0000-000000000001', 'admin.demo@agently.co.in', 'Agently Admin', 'admin'),
   ('00000000-0000-0000-0000-000000000002', 'maya@agently.demo', 'Maya Chen', 'creator'),
   ('00000000-0000-0000-0000-000000000003', 'jordan@agently.demo', 'Jordan Miles', 'creator');
 

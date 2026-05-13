@@ -54,15 +54,6 @@ export function LoginForm() {
     router.refresh();
   }
 
-  function fillDemo(email: string) {
-    const form = document.querySelector<HTMLFormElement>("[data-login-form]");
-    if (!form) return;
-    const emailInput = form.elements.namedItem("email") as HTMLInputElement | null;
-    const passwordInput = form.elements.namedItem("password") as HTMLInputElement | null;
-    setInputValue(emailInput, email);
-    setInputValue(passwordInput, "DemoPassword123!");
-  }
-
   return (
     <main className="min-h-screen px-4 py-5">
       <div className="mx-auto flex max-w-6xl justify-start">
@@ -88,18 +79,6 @@ export function LoginForm() {
           <Button className="w-full" disabled={status === "loading"} type="submit">{status === "loading" ? "Signing in..." : "Continue"}</Button>
           {error ? <p className="text-sm text-red-600">{error}</p> : null}
         </form>
-        <div className="mt-5 rounded-md border bg-muted p-3">
-          <p className="mb-2 text-xs font-semibold uppercase text-muted-foreground">Demo logins</p>
-          <div className="grid gap-2">
-            <button className="rounded-md border bg-white px-3 py-2 text-left text-sm hover:bg-muted" onClick={() => fillDemo("creator@agently.demo")} type="button">
-              Creator: creator@agently.demo
-            </button>
-            <button className="rounded-md border bg-white px-3 py-2 text-left text-sm hover:bg-muted" onClick={() => fillDemo("brand@agently.demo")} type="button">
-              Brand: brand@agently.demo
-            </button>
-          </div>
-          <p className="mt-2 text-xs text-muted-foreground">Password for both: DemoPassword123!</p>
-        </div>
         <p className="mt-5 text-sm text-muted-foreground">
           New to Agently? <Link className="font-medium text-primary" href="/signup">Start intake</Link>
         </p>
@@ -108,11 +87,4 @@ export function LoginForm() {
       </div>
     </main>
   );
-}
-
-function setInputValue(input: HTMLInputElement | null, value: string) {
-  if (!input) return;
-  input.value = value;
-  input.dispatchEvent(new Event("input", { bubbles: true }));
-  input.dispatchEvent(new Event("change", { bubbles: true }));
 }

@@ -46,10 +46,10 @@ npm run test:e2e:report
 The tests default to:
 
 ```text
-admin@agently.demo / DemoPassword123!
-brand@agently.demo / DemoPassword123!
-creator@agently.demo / DemoPassword123!
-freelancer@agently.demo / DemoPassword123!
+admin.demo@agently.co.in / AgentlyBeta@2026
+brand.demo@agently.co.in / AgentlyBeta@2026
+creator.demo@agently.co.in / AgentlyBeta@2026
+freelancer.demo@agently.co.in / AgentlyBeta@2026
 ```
 
 You can override them with environment variables:

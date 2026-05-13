@@ -2,23 +2,23 @@ import { expect, type Page } from "@playwright/test";
 
 export const demoUsers = {
   admin: {
-    email: process.env.AGENTLY_ADMIN_EMAIL ?? "admin@agently.demo",
-    password: process.env.AGENTLY_ADMIN_PASSWORD ?? "DemoPassword123!",
+    email: process.env.AGENTLY_ADMIN_EMAIL ?? "admin.demo@agently.co.in",
+    password: process.env.AGENTLY_ADMIN_PASSWORD ?? "AgentlyBeta@2026",
     homePath: "/dashboard"
   },
   brand: {
-    email: process.env.AGENTLY_BRAND_EMAIL ?? "brand@agently.demo",
-    password: process.env.AGENTLY_BRAND_PASSWORD ?? "DemoPassword123!",
+    email: process.env.AGENTLY_BRAND_EMAIL ?? "brand.demo@agently.co.in",
+    password: process.env.AGENTLY_BRAND_PASSWORD ?? "AgentlyBeta@2026",
     homePath: "/brand-home"
   },
   creator: {
-    email: process.env.AGENTLY_CREATOR_EMAIL ?? "creator@agently.demo",
-    password: process.env.AGENTLY_CREATOR_PASSWORD ?? "DemoPassword123!",
+    email: process.env.AGENTLY_CREATOR_EMAIL ?? "creator.demo@agently.co.in",
+    password: process.env.AGENTLY_CREATOR_PASSWORD ?? "AgentlyBeta@2026",
     homePath: "/creator-home"
   },
   freelancer: {
-    email: process.env.AGENTLY_FREELANCER_EMAIL ?? "freelancer@agently.demo",
-    password: process.env.AGENTLY_FREELANCER_PASSWORD ?? "DemoPassword123!",
+    email: process.env.AGENTLY_FREELANCER_EMAIL ?? "freelancer.demo@agently.co.in",
+    password: process.env.AGENTLY_FREELANCER_PASSWORD ?? "AgentlyBeta@2026",
     homePath: "/freelancer-home"
   }
 } as const;
