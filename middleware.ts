@@ -2,7 +2,22 @@ import type { NextRequest } from "next/server";
 import { NextResponse } from "next/server";
 import { createServerClient } from "@supabase/ssr";
 
-const publicRoutes = new Set(["/", "/login", "/signup", "/privacy", "/terms", "/data-deletion"]);
+// Routes that never require auth. /forgot-password and /reset-password are
+// part of the password-recovery flow; /auth/callback is where Supabase lands
+// the user after they click the recovery email link (it then exchanges the
+// code for a session). All three must skip the auth gate or the flow dead-
+// ends with a redirect back to /login.
+const publicRoutes = new Set([
+  "/",
+  "/login",
+  "/signup",
+  "/forgot-password",
+  "/reset-password",
+  "/auth/callback",
+  "/privacy",
+  "/terms",
+  "/data-deletion"
+]);
 const blockedSessionEmails = new Set([
   "admin@agently.demo",
   "brand@agently.demo",
