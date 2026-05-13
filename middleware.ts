@@ -3,6 +3,12 @@ import { NextResponse } from "next/server";
 import { createServerClient } from "@supabase/ssr";
 
 const publicRoutes = new Set(["/", "/login", "/signup", "/privacy", "/terms", "/data-deletion"]);
+const blockedSessionEmails = new Set([
+  "admin@agently.demo",
+  "brand@agently.demo",
+  "creator@agently.demo",
+  "freelancer@agently.demo"
+]);
 const creatorRoutes = ["/creator-home", "/activity", "/notifications", "/messages", "/profile", "/intake", "/demo-guide", "/feedback", "/creators", "/freelancers", "/brands", "/offers", "/freelancer-home", "/ai-insights", "/payments"];
 const freelancerRoutes = ["/freelancer-home", "/activity", "/notifications", "/messages", "/profile", "/intake", "/demo-guide", "/feedback", "/creators", "/freelancers", "/brands", "/offers", "/ai-insights", "/payments"];
 const brandRoutes = ["/brand-home", "/activity", "/notifications", "/messages", "/profile", "/intake", "/demo-guide", "/feedback", "/brand-insights", "/campaigns", "/deals", "/creators", "/freelancers", "/brands", "/payments"];
@@ -73,6 +79,14 @@ export async function middleware(request: NextRequest) {
   const { data } = await supabase.auth.getUser();
   if (!data.user) {
     return redirectTo(request, "/login");
+  }
+
+  if (blockedSessionEmails.has(String(data.user.email ?? "").toLowerCase())) {
+    await supabase.auth.signOut();
+    const url = request.nextUrl.clone();
+    url.pathname = "/login";
+    url.searchParams.set("error", "This test login has been retired.");
+    return NextResponse.redirect(url);
   }
 
   if (pathname === "/app") return response;

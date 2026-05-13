@@ -2,12 +2,23 @@ import { NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
 
+const BLOCKED_LOGIN_EMAILS = new Set([
+  "admin@agently.demo",
+  "brand@agently.demo",
+  "creator@agently.demo",
+  "freelancer@agently.demo"
+]);
+
 export async function POST(request: Request) {
   const { email, password } = await request.json();
   const normalizedEmail = String(email ?? "").trim().toLowerCase();
 
   if (!normalizedEmail || !password) {
     return NextResponse.json({ error: "Email and password are required." }, { status: 400 });
+  }
+
+  if (BLOCKED_LOGIN_EMAILS.has(normalizedEmail)) {
+    return NextResponse.json({ error: "This test login has been retired." }, { status: 403 });
   }
 
   const supabase = await createClient();
