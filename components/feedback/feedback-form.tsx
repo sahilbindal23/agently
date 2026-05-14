@@ -33,7 +33,7 @@ export function FeedbackForm() {
 
     event.currentTarget.reset();
     setStatus("saved");
-    setMessage("Feedback saved. This is now part of the prototype learning loop.");
+    setMessage("Feedback saved. Thanks — we read every one.");
     router.refresh();
   }
 

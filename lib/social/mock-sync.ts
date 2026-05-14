@@ -41,8 +41,8 @@ export function buildMockSocialSnapshot({ provider, handle, creator, platform }:
       provider,
       handle,
       note: hasProfileMetrics
-        ? "Prototype sync used platform metrics already entered on this creator profile."
-        : "Prototype connect succeeded, but no profile metrics were available. Add platform metrics or use OAuth for verified data."
+        ? "Sync used platform metrics already entered on this creator profile."
+        : "Connection succeeded, but no profile metrics were available. Add platform metrics or use OAuth for verified data."
     },
     source: hasProfileMetrics ? "mock_api" : "manual_connect_no_metrics"
   };

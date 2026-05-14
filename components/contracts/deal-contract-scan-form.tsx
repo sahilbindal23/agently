@@ -57,7 +57,7 @@ export function DealContractScanForm({
     if (!selectedDealId || !rawText) {
       setStatus("error");
       setMessage(file instanceof File && file.name.toLowerCase().endsWith(".pdf")
-        ? "PDF selected. For this prototype, paste the contract text from the PDF so Agently can scan it."
+        ? "PDF selected. Paste the contract text from the PDF so Agently can scan it — direct PDF parsing is coming later."
         : "Choose a deal and paste the contract text before scanning.");
       return;
     }

@@ -87,11 +87,15 @@ function ScoreSignal({ label, source, value }: { label: string; source: string; 
 }
 
 function scoreSources(accounts: ConnectedAccountRow[], snapshots: SocialSnapshotRow[]) {
+  // City-specific signals (Bangalore relevance, etc.) intentionally
+  // hidden from creator-facing transparency. They feed the recommendation
+  // engine internally but exposing them here invites profile-gaming
+  // ("if I claim Bangalore audience I rank higher") and contradicts the
+  // India-first positioning where city is a wedge, not a constraint.
   return [
     { label: "Connected accounts", status: accounts.length ? `${accounts.length} connected` : "missing", tone: accounts.length ? "green" as const : "amber" as const },
     { label: "Latest metric snapshots", status: snapshots.length ? `${snapshots.length} synced` : "not synced", tone: snapshots.length ? "green" as const : "amber" as const },
     { label: "Audience geography", status: snapshots.some((item) => item.india_audience_percent > 0) ? "verified" : "fallback", tone: snapshots.some((item) => item.india_audience_percent > 0) ? "green" as const : "neutral" as const },
-    { label: "Bangalore relevance", status: snapshots.some((item) => item.bangalore_audience_percent > 0) ? "verified" : "inferred", tone: snapshots.some((item) => item.bangalore_audience_percent > 0) ? "green" as const : "blue" as const },
     { label: "Engagement quality", status: snapshots.some((item) => item.engagement_rate_30d > 0) ? "verified" : "fallback", tone: snapshots.some((item) => item.engagement_rate_30d > 0) ? "green" as const : "neutral" as const }
   ];
 }

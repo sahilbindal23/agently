@@ -7,7 +7,7 @@ export function calculateProtectionFee(amountCents: number) {
     eligible,
     rate_percent: PROTECTION_FEE_RATE * 100,
     reason: eligible
-      ? "Eligible for protected payout add-on in this prototype."
+      ? "Eligible for the protected payout add-on."
       : "Add a contract value to preview the protected payout workflow."
   };
 }

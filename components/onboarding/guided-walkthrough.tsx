@@ -26,7 +26,7 @@ const storageKey = "agently-walkthrough-state";
 
 const sharedFinalStep = {
   title: "Payments close the loop",
-  body: "Payments are the protected workflow layer. A brand funds the deal before final delivery, the creator or freelancer submits the work, approval moves it into release-ready, and payout is then released. In the prototype, this shows the operating logic; RazorpayX automation comes after account approval.",
+  body: "Payments are the protected workflow layer. A brand funds the deal before final delivery, the creator or freelancer submits the work, approval moves it into release-ready, and payout is then released. RazorpayX powers automated payouts once accounts are verified.",
   target: "nav-payments",
   route: "/payments",
   cta: "Open payments"

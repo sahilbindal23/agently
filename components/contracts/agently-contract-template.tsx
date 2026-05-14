@@ -44,10 +44,10 @@ export function AgentlyContractTemplate() {
             <p className="text-sm font-semibold">Why this matters</p>
           </div>
           <p className="text-sm leading-6 text-muted-foreground">
-            The safest prototype flow is not “upload any brand contract.” It is “start from Agently terms, scan for changes, then gate acceptance and funding.” This reduces hidden usage, delayed payment, uncapped revisions, and dispute ambiguity.
+            The safest flow is not &ldquo;upload any brand contract.&rdquo; It is &ldquo;start from Agently terms, scan for changes, then gate acceptance and funding.&rdquo; This reduces hidden usage, delayed payment, uncapped revisions, and dispute ambiguity.
           </p>
           <p className="mt-3 rounded-md border border-amber-200 bg-amber-50 p-3 text-xs leading-5 text-amber-900 dark:border-amber-900/60 dark:bg-amber-950/30 dark:text-amber-300">
-            Prototype note: this is a product template, not legal advice. Before launch, have counsel convert this into enforceable platform terms and campaign order terms.
+            This is a product template, not legal advice. Have qualified counsel review before relying on it for live deals — see /privacy and /terms for our platform-wide commitments.
           </p>
         </div>
         <div className="grid gap-2">

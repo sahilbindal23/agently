@@ -40,7 +40,7 @@ export default function DataDeletionPage() {
           </div>
 
           <p className="text-sm leading-6 text-muted-foreground">
-            You can request deletion of your Agently account data, profile data, messages, connected social account data, synced social metrics, portfolio assets, and related prototype workflow records.
+            You can request deletion of your Agently account data, profile data, messages, connected social account data, synced social metrics, portfolio assets, and related workflow records.
           </p>
 
           <section className="grid gap-3 sm:grid-cols-2">

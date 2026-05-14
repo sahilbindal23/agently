@@ -150,7 +150,7 @@ export async function AppShell({ children }: { children: React.ReactNode }) {
         <div className="px-3 pb-3">
           <div className="rounded-lg border bg-white p-3 dark:border-white/8 dark:bg-card">
             <div className="mb-3">
-              <p className="truncate text-sm font-semibold">{user?.full_name ?? "Prototype user"}</p>
+              <p className="truncate text-sm font-semibold">{user?.full_name ?? "Agently user"}</p>
               <p className="truncate text-xs text-muted-foreground">{user?.email ?? "Not signed in"}</p>
               <Badge className="mt-2" tone="blue">{user?.role ?? "guest"}</Badge>
             </div>

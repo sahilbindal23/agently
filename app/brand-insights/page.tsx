@@ -215,7 +215,7 @@ export default async function BrandInsightsPage() {
         </Card>
 
         <Card>
-          <CardHeader><CardTitle>Operating Notes</CardTitle><Badge>prototype moat</Badge></CardHeader>
+          <CardHeader><CardTitle>Operating Notes</CardTitle></CardHeader>
           <div className="space-y-3">
             <InsightLine label="What Agently learns" value="Recommendation scores, acceptance rates, delivery speed, revision patterns, payout readiness, and projected reach are now tied into one brand-facing view." />
             <InsightLine label="Why this matters" value="This moves the product away from a simple listing marketplace and toward a campaign operating system brands can trust after launch." />

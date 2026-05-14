@@ -59,7 +59,7 @@ export default async function ProfilePage() {
         <CardHeader>
           <div>
             <CardTitle>{roleLabel(role)} profile</CardTitle>
-            <p className="mt-1 text-sm text-muted-foreground">Changes save to Supabase and update your dashboard immediately.</p>
+            <p className="mt-1 text-sm text-muted-foreground">Changes save automatically and update across your dashboard.</p>
           </div>
           <div className="flex flex-col items-end gap-2">
             <Badge tone="blue">{role}</Badge>

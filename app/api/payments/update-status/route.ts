@@ -30,7 +30,7 @@ export async function POST(request: Request) {
 
   const { data: profile } = await admin.from("profiles").select("role").eq("id", authData.user.id).single();
   if (profile?.role !== "admin" && profile?.role !== "brand") {
-    return NextResponse.json({ error: "Only brands or admins can update payment status in this prototype." }, { status: 403 });
+    return NextResponse.json({ error: "Only brands or admins can update payment status." }, { status: 403 });
   }
   if (profile?.role === "brand" && !["pending", "funded"].includes(status)) {
     return NextResponse.json({ error: "Brands can only mark owned work as pending or funded. Release, refund, and dispute states require admin review." }, { status: 403 });

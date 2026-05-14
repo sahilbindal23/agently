@@ -81,7 +81,7 @@ export default async function PaymentsPage() {
       <PageHeader
         eyebrow="Payment orchestration"
         title="Protected payout workflow"
-        description="Track accepted work from Razorpay funding to delivery approval and payout release. Stripe remains available as a secondary rail, but the prototype is India-first."
+        description="Track accepted work from Razorpay funding to delivery approval and payout release. Stripe remains available as a secondary rail, but Agently is India-first."
       />
       <WorkflowGuidance role={user?.role} />
       <section className="mb-5 grid gap-3 md:grid-cols-4 xl:grid-cols-7">

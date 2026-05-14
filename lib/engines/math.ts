@@ -55,7 +55,7 @@ export const engineWeights = {
     { label: "Category signals", value: "fashion, food, gaming, tech, fitness, beauty, events", description: "Used for creator style and brand archetype matching." }
   ],
   protection: [
-    { label: "Platform fee", value: "1% of funded contract value", description: "Simple prototype assumption for protected payout workflows." },
+    { label: "Platform fee", value: "1% of funded contract value", description: "Baseline assumption for protected payout workflows." },
     { label: "Eligibility", value: "Available for funded workflows", description: "No fee cap or estimated fee is shown to users in the product UI." }
   ]
 };

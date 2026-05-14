@@ -401,9 +401,9 @@ function Signal({ label, value }: { label: string; value: string }) {
 function getConnectionState(account: ConnectedAccountRow | undefined, latest: SocialSnapshotRow | undefined, oauthReady: boolean) {
   if (!account) {
     return {
-      key: oauthReady ? "not_connected" : "prototype",
-      label: oauthReady ? "not connected" : "prototype connect",
-      copy: oauthReady ? "OAuth credentials are configured. Connect this provider when ready." : "OAuth credentials are not configured yet, so this uses prototype connect and mock sync.",
+      key: oauthReady ? "not_connected" : "preview",
+      label: oauthReady ? "not connected" : "preview mode",
+      copy: oauthReady ? "OAuth credentials are configured. Connect this provider when ready." : "Connect this provider to verify audience and engagement metrics.",
       tone: "neutral" as const
     };
   }
@@ -436,7 +436,7 @@ function getConnectionState(account: ConnectedAccountRow | undefined, latest: So
     return {
       key: "waiting",
       label: "no creator data yet",
-      copy: "OAuth worked, but this account has no usable creator performance data yet. Connect an active channel or keep using prototype metrics for demos.",
+      copy: "OAuth worked, but this account has no usable creator performance data yet. Connect an active channel so Agently can verify audience metrics.",
       tone: "amber" as const
     };
   }
@@ -460,7 +460,7 @@ function getConnectionState(account: ConnectedAccountRow | undefined, latest: So
     return {
       key: "waiting",
       label: "profile metrics needed",
-      copy: "Prototype connect worked, but Agently did not find follower/view metrics on this profile. Add platform metrics or use OAuth for verified data.",
+      copy: "Connected, but Agently did not find follower/view metrics on this profile. Add platform metrics or use OAuth for verified data.",
       tone: "amber" as const
     };
   }
@@ -473,7 +473,7 @@ function getConnectionState(account: ConnectedAccountRow | undefined, latest: So
     };
   }
   if (latest.source === "mock_api") {
-    return { key: "synced", label: "prototype metrics synced", copy: "Prototype metrics are available for demo scoring until real social data is connected.", tone: "blue" as const };
+    return { key: "synced", label: "preview metrics", copy: "Preview metrics are available until verified platform data is connected.", tone: "blue" as const };
   }
   return { key: "synced", label: "verified metrics synced", copy: "Platform metrics are available for scoring and profile verification.", tone: "green" as const };
 }
@@ -497,7 +497,7 @@ function accountStatusCopy(account: ConnectedAccountRow, latest?: SocialSnapshot
 }
 
 function sourceLabel(source: string) {
-  if (source === "mock_api") return "prototype metrics";
+  if (source === "mock_api") return "preview metrics";
   if (source.includes("youtube_analytics")) return "youtube analytics";
   if (source.includes("youtube_no_creator")) return "no creator data";
   if (source.includes("manual_connect")) return "manual review needed";

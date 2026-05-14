@@ -72,7 +72,7 @@ export default async function MessagesPage({ searchParams }: { searchParams: Pro
               <CardTitle>{recipient ? `Message ${recipient.name}` : selectedThread?.other_names || "New conversation"}</CardTitle>
               <p className="mt-1 text-sm text-muted-foreground">{recipient ? `${recipient.type} profile` : selectedThread?.context_label || "Keep campaign fit, pricing, deliverables, and next steps in one place."}</p>
             </div>
-            <Badge tone="green">{recipient ? contextLabel(contextType) : "prototype inbox"}</Badge>
+            <Badge tone="green">{recipient ? contextLabel(contextType) : "campaign inbox"}</Badge>
           </CardHeader>
 
           {messages.length ? (

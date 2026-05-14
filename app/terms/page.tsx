@@ -67,7 +67,7 @@ const terms = [
   },
   {
     title: "15. Updates And Contact",
-    body: "We may update these terms as Agently moves from prototype to beta and commercial launch. Continued use after updates means you accept the updated terms. Questions can be sent to support@agently.in."
+    body: "We may update these terms as Agently evolves and adds new features. Continued use after updates means you accept the updated terms. Questions can be sent to support@agently.in."
   }
 ];
 

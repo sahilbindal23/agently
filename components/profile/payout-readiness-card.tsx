@@ -1,6 +1,5 @@
 import { Banknote, Building2, CheckCircle2, Clock3, ShieldCheck } from "lucide-react";
 import type React from "react";
-import { Badge } from "@/components/ui/badge";
 import { Card, CardHeader, CardTitle } from "@/components/ui/card";
 
 type Role = "creator" | "brand" | "freelancer";
@@ -15,7 +14,6 @@ export function PayoutReadinessCard({ role }: { role: Role }) {
           <CardTitle>{copy.title}</CardTitle>
           <p className="mt-1 text-sm leading-6 text-muted-foreground">{copy.description}</p>
         </div>
-        <Badge tone="blue">setup placeholder</Badge>
       </CardHeader>
       <div className="grid gap-3 md:grid-cols-3">
         {copy.items.map((item) => (
@@ -43,7 +41,7 @@ const roleCopy: Record<Role, {
     items: [
       { title: "Razorpay route", copy: "Funding is collected from brands first. Payout automation can connect once RazorpayX is approved.", icon: <Banknote className="h-4 w-4" /> },
       { title: "Identity check", copy: "Creator payout details should match the verified account owner before release.", icon: <ShieldCheck className="h-4 w-4" /> },
-      { title: "Manual release now", copy: "The prototype tracks release-ready status while final payouts stay controlled by Agently.", icon: <Clock3 className="h-4 w-4" /> }
+      { title: "Reviewed releases", copy: "Agently reviews approved deliverables before releasing your payout — protects you from disputed funding or premature releases.", icon: <Clock3 className="h-4 w-4" /> }
     ]
   },
   freelancer: {

@@ -17,7 +17,7 @@ export async function PATCH(request: Request) {
   if (role === "creator") return updateCreator(admin, authData.user.id, body);
   if (role === "freelancer") return updateFreelancer(admin, authData.user.id, body);
   if (role === "brand") return updateBrand(admin, authData.user.id, authData.user.email ?? "", body);
-  if (role === "admin") return NextResponse.json({ error: "Admin profile editing is not part of this prototype screen yet." }, { status: 400 });
+  if (role === "admin") return NextResponse.json({ error: "Admin profile editing is not available on this screen yet." }, { status: 400 });
 
   return NextResponse.json({ error: "Unknown profile role." }, { status: 400 });
 }

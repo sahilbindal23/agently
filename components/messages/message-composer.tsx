@@ -59,7 +59,7 @@ export function MessageComposer({
         onChange={(event) => setBody(event.target.value)}
       />
       <div className="flex flex-wrap items-center justify-between gap-3">
-        {status === "error" ? <p className="min-w-0 text-sm text-destructive">Could not send message.</p> : <p className="min-w-0 text-sm text-muted-foreground">Messages are saved to the prototype inbox.</p>}
+        {status === "error" ? <p className="min-w-0 text-sm text-destructive">Could not send message.</p> : <p className="min-w-0 text-sm text-muted-foreground">Messages save to your campaign inbox.</p>}
         <Button disabled={status === "sending" || !body.trim()} onClick={send} type="button">
           <Send className="h-4 w-4" />
           {status === "sending" ? "Sending..." : "Send"}

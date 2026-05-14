@@ -509,7 +509,7 @@ async function getAdminActivity(admin: AdminClient) {
   for (const note of feedback) {
     items.push({
       id: `feedback-${note.id}`,
-      group: "Prototype feedback",
+      group: "Tester feedback",
       severity: Number(note.rating ?? 5) <= 2 ? "medium" : "info",
       title: `${note.workflow ?? "Tester"} feedback from ${note.role ?? "user"}`,
       description: toText(note.what_was_confusing || note.missing_feature || note.what_worked, "New tester feedback submitted."),
