@@ -28,7 +28,7 @@ test.describe("synthetic tester agents", () => {
     await expectPageReady(page, "/deals", /Sent offers and projects|Creator Offers Sent/i);
     await expectPageReady(page, "/messages", /Campaign conversations|Inbox/i);
     await expectPageReady(page, "/activity", /Activity Center|Operating center/i);
-    await expectPageReady(page, "/brand-insights", /Campaign Insights|Projected ROI Signals/i);
+    await expectPageReady(page, "/brand-insights", /Campaign Insights|Reach planning signals/i);
   });
 
   test("creator can review marketplace, offers, AI tools, payments, and own profile without self-message", async ({ page }) => {

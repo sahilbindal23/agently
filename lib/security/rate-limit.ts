@@ -152,7 +152,6 @@ export const RATE_LIMITS = {
   "ai:scan-contract":    { limit: 20 },
   "ai:audit-creator":    { limit: 20 },
   "ai:audit-brand":      { limit: 20 },
-  "ai:roi-calc":         { limit: 40 },
   "phyllo:init":         { limit: 50 },  // SDK token mint
   "social:scrape":       { limit: 100 }, // any of IG / FB / YT / TW scrape
   "messages:send":       { limit: 200 }, // anti-spam

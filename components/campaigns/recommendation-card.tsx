@@ -8,7 +8,6 @@ import { SocialTrustBadge } from "@/components/social/social-trust-badge";
 import { Badge } from "@/components/ui/badge";
 import { formatCurrency, formatNumber } from "@/lib/utils/format";
 import type { CampaignRecommendation } from "@/lib/campaigns/recommendations";
-import type { ProjectedRoiSummary } from "@/lib/campaigns/enrich-roi";
 
 export function RecommendationCard({
   campaignId,
@@ -17,7 +16,7 @@ export function RecommendationCard({
   type
 }: {
   campaignId: string;
-  item: CampaignRecommendation & { projected_roi?: ProjectedRoiSummary };
+  item: CampaignRecommendation;
   isShortlisted: boolean;
   type: "creator" | "freelancer";
 }) {
@@ -94,7 +93,6 @@ export function RecommendationCard({
             {item.proof_points.map((point) => <Badge key={point} tone="blue">{point}</Badge>)}
           </div>
         </div>
-        {type === "creator" && item.projected_roi ? <ProjectedRoiBlock summary={item.projected_roi} /> : null}
         {item.marketplace_signals?.length ? (
           <div className="mt-3 rounded-md border bg-emerald-50/70 p-3 dark:border-emerald-900/50 dark:bg-emerald-950/30">
             <p className="text-xs font-semibold uppercase text-emerald-800 dark:text-emerald-400">Marketplace behavior</p>
@@ -141,48 +139,6 @@ function CompactMetric({ label, value }: { label: string; value: string }) {
     <div className="rounded-md border bg-background/60 px-3 py-2 dark:border-white/8 dark:bg-white/[0.03]">
       <p className="text-[10px] font-semibold uppercase text-muted-foreground">{label}</p>
       <p className="mt-1 text-sm font-semibold">{value}</p>
-    </div>
-  );
-}
-
-function ProjectedRoiBlock({ summary }: { summary: ProjectedRoiSummary }) {
-  const tone = summary.expected_roi_multiplier >= 3
-    ? "green"
-    : summary.expected_roi_multiplier >= 1.5
-    ? "blue"
-    : summary.expected_roi_multiplier >= 1
-    ? "amber"
-    : "red";
-  const sourceLabel = summary.has_internal_deal_data
-    ? "includes verified outcome history"
-    : summary.rate_source === "observation_aggregate"
-    ? "from market observations"
-    : summary.rate_source === "no_data"
-    ? "rough estimate (no benchmark match)"
-    : summary.rate_source.replaceAll("_", " ");
-  return (
-    <div className="mt-3 rounded-md border bg-emerald-50/60 p-3 dark:border-emerald-900/50 dark:bg-emerald-950/30">
-      <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
-        <p className="text-xs font-semibold uppercase text-emerald-800 dark:text-emerald-300">Projected ROI for 1 deliverable</p>
-        <Badge tone={tone}>{summary.expected_roi_multiplier}x expected</Badge>
-      </div>
-      <div className="grid gap-2 sm:grid-cols-3">
-        <MiniRoi label="Expected revenue" value={formatCurrency(summary.expected_revenue_inr * 100, "inr")} />
-        <MiniRoi label="Expected cost" value={formatCurrency(summary.expected_cost_inr * 100, "inr")} />
-        <MiniRoi label="ROI band" value={`${summary.conservative_roi_multiplier}x – ${summary.optimistic_roi_multiplier}x`} />
-      </div>
-      <p className="mt-2 text-[11px] text-emerald-900 dark:text-emerald-200">
-        {summary.matched_platform} · {summary.matched_niche} · {summary.matched_tier} tier · {sourceLabel}
-      </p>
-    </div>
-  );
-}
-
-function MiniRoi({ label, value }: { label: string; value: string }) {
-  return (
-    <div className="rounded border bg-white px-2 py-1.5 text-xs dark:border-white/8 dark:bg-card">
-      <p className="text-[10px] font-semibold uppercase text-muted-foreground">{label}</p>
-      <p className="mt-0.5 text-sm font-semibold">{value}</p>
     </div>
   );
 }

@@ -96,8 +96,6 @@ export default async function BrandInsightsPage() {
   const releaseReady = [...dealRows, ...projectRows].filter((item) => item.payment_status === "release_ready").length;
   const estimatedReach = snapshotRows.reduce((sum, snapshot) => sum + Number(snapshot.roi_estimate?.expected_reach ?? 0), 0);
   const estimatedEngagements = snapshotRows.reduce((sum, snapshot) => sum + Number(snapshot.roi_estimate?.expected_engagements ?? 0), 0);
-  const blendedCpm = estimatedReach ? Math.round((activeSpend / estimatedReach) * 1000) : 0;
-  const costPerEngagement = estimatedEngagements ? Math.round(activeSpend / estimatedEngagements) : 0;
   const projectionConfidence = projectedConfidence(snapshotRows);
   const projectionNotes = projectionRiskNotes(campaignRows, snapshotRows, estimatedReach, estimatedEngagements);
   const avgFit = average(snapshotRows.map((snapshot) => Number(snapshot.fit_score ?? 0)));
@@ -108,13 +106,9 @@ export default async function BrandInsightsPage() {
       <PageHeader
         eyebrow="Brand-safe intelligence"
         title="Campaign Insights"
-        description="One place for brand teams to track campaign briefs, creator offers, freelancer production, deliverables, payment readiness, and early ROI signals."
+        description="One place for brand teams to track campaign briefs, creator offers, freelancer production, deliverables, payment readiness, and early reach planning."
         action={<Link href="/campaigns"><Button>Create campaign</Button></Link>}
       />
-
-      {/* ROI calculator hidden until we have enough closed-deal data to make
-          projections meaningful. Component still exists at
-          components/payments/roi-calculator.tsx — uncomment when ready. */}
 
       <section className="grid gap-4 md:grid-cols-4">
         <Metric label="Active campaign spend" value={formatCurrency(activeSpend, "inr")} />
@@ -124,33 +118,33 @@ export default async function BrandInsightsPage() {
       </section>
 
       <section className="mt-5 grid gap-4 md:grid-cols-4">
-        <Metric label="Projected reach" value={formatNumber(estimatedReach)} />
-        <Metric label="Projected engagements" value={formatNumber(estimatedEngagements)} />
-        <Metric label="Blended est. CPM" value={blendedCpm ? formatCurrency(blendedCpm, "inr") : "-"} />
+        <Metric label="Estimated reach" value={formatNumber(estimatedReach)} />
+        <Metric label="Estimated engagements" value={formatNumber(estimatedEngagements)} />
+        <Metric label="Creator signals" value={`${snapshotRows.filter((snapshot) => snapshot.entity_type === "creator").length}`} />
         <Metric label="Avg recommendation fit" value={`${Math.round(avgFit) || 0}/100`} />
       </section>
 
       <Card className="mt-5">
         <CardHeader>
           <div>
-            <CardTitle>Projected ROI Signals</CardTitle>
-            <p className="mt-1 text-sm text-muted-foreground">Directional model built from recommendation snapshots, accepted work, and current campaign spend. It is a planning signal, not a revenue guarantee.</p>
+            <CardTitle>Reach planning signals</CardTitle>
+            <p className="mt-1 text-sm text-muted-foreground">Directional reach and engagement estimates built from recommendation snapshots. Use as a planning signal — not a performance guarantee.</p>
           </div>
           <Badge tone={projectionConfidence >= 70 ? "green" : projectionConfidence >= 45 ? "amber" : "red"}>{projectionConfidence}% confidence</Badge>
         </CardHeader>
         <div className="grid gap-3 md:grid-cols-4">
-          <InsightMetric label="CPM planning signal" value={blendedCpm ? formatCurrency(blendedCpm, "inr") : "Needs reach"} />
-          <InsightMetric label="Cost per engagement" value={costPerEngagement ? formatCurrency(costPerEngagement, "inr") : "Needs engagement"} />
           <InsightMetric label="Creator reach source" value={`${snapshotRows.filter((snapshot) => snapshot.entity_type === "creator").length} creator signals`} />
           <InsightMetric label="Production support" value={`${snapshotRows.filter((snapshot) => snapshot.entity_type === "freelancer").length} freelancer signals`} />
+          <InsightMetric label="Deliverables in review" value={`${submittedDeliverables}`} />
+          <InsightMetric label="Approved deliverables" value={`${approvedDeliverables}`} />
         </div>
         <div className="mt-4 grid gap-3 md:grid-cols-2">
-          <SignalPanel title="What would improve projected ROI" items={projectionImprovementLevers(campaignRows, snapshotRows, estimatedReach)} tone="green" />
-          <SignalPanel title="Projection risks" items={projectionNotes} tone="amber" />
+          <SignalPanel title="What would improve reach planning" items={projectionImprovementLevers(campaignRows, snapshotRows, estimatedReach)} tone="green" />
+          <SignalPanel title="Planning risks" items={projectionNotes} tone="amber" />
         </div>
       </Card>
 
-      <section className="mt-5 grid gap-5 xl:grid-cols-[1.1fr_0.9fr]">
+      <section className="mt-5">
         <Card>
           <CardHeader><CardTitle>Campaign Performance Console</CardTitle><Badge tone="green">{campaignRows.length} briefs</Badge></CardHeader>
           <div className="overflow-x-auto">
@@ -183,16 +177,6 @@ export default async function BrandInsightsPage() {
             </Table>
           </div>
         </Card>
-
-        <Card>
-          <CardHeader><CardTitle>ROI Signals</CardTitle><Badge tone="blue">directional</Badge></CardHeader>
-          <div className="space-y-3">
-            <InsightLine label="Reach model" value={estimatedReach ? `${formatNumber(estimatedReach)} estimated impressions/views from ranked creator matches.` : "Open a campaign detail page to generate recommendation snapshots."} />
-            <InsightLine label="Engagement model" value={estimatedEngagements ? `${formatNumber(estimatedEngagements)} expected engagements based on captured average views and engagement rate.` : "Engagement confidence improves as creators connect richer platform data."} />
-            <InsightLine label="Spend check" value={blendedCpm ? `Current projected CPM is ${formatCurrency(blendedCpm, "inr")}. Use this as an early planning check, not final ROI proof.` : "Projected CPM appears once campaign spend and reach estimates exist."} />
-            <InsightLine label="Protection check" value={`${submittedDeliverables} deliverables await review and ${approvedDeliverables} have been approved for payout logic.`} />
-          </div>
-        </Card>
       </section>
 
       <section className="mt-5 grid gap-5 xl:grid-cols-2">
@@ -217,9 +201,9 @@ export default async function BrandInsightsPage() {
         <Card>
           <CardHeader><CardTitle>Operating Notes</CardTitle></CardHeader>
           <div className="space-y-3">
-            <InsightLine label="What Agently learns" value="Recommendation scores, acceptance rates, delivery speed, revision patterns, payout readiness, and projected reach are now tied into one brand-facing view." />
+            <InsightLine label="What Agently learns" value="Recommendation scores, acceptance rates, delivery speed, revision patterns, payout readiness, and estimated reach are now tied into one brand-facing view." />
             <InsightLine label="Why this matters" value="This moves the product away from a simple listing marketplace and toward a campaign operating system brands can trust after launch." />
-            <InsightLine label="Next data upgrade" value="After real campaigns, replace projected ROI with actual post metrics, discount-code sales, UTM clicks, and payout dispute outcomes." />
+            <InsightLine label="Next data upgrade" value="After real campaigns, replace estimated reach with actual post metrics, discount-code sales, UTM clicks, and payout dispute outcomes." />
           </div>
         </Card>
       </section>
@@ -347,7 +331,7 @@ function projectionImprovementLevers(campaigns: CampaignRow[], snapshots: Snapsh
   if (snapshots.filter((snapshot) => snapshot.entity_type === "creator").length < 3) levers.add("Compare at least three creator options before sending offers.");
   if (snapshots.filter((snapshot) => snapshot.entity_type === "freelancer").length === 0) levers.add("Add freelancer support when the campaign needs editing, shoots, graphics, or repurposed assets.");
   if (campaigns.some((campaign) => !campaign.campaign_goal)) levers.add("Add sharper campaign goals so Agently can separate awareness, conversion, and launch campaigns.");
-  if (average(snapshots.map((snapshot) => Number(snapshot.fit_score ?? 0))) < 75) levers.add("Improve projected ROI by tightening niche, language, city, or audience filters.");
+  if (average(snapshots.map((snapshot) => Number(snapshot.fit_score ?? 0))) < 75) levers.add("Improve recommendation fit by tightening niche, language, city, or audience filters.");
   if (!levers.size) levers.add("Keep the current shortlist, clarify deliverables in messages, and avoid broad usage rights that add cost without better performance.");
   return Array.from(levers).slice(0, 4);
 }
