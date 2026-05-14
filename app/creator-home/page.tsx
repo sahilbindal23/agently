@@ -114,7 +114,7 @@ export default async function CreatorHomePage() {
             <div className="rounded-md border border-dashed bg-muted/40 p-5 text-center dark:border-white/8">
               <p className="text-sm font-semibold">No deals yet</p>
               <p className="mx-auto mt-1 max-w-md text-sm leading-6 text-muted-foreground">
-                When a brand sends you an offer and you accept, it lands here. Connect Instagram or YouTube and finish your intake — verified creators with strong engagement quality rank higher in brand recommendations.
+                When a brand sends you an offer and you accept, it lands here. Connect Instagram or YouTube and finish your intake — verified creators with complete profiles get prioritised in brand recommendations.
               </p>
               <div className="mt-3 flex flex-wrap justify-center gap-2">
                 <Link className="inline-flex h-9 items-center gap-2 rounded-md bg-primary px-4 text-sm font-medium text-primary-foreground hover:bg-primary/90" href="/profile">Finish profile</Link>

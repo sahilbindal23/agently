@@ -119,13 +119,14 @@ export function rankCreators(
     };
     const score = weightedScore(scoreBreakdown);
     const roi = estimateCreatorRoi(campaign, primary);
-    // Surface engagement-quality flags into watchouts so brands and admins
-    // see WHY a creator got a low engagement_quality score, not just the
-    // number. Bot signals beat surprise penalties.
-    const watchouts = [
-      ...creatorWatchouts(campaign, creator, primary, scoreBreakdown),
-      ...engagementQualityResult.reasons.filter((r) => /pod|bot|inflated|volatile/i.test(r))
-    ];
+    // engagement_quality (anti-bot) bot-signal reasons are intentionally
+    // NOT bubbled into watchouts right now — we're keeping the early
+    // marketplace welcoming to creators rather than surfacing engagement
+    // quality concerns at recommendation time. The score still influences
+    // ranking under the hood (10% weight). Surface this later when the
+    // product is ready to position anti-bot as a brand-facing feature.
+    void engagementQualityResult; // kept in scope for future reactivation
+    const watchouts = creatorWatchouts(campaign, creator, primary, scoreBreakdown);
     const matchType = creatorMatchType(campaign, scoreBreakdown, creator);
 
     return {
@@ -386,10 +387,14 @@ function riskLevel(score: number, watchoutCount: number, confidence: number): Ca
 
 function creatorProofPoints(creator: Creator, platform: CreatorPlatform | undefined, breakdown: ScoreBreakdown) {
   const trust = socialTrustFromSource(platform?.metric_source);
+  // engagement_quality (anti-bot) is computed in the engine and influences
+  // ranking, but we intentionally don't surface the score or sub-signals
+  // here. Early-stage product decision: keep creator-facing copy
+  // encouraging, not gatekeeping. When closed-deal data justifies
+  // launching this as a brand-facing differentiator, add it back.
   return [
     `${breakdown.category_fit}/100 category fit`,
     `${breakdown.audience_fit}/100 audience fit`,
-    `${breakdown.engagement_quality}/100 engagement quality`,
     platform ? `${compactNumber(platform.avg_views)} avg views on ${platform.platform}` : "Platform metrics missing",
     `Metrics trust: ${trust.label}`,
     isVerifiedTier(creator.verification_tier, creator.verification_status) ? "Verified by Agently" : "Unverified"

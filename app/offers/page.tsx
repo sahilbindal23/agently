@@ -338,9 +338,9 @@ export default async function OffersPage() {
           description="When a brand sends you an offer from a campaign recommendation, it will appear here. To get discovered faster:"
           bullets={[
             "Finish your profile — bio, rates, target audience, India regions",
-            "Connect Instagram, YouTube, or Facebook via Phyllo for verified metrics (much higher engine_quality score)",
+            "Connect Instagram, YouTube, or Facebook via Phyllo for verified metrics",
             "Browse campaigns and reach out to brands directly from /campaigns",
-            "Higher engagement quality and verified accounts get ranked higher in brand recommendations"
+            "Verified accounts with complete profiles get ranked higher in brand recommendations"
           ]}
           actions={[
             { label: "Finish profile", href: "/profile" },

@@ -115,7 +115,7 @@ export default async function CreatorDetailPage({ params }: { params: Promise<{ 
             latestValuation.package_recommendation
           ] : [
             "Run Sponsor Growth Calculator for rate guidance",
-            "Use average views, audience location, and engagement quality",
+            "Use average views, audience location, and engagement rate",
             "Confirm usage rights and deliverables before accepting"
           ]}
         />

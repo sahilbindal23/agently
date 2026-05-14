@@ -2,7 +2,6 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { AppShell } from "@/components/layout/app-shell";
 import { PageHeader } from "@/components/layout/page-header";
-import { RoiCalculator } from "@/components/payments/roi-calculator";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardHeader, CardTitle } from "@/components/ui/card";
@@ -113,9 +112,9 @@ export default async function BrandInsightsPage() {
         action={<Link href="/campaigns"><Button>Create campaign</Button></Link>}
       />
 
-      <section className="mb-5">
-        <RoiCalculator />
-      </section>
+      {/* ROI calculator hidden until we have enough closed-deal data to make
+          projections meaningful. Component still exists at
+          components/payments/roi-calculator.tsx — uncomment when ready. */}
 
       <section className="grid gap-4 md:grid-cols-4">
         <Metric label="Active campaign spend" value={formatCurrency(activeSpend, "inr")} />
