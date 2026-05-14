@@ -2,7 +2,6 @@ import Link from "next/link";
 import { MessageRecipientButton } from "@/components/messages/message-recipient-button";
 import { SocialTrustBadge } from "@/components/social/social-trust-badge";
 import { VerificationBadge } from "@/components/verification/verification-badge";
-import { getIndiaAudiencePercent } from "@/lib/utils/creator-metrics";
 import { formatCurrency, formatNumber } from "@/lib/utils/format";
 
 const GRADIENTS = [
@@ -56,6 +55,8 @@ export function CreatorMarketCard({ creator, platform }: { creator: Record<strin
   const niche = stringValue(creator.primary_niche) || "Creator";
   const homeCity = stringValue(creator.home_city);
   const metricSource = stringValue(platform?.metric_source);
+  const primaryPlatform = stringValue(platform?.platform);
+  const engagementRate = numberValue(platform?.engagement_rate);
 
   return (
     <div className="group flex flex-col overflow-hidden rounded-2xl border border-border/60 bg-card shadow-soft transition duration-300 hover:-translate-y-1 hover:shadow-xl dark:border-white/8 dark:bg-card/90">
@@ -74,9 +75,7 @@ export function CreatorMarketCard({ creator, platform }: { creator: Record<strin
           <p className="truncate text-base font-bold leading-tight text-white drop-shadow">{name}</p>
           <p className="mt-0.5 text-xs font-medium text-white/70">{niche}</p>
         </div>
-        {/* Home-city pill, bottom right. Replaces the old Bangalore-fit
-            number — gives brands useful at-a-glance context (where the
-            creator is based) without leaking the internal city-fit score. */}
+        {/* Home-city pill, bottom right. */}
         {homeCity ? (
           <div className="absolute bottom-3 right-4">
             <span className="rounded-full bg-white/15 px-2 py-0.5 text-[11px] font-semibold text-white backdrop-blur-sm">
@@ -86,11 +85,14 @@ export function CreatorMarketCard({ creator, platform }: { creator: Record<strin
         ) : null}
       </Link>
 
-      {/* Stats row */}
+      {/* Stats row — followers, engagement, primary platform are what brands
+          actually scan first when deciding whether to dig into a profile.
+          India audience % moved off the card to the profile page; it's a
+          secondary signal and keeping it here crowded the row. */}
       <div className="grid grid-cols-3 divide-x divide-border/60 border-y border-border/60 dark:divide-white/8 dark:border-white/8">
         <StatPill label="Followers" value={formatNumber(numberValue(platform?.followers))} />
-        <StatPill label="Avg views" value={formatNumber(numberValue(platform?.avg_views))} />
-        <StatPill label="India" value={`${getIndiaAudiencePercent(creator as never)}%`} />
+        <StatPill label="Engagement" value={engagementRate > 0 ? `${engagementRate.toFixed(1)}%` : "—"} />
+        <StatPill label="Platform" value={primaryPlatform || "—"} />
       </div>
 
       {/* Actions */}

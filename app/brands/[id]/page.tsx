@@ -1,11 +1,10 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import type { ReactNode } from "react";
-import { ArrowLeft, BriefcaseBusiness, ClipboardList, Globe2, ShieldCheck, Sparkles, Target } from "lucide-react";
+import { ArrowLeft, BriefcaseBusiness, ClipboardList, Globe2, Sparkles, Target } from "lucide-react";
 import { AppShell } from "@/components/layout/app-shell";
 import { PageHeader } from "@/components/layout/page-header";
 import { MessageRecipientButton } from "@/components/messages/message-recipient-button";
-import { AgentlySignalCard } from "@/components/profile/agently-signal-card";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, Td, Th } from "@/components/ui/table";
@@ -20,11 +19,15 @@ export default async function BrandProfilePage({ params }: { params: Promise<{ i
   const admin = createAdminClient();
   if (!admin) notFound();
 
-  const [{ data: brand }, { data: campaigns }, { data: deals }, { data: projects }, currentUser] = await Promise.all([
+  const [{ data: brand }, { data: campaigns }, { data: deals }, { data: projects }, { data: connectedAccounts }, currentUser] = await Promise.all([
     admin.from("brands").select("*").eq("id", id).maybeSingle(),
     admin.from("campaigns").select("*").eq("brand_id", id).order("created_at", { ascending: false }).limit(8),
     admin.from("deals").select("*").eq("brand_id", id).order("created_at", { ascending: false }).limit(6),
     admin.from("freelancer_projects").select("*").eq("brand_id", id).order("created_at", { ascending: false }).limit(6),
+    // Brand's own Phyllo-connected socials. Used to render a small
+    // "Social presence" card so creators viewing the brand can gauge
+    // reach + verify the brand has real channels.
+    admin.from("connected_social_accounts").select("provider, handle, account_url, status").eq("brand_id", id),
     getCurrentUser()
   ]);
 
@@ -33,10 +36,20 @@ export default async function BrandProfilePage({ params }: { params: Promise<{ i
 
   return (
     <AppShell>
+      {/* Banner hero — only renders when the brand has uploaded a banner_url
+          (migration 051). Falls back gracefully when missing so unbranded
+          profiles still look clean. */}
+      {brand.banner_url ? (
+        <div className="mb-6 overflow-hidden rounded-xl border bg-muted dark:border-white/8">
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img alt={`${brand.name} banner`} className="h-40 w-full object-cover sm:h-56" src={String(brand.banner_url)} />
+        </div>
+      ) : null}
+
       <PageHeader
         eyebrow="Brand profile"
         title={String(brand.name ?? "Brand")}
-        description={String(brand.industry ?? "Campaign partner")}
+        description={brand.tagline ? String(brand.tagline) : String(brand.industry ?? "Campaign partner")}
         action={<div className="flex flex-wrap gap-2">{isOwnProfile ? null : <MessageRecipientButton entityId={String(brand.id)} entityType="brand" label="Message brand" />}<Link className="inline-flex h-9 items-center gap-2 rounded-md border bg-white px-3 text-sm font-medium" href="/"><ArrowLeft className="h-4 w-4" /> Home</Link></div>}
       />
 
@@ -94,6 +107,39 @@ export default async function BrandProfilePage({ params }: { params: Promise<{ i
         </Card>
       </section>
 
+      {/* Social presence — only shown if the brand has connected at least
+          one social via Phyllo. Gives creators a real signal that the
+          brand has an audience-facing channel they can verify themselves. */}
+      {connectedAccounts && connectedAccounts.length ? (
+        <section className="mt-5">
+          <Card>
+            <CardHeader>
+              <CardTitle>Social Presence</CardTitle>
+              <Badge tone="green">{connectedAccounts.length} channel{connectedAccounts.length === 1 ? "" : "s"}</Badge>
+            </CardHeader>
+            <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+              {connectedAccounts.map((account) => (
+                <a
+                  className="flex items-start gap-3 rounded-md border bg-white p-3 transition hover:border-primary/50 dark:border-white/8 dark:bg-card"
+                  href={account.account_url ? String(account.account_url) : "#"}
+                  key={`${account.provider}-${account.handle}`}
+                  rel="noreferrer"
+                  target={account.account_url ? "_blank" : undefined}
+                >
+                  <div className="rounded-md bg-primary/10 p-2 text-primary">
+                    <Sparkles className="h-4 w-4" />
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <p className="truncate text-sm font-semibold capitalize">{String(account.provider)}</p>
+                    <p className="truncate text-xs text-muted-foreground">{String(account.handle ?? "Linked")}</p>
+                  </div>
+                </a>
+              ))}
+            </div>
+          </Card>
+        </section>
+      ) : null}
+
       <section className="mt-5 grid gap-5 xl:grid-cols-3">
         <BrandProofCard
           icon={<Target className="h-4 w-4" />}
@@ -115,20 +161,9 @@ export default async function BrandProfilePage({ params }: { params: Promise<{ i
         />
       </section>
 
-      <section className="mt-5">
-        <AgentlySignalCard
-          title="Public Trust Signals"
-          description="This keeps the profile useful for creators and freelancers without exposing private commercial details from past negotiations."
-          icon={<div className="rounded-md bg-muted p-2 text-primary"><ShieldCheck className="h-4 w-4" /></div>}
-          signals={[
-            brand.website ? "Website attached for brand identity review" : "Website still needs to be added",
-            brand.contact_email ? "Contact email available for platform-side verification" : "Contact email still needs to be added",
-            `${campaigns?.length ?? 0} campaign brief${(campaigns?.length ?? 0) === 1 ? "" : "s"} created on Agently`,
-            `${(deals?.length ?? 0) + (projects?.length ?? 0)} creator or freelancer workflow${((deals?.length ?? 0) + (projects?.length ?? 0)) === 1 ? "" : "s"} recorded`,
-            brand.verification_tier ? `Verification tier: ${String(brand.verification_tier).replaceAll("_", " ")}` : "Verification tier still needs review"
-          ]}
-        />
-      </section>
+      {/* "Public Trust Signals" card removed — it was checklist-style noise
+          rather than something a creator could act on. The Campaign Activity
+          card up top + the BrandProofCards already cover trust context. */}
 
       <section className="mt-5 grid gap-5 xl:grid-cols-[1.1fr_0.9fr]">
         <Card>

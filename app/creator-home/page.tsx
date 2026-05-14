@@ -48,13 +48,18 @@ export default async function CreatorHomePage() {
     );
   }
 
-  const [{ data: audits }, { data: deals }, { data: brands }, { data: freelancers }, { data: serviceRates }, { data: platforms }] = await Promise.all([
+  const [{ data: audits }, { data: deals }, { data: brands }, { data: freelancers }, { data: otherCreators }, { data: serviceRates }, { data: platforms }, { data: otherCreatorPlatforms }] = await Promise.all([
     admin.from("creator_audits").select("*").eq("creator_id", creator.id).order("created_at", { ascending: false }).limit(1),
     admin.from("deals").select("*").eq("creator_id", creator.id).order("created_at", { ascending: false }),
     admin.from("brands").select("*").order("created_at", { ascending: false }).limit(24),
     admin.from("freelancers").select("*").order("created_at", { ascending: false }).limit(24),
+    // Other creators — for the in-marketplace "Creators" discovery tab.
+    // Excludes the logged-in creator themselves so they don't see their
+    // own card in the network.
+    admin.from("creators").select("*").neq("id", creator.id).order("created_at", { ascending: false }).limit(24),
     admin.from("freelancer_service_rates").select("*"),
-    admin.from("creator_platforms").select("*").eq("creator_id", creator.id)
+    admin.from("creator_platforms").select("*").eq("creator_id", creator.id),
+    admin.from("creator_platforms").select("*")
   ]);
 
   const latestAudit = audits?.[0]?.result as Record<string, unknown> | undefined;
@@ -65,6 +70,9 @@ export default async function CreatorHomePage() {
     freelancer,
     serviceRates: (serviceRates ?? []).filter((rate) => rate.freelancer_id === freelancer.id)
   }))).slice(0, 6);
+  const visibleCreators = withoutDemoRows(otherCreators ?? [], includeDemo)
+    .filter((c) => isDiscoverable(creatorAutomationDecision({ creator: c, platforms: (otherCreatorPlatforms ?? []).filter((p) => p.creator_id === c.id) })))
+    .slice(0, 6);
 
   return (
     <AppShell>
@@ -85,10 +93,11 @@ export default async function CreatorHomePage() {
 
       <section className="mt-5 grid gap-5 xl:grid-cols-[minmax(0,1fr)_320px]">
         <Card>
-          <CardHeader><CardTitle>Marketplace Network</CardTitle><Badge tone="green">{visibleBrands.length + visibleFreelancers.length}</Badge></CardHeader>
+          <CardHeader><CardTitle>Marketplace Network</CardTitle><Badge tone="green">{visibleBrands.length + visibleFreelancers.length + visibleCreators.length}</Badge></CardHeader>
           <MarketplaceTabs
             tabs={[
               { id: "brands", label: `Brands (${visibleBrands.length})`, type: "brand", items: visibleBrands },
+              { id: "creators", label: `Creators (${visibleCreators.length})`, type: "creator", items: visibleCreators, platforms: otherCreatorPlatforms ?? [] },
               { id: "freelancers", label: `Freelancers (${visibleFreelancers.length})`, type: "freelancer", items: visibleFreelancers }
             ]}
           />

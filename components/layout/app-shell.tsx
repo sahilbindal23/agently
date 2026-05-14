@@ -45,7 +45,9 @@ const creatorNav = [
   { href: "/profile", label: "Edit Profile", icon: Users, tour: "profile" },
   { href: "/offers", label: "Offers", icon: BriefcaseBusiness, tour: "offers" },
   { href: "/campaigns/discover", label: "Open Campaigns", icon: ClipboardList, tour: "campaigns" },
-  { href: "/creators", label: "Discover Creators", icon: Users, tour: "creators" },
+  // /creators is reachable via the "Creators" tab on /creator-home and
+  // links from individual cards. Removed from nav to reduce the rail's
+  // length; the home-page tab is the primary entry point now.
   { href: "/messages", label: "Messages", icon: MessageSquare, tour: "messages" },
   { href: "/notifications", label: "Notifications", icon: Bell, tour: "activity" },
   { href: "/activity", label: "Activity", icon: Activity, tour: "activity" },

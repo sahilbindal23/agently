@@ -153,6 +153,10 @@ function BrandFields({ profile, audit }: { profile: Record<string, unknown>; aud
       <Select name="industry" label="Industry" options={BRAND_INDUSTRIES} defaultValue={value(profile.industry)} placeholderOption="Pick your category" />
       <Input name="website" placeholder="Website" defaultValue={value(profile.website)} />
       <Input name="contact_email" placeholder="Contact email" defaultValue={value(profile.contact_email)} />
+      {/* Customization: short tagline + banner image URL render on the
+          public /brands/[id] profile so brands look more polished to creators. */}
+      <Input name="tagline" placeholder="Short tagline (e.g. 'India-first wireless earbuds')" defaultValue={value(profile.tagline)} maxLength={80} />
+      <Input name="banner_url" placeholder="Banner image URL (1200×400 hero on your public profile)" defaultValue={value(profile.banner_url)} />
       <Select name="city_focus" label="Launch city or region" options={INDIAN_CITIES} defaultValue={value(auditInput?.city_focus)} placeholderOption="Where are you launching?" />
       <Select name="creator_size_band" label="Preferred creator size" options={CREATOR_SIZE_BANDS} defaultValue={value(result?.creator_size_band)} placeholderOption="What size creators?" />
       <Select name="campaign_length" label="Campaign length" options={CAMPAIGN_LENGTHS} defaultValue={value(auditInput?.campaign_length)} placeholderOption="How long?" />

@@ -88,7 +88,10 @@ async function updateBrand(admin: NonNullable<ReturnType<typeof createAdminClien
     website: text(body.website),
     industry: text(body.industry),
     contact_email: email,
-    status: text(body.status) || "enrolled"
+    status: text(body.status) || "enrolled",
+    // Brand customization (migration 051) — shown on /brands/[id]
+    tagline: text(body.tagline) || null,
+    banner_url: text(body.banner_url) || null
   };
 
   const result = existing?.id
