@@ -162,10 +162,13 @@ begin
   )
   returning id into new_creator_id;
 
-  insert into public.creator_platforms (creator_id, platform, handle, url, followers, avg_views, engagement_rate, posting_frequency, metric_source)
+  -- Note: metric_source is referenced in app code but was never added as a
+  -- column by any migration — omitted here to avoid an undefined-column
+  -- error. If a future migration adds it, this insert keeps working.
+  insert into public.creator_platforms (creator_id, platform, handle, url, followers, avg_views, engagement_rate, posting_frequency)
   values
-    (new_creator_id, 'Instagram', '@demo.creator', 'https://instagram.com/demo.creator', 42000, 18500, 4.8, 'Three reels a week, one carousel', 'mock_api'),
-    (new_creator_id, 'YouTube',   '@demo-creator', 'https://youtube.com/@demo-creator',  28000, 12000, 3.2, 'Weekly long-form review',          'mock_api');
+    (new_creator_id, 'Instagram', '@demo.creator', 'https://instagram.com/demo.creator', 42000, 18500, 4.8, 'Three reels a week, one carousel'),
+    (new_creator_id, 'YouTube',   '@demo-creator', 'https://youtube.com/@demo-creator',  28000, 12000, 3.2, 'Weekly long-form review');
 
   -- ===== F. brands intake + audit + one open campaign =======================
   insert into public.brands (name, website, industry, contact_email, status, is_demo)
