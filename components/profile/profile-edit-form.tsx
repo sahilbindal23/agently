@@ -156,7 +156,8 @@ function BrandFields({ profile, audit }: { profile: Record<string, unknown>; aud
       <Select name="city_focus" label="Launch city or region" options={INDIAN_CITIES} defaultValue={value(auditInput?.city_focus)} placeholderOption="Where are you launching?" />
       <Select name="creator_size_band" label="Preferred creator size" options={CREATOR_SIZE_BANDS} defaultValue={value(result?.creator_size_band)} placeholderOption="What size creators?" />
       <Select name="campaign_length" label="Campaign length" options={CAMPAIGN_LENGTHS} defaultValue={value(auditInput?.campaign_length)} placeholderOption="How long?" />
-      <ReadOnlySignal label="Bangalore launch fit" value={`${value(result?.bangalore_launch_fit_score) || 0}/100`} />
+      {/* "Bangalore launch fit" signal removed — city fit is now internal,
+          fed dynamically per campaign via the recommendation engine. */}
       <Textarea className="md:col-span-2" name="target_audience" placeholder="Who is your target customer? (e.g. 25-34 urban women in metros)" defaultValue={value(auditInput?.target_audience)} />
       <Textarea className="md:col-span-2" name="campaign_goal" placeholder="What's the campaign goal? (awareness, signups, sales, app installs…)" defaultValue={value(auditInput?.campaign_goal)} />
       <Textarea className="md:col-span-2" name="brand_notes" placeholder="Brand tone, constraints, competitors, product notes (optional)" defaultValue={value(auditInput?.brand_notes)} />

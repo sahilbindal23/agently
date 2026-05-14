@@ -69,7 +69,7 @@ export function AuditWorkbench() {
         </CardHeader>
         {result ? <AuditResultView result={result} /> : (
           <div className="rounded-md border bg-white p-4 dark:border-white/8 dark:bg-card text-sm leading-6 text-muted-foreground">
-            Run an audit to generate Bangalore fit, India relevance, content categories, creator archetypes, budget realism, risk flags, and next data to request.
+            Run an audit to generate launch-city fit, India relevance, content categories, creator archetypes, budget realism, risk flags, and next data to request.
           </div>
         )}
         <AiDisclaimer kind="generic" />

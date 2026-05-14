@@ -88,8 +88,13 @@ export default async function BrandHomePage() {
         action={<div className="flex flex-wrap gap-2"><Link href="/profile"><Button variant="secondary">Edit profile</Button></Link><Link href="/brand-insights"><Button variant="secondary">View insights</Button></Link><Link href="/campaigns"><Button>Create campaign brief</Button></Link></div>}
       />
 
-      <section className="grid gap-4 md:grid-cols-3">
-        <Metric label="Bangalore launch fit" value={`${result?.bangalore_launch_fit_score ?? "-"}/100`} />
+      {/* "Bangalore launch fit" tile removed. City fit is now an internal
+          signal feeding the recommendation engine against whatever city
+          this brand actually targets in their campaign brief — see
+          getCityFit(creator, campaign.city_focus). Showing one fixed
+          "Bangalore" number on the brand-home page was confusing for
+          brands targeting other Indian cities. */}
+      <section className="grid gap-4 md:grid-cols-2">
         <Metric label="Creator size band" value={String(result?.creator_size_band ?? "Run intake")} />
         <Metric label="Active offers" value={`${deals?.length ?? 0}`} />
       </section>
