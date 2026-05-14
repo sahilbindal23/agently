@@ -108,17 +108,11 @@ export default async function CreatorHomePage() {
         </aside>
       </section>
 
-      <section className="mt-5 grid gap-5 xl:grid-cols-[0.85fr_1.15fr]">
-        <Card>
-          <CardHeader><CardTitle>Latest AI Audit</CardTitle><Badge tone="blue">{audits?.[0]?.source ?? "profile"}</Badge></CardHeader>
-          <p className="text-sm leading-6 text-muted-foreground">{String(latestAudit?.content_style_summary ?? creator.content_style ?? "Run a re-audit to refresh your profile.")}</p>
-          <div className="mt-4 flex flex-wrap gap-2">
-            {(Array.isArray(latestAudit?.brand_fit_categories) ? latestAudit.brand_fit_categories : creator.prior_sponsor_categories ?? []).slice(0, 8).map((item: unknown) => (
-              <Badge key={String(item)}>{String(item)}</Badge>
-            ))}
-          </div>
-        </Card>
-
+      {/* "Latest AI Audit" card hidden until an LLM is wired with a real
+          API key. Without it, the card reads back intake data verbatim
+          and adds no insight. The audits table + /api/ai/audit-creator
+          route are intact so re-enabling is a small change. */}
+      <section className="mt-5">
         <Card>
           <CardHeader><CardTitle>Active Deals</CardTitle><Badge tone="green">{deals?.length ?? 0}</Badge></CardHeader>
           {(deals ?? []).length === 0 ? (

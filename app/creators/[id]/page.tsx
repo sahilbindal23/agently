@@ -1,7 +1,7 @@
 import { notFound } from "next/navigation";
 import type { ReactNode } from "react";
 import { BarChart3, PlaySquare, ShieldCheck, Sparkles, Target } from "lucide-react";
-import { CreatorReauditPanel } from "@/components/creators/creator-reaudit-panel";
+// CreatorReauditPanel import removed — see note near old render site.
 import { AppShell } from "@/components/layout/app-shell";
 import { PageHeader } from "@/components/layout/page-header";
 import { MessageRecipientButton } from "@/components/messages/message-recipient-button";
@@ -205,7 +205,12 @@ export default async function CreatorDetailPage({ params }: { params: Promise<{ 
         </div>
       </Card>
 
-      <CreatorReauditPanel creator={bundle.creator} platforms={bundle.platforms} />
+      {/* CreatorReauditPanel hidden until an LLM (Claude or OpenAI) is
+          wired with a real API key. Without it, the audit echoes back
+          intake data instead of adding insight — not worth surfacing.
+          Component still exists at components/creators/creator-reaudit-panel
+          and the /api/ai/audit-creator route is intact, so re-enabling is
+          a one-import change once the LLM is configured. */}
     </AppShell>
   );
 }
