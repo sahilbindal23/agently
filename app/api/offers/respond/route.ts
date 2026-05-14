@@ -143,17 +143,19 @@ export async function POST(request: Request) {
     admin.from("profiles").select("email, full_name").eq("id", creator?.profile_id ?? "").maybeSingle()
   ]);
   if (brand?.contact_email) {
+    const respondedTemplate = offerRespondedEmail({
+      brandEmail: brand.contact_email,
+      brandName: brand.name ?? "Brand",
+      dealTitle: String(deal.title),
+      status,
+      creatorName: creatorProfileRow?.full_name ?? "The creator",
+      responseNote: response || undefined
+    });
     sendEmail({
       to: brand.contact_email,
       subject: `${creatorProfileRow?.full_name ?? "Creator"} ${status === "accepted" ? "accepted" : status === "declined" ? "declined" : "countered"} your offer — ${deal.title}`,
-      html: offerRespondedEmail({
-        brandEmail: brand.contact_email,
-        brandName: brand.name ?? "Brand",
-        dealTitle: String(deal.title),
-        status,
-        creatorName: creatorProfileRow?.full_name ?? "The creator",
-        responseNote: response || undefined
-      })
+      html: respondedTemplate.html,
+      text: respondedTemplate.text
     });
   }
 

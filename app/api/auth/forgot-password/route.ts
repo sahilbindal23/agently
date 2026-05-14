@@ -77,13 +77,15 @@ export async function POST(request: Request) {
     return NextResponse.json({ status: "ok", message: "If an account exists for that email, a reset link has been sent." });
   }
 
+  const resetTemplate = passwordResetEmail({
+    fullName: profile.full_name ?? null,
+    resetUrl
+  });
   const sendResult = await sendEmail({
     to: email,
     subject: "Reset your Agently password",
-    html: passwordResetEmail({
-      fullName: profile.full_name ?? null,
-      resetUrl
-    })
+    html: resetTemplate.html,
+    text: resetTemplate.text
   });
 
   if (!sendResult.sent) {

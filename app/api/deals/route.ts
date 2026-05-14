@@ -183,17 +183,19 @@ export async function POST(request: Request) {
     .eq("id", (await admin.from("creators").select("profile_id").eq("id", body.creator_id).maybeSingle()).data?.profile_id ?? "")
     .maybeSingle();
   if (creatorProfile?.email) {
+    const offerTemplate = offerSentEmail({
+      creatorName: creatorProfile.full_name ?? "Creator",
+      brandName: String(brandResult.brand.name),
+      dealTitle: body.title,
+      amountFormatted: formatCurrency(body.amount_cents, "inr"),
+      dueDate: body.due_date || undefined,
+      deliverables: body.deliverables
+    });
     sendEmail({
       to: creatorProfile.email,
       subject: `New offer from ${brandResult.brand.name}: ${body.title}`,
-      html: offerSentEmail({
-        creatorName: creatorProfile.full_name ?? "Creator",
-        brandName: String(brandResult.brand.name),
-        dealTitle: body.title,
-        amountFormatted: formatCurrency(body.amount_cents, "inr"),
-        dueDate: body.due_date || undefined,
-        deliverables: body.deliverables
-      })
+      html: offerTemplate.html,
+      text: offerTemplate.text
     });
   }
 
