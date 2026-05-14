@@ -226,7 +226,7 @@ function scoreEntries(score: CampaignRecommendation["score_breakdown"]) {
   return [
     { key: "category_fit", label: "Category", value: score.category_fit, copy: "How closely the niche or service maps to the brief." },
     { key: "audience_fit", label: "Audience", value: score.audience_fit, copy: "How well the talent can reach the requested audience." },
-    { key: "city_fit", label: "City", value: score.city_fit, copy: "Bangalore and India relevance for this campaign." },
+    { key: "city_fit", label: "Location", value: score.city_fit, copy: "How well the creator's home city and audience cities match this campaign's city focus." },
     { key: "budget_fit", label: "Budget", value: score.budget_fit, copy: "Whether the budget is realistic for the expected work." },
     { key: "data_confidence", label: "Confidence", value: score.data_confidence, copy: "How much Agently trusts the available data." },
     { key: "platform_fit", label: "Platform", value: score.platform_fit, copy: "Fit against requested creator channels or production format." },

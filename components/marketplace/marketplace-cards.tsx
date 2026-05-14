@@ -2,7 +2,7 @@ import Link from "next/link";
 import { MessageRecipientButton } from "@/components/messages/message-recipient-button";
 import { SocialTrustBadge } from "@/components/social/social-trust-badge";
 import { VerificationBadge } from "@/components/verification/verification-badge";
-import { getBangaloreFit, getIndiaAudiencePercent } from "@/lib/utils/creator-metrics";
+import { getIndiaAudiencePercent } from "@/lib/utils/creator-metrics";
 import { formatCurrency, formatNumber } from "@/lib/utils/format";
 
 const GRADIENTS = [
@@ -54,7 +54,7 @@ export function CreatorMarketCard({ creator, platform }: { creator: Record<strin
   const href = `/creators/${stringValue(creator.id)}`;
   const name = stringValue(creator.display_name);
   const niche = stringValue(creator.primary_niche) || "Creator";
-  const bangaloreFit = getBangaloreFit(creator as never);
+  const homeCity = stringValue(creator.home_city);
   const metricSource = stringValue(platform?.metric_source);
 
   return (
@@ -74,14 +74,16 @@ export function CreatorMarketCard({ creator, platform }: { creator: Record<strin
           <p className="truncate text-base font-bold leading-tight text-white drop-shadow">{name}</p>
           <p className="mt-0.5 text-xs font-medium text-white/70">{niche}</p>
         </div>
-        {/* Bangalore fit pill — bottom right */}
-        {bangaloreFit >= 45 && (
+        {/* Home-city pill, bottom right. Replaces the old Bangalore-fit
+            number — gives brands useful at-a-glance context (where the
+            creator is based) without leaking the internal city-fit score. */}
+        {homeCity ? (
           <div className="absolute bottom-3 right-4">
             <span className="rounded-full bg-white/15 px-2 py-0.5 text-[11px] font-semibold text-white backdrop-blur-sm">
-              📍 {bangaloreFit}
+              📍 {homeCity}
             </span>
           </div>
-        )}
+        ) : null}
       </Link>
 
       {/* Stats row */}

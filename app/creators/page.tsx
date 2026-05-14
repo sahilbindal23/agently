@@ -10,7 +10,7 @@ import { VerificationBadge } from "@/components/verification/verification-badge"
 import { getCurrentUser } from "@/lib/auth/session";
 import { canSeeDemoData } from "@/lib/db/demo-visibility";
 import { getAgentlyData } from "@/lib/db/live-data";
-import { getBangaloreFit, getIndiaAudiencePercent } from "@/lib/utils/creator-metrics";
+import { getIndiaAudiencePercent } from "@/lib/utils/creator-metrics";
 import { formatCurrency, formatNumber, formatPercent } from "@/lib/utils/format";
 
 export default async function CreatorsPage() {
@@ -69,7 +69,6 @@ export default async function CreatorsPage() {
                   <Stat label="Followers" value={formatNumber(primary.followers)} />
                   <Stat label="Avg views" value={formatNumber(primary.avg_views)} />
                   <Stat label="India audience" value={formatPercent(getIndiaAudiencePercent(creator))} />
-                  <Stat label="Bangalore fit" value={`${getBangaloreFit(creator)}/100`} />
                 </div>
                 <div className="mt-4 rounded-md bg-muted p-3">
                   <p className="text-xs text-muted-foreground">Estimated rate</p>

@@ -513,7 +513,14 @@ function isPendingProject(row: Row) {
 }
 
 function needsVerification(row: Row) {
-  return String(row.verification_tier ?? "unverified") !== "performance" && String(row.verification_status ?? "unverified") !== "verified";
+  // 2-tier model: anyone whose status isn't 'verified' AND whose tier
+  // isn't a legacy verified value still needs admin review.
+  const tier = String(row.verification_tier ?? "unverified");
+  const status = String(row.verification_status ?? "unverified");
+  if (status === "verified") return false;
+  // Treat any legacy verified-equivalent tier as already done.
+  if (["verified", "profile", "social", "performance"].includes(tier)) return false;
+  return true;
 }
 
 function asRecord(value: unknown) {

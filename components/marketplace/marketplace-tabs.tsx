@@ -191,7 +191,14 @@ function FilterSelect({
 }
 
 function isVerified(item: Record<string, unknown>) {
-  return String(item.verification_status ?? "") === "verified" || ["verified", "performance"].includes(String(item.verification_tier ?? ""));
+  // Matches lib/campaigns/recommendations.isVerifiedTier:
+  // any non-unverified, non-rejected, non-reviewing tier counts as
+  // verified — including legacy 'profile' / 'social' / 'performance'.
+  const status = String(item.verification_status ?? "");
+  const tier = String(item.verification_tier ?? "");
+  if (status === "verified") return true;
+  if (!tier || tier === "unverified" || tier === "reviewing" || tier === "rejected") return false;
+  return true;
 }
 
 function matchesNiche(item: Record<string, unknown>, niche: string) {

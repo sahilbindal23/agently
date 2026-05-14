@@ -1,5 +1,5 @@
-import { audienceFitScore, engagementQualityScore, type SocialMetricSnapshot } from "@/lib/campaigns/engagement-quality";
-import { getBangaloreFit, getCreatorLanguages } from "@/lib/utils/creator-metrics";
+import { audienceFitScore, engagementQualityScore, latestPerProvider, type SocialMetricSnapshot } from "@/lib/campaigns/engagement-quality";
+import { getCityFit, getCreatorLanguages } from "@/lib/utils/creator-metrics";
 import { isTrustedMetricSource, socialTrustFromSource } from "@/lib/social/trust";
 import type { Campaign, Creator, CreatorPlatform } from "@/types";
 
@@ -100,7 +100,11 @@ export function rankCreators(
     const engagementQualityResult = engagementQualityScore(creatorSnapshots);
     const engagementQuality = engagementQualityResult.score;
     const languageFit = campaign.languages.length && creator.languages.some((language) => includesAny(language, campaign.languages)) ? 86 : campaign.languages.length ? 42 : 68;
-    const cityFit = getBangaloreFit(creator);
+    // City fit is now dynamic against the campaign's targeted city, using
+    // both intake-declared cities and Phyllo audience top_cities. When the
+    // campaign has no city focus, falls back to a general India relevance.
+    const phylloTopCities = latestPerProvider(creatorSnapshots).flatMap((s) => s.top_cities ?? []);
+    const cityFit = getCityFit(creator, campaign.city_focus, phylloTopCities);
     const budgetFit = getCreatorBudgetFit(campaign.budget_cents, primary?.avg_views ?? 0);
     const trustBoost = trustScore(creator.verification_tier, creator.verification_status) + completedWorkTrustBoost(Number(creator.completed_deal_count ?? 0));
     const syncedMetrics = isTrustedMetricSource(primary?.metric_source);

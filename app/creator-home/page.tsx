@@ -15,7 +15,7 @@ import { getCurrentUser } from "@/lib/auth/session";
 import { canSeeDemoData, withoutDemoRows } from "@/lib/db/demo-visibility";
 import { brandAutomationDecision, creatorAutomationDecision, freelancerAutomationDecision, isDiscoverable } from "@/lib/profile/automation";
 import { creatorCompleteness } from "@/lib/profile/completeness";
-import { getBangaloreFit, getIndiaAudiencePercent } from "@/lib/utils/creator-metrics";
+import { getIndiaAudiencePercent } from "@/lib/utils/creator-metrics";
 import { formatCurrency } from "@/lib/utils/format";
 
 export default async function CreatorHomePage() {
@@ -75,9 +75,11 @@ export default async function CreatorHomePage() {
         action={<div className="flex flex-wrap gap-2"><Link href="/profile"><Button variant="secondary">Edit profile</Button></Link><Link href="/offers"><Button variant="secondary">Review offers</Button></Link><Link href={`/creators/${creator.id}`}><Button>View full profile</Button></Link></div>}
       />
 
-      <section className="grid gap-4 md:grid-cols-3">
+      {/* Public metric strip. "Bangalore fit" / city fit removed —
+          stays internal as a ranking signal. Audience % + sponsor
+          readiness are the two numbers a creator can actually move. */}
+      <section className="grid gap-4 md:grid-cols-2">
         <Metric label="India audience" value={`${getIndiaAudiencePercent(creator)}%`} />
-        <Metric label="Bangalore fit" value={`${getBangaloreFit(creator)}/100`} />
         <Metric label="Sponsor readiness" value={`${latestAudit?.sponsor_readiness_score ?? creator.monetization_score}/100`} />
       </section>
 
