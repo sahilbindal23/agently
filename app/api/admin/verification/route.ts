@@ -11,7 +11,11 @@ const tableByType = {
 } as const;
 
 const allowedStatuses = new Set(["unverified", "reviewing", "verified", "rejected"]);
-const allowedTiers = new Set(["unverified", "reviewing", "profile", "social", "performance", "rejected"]);
+// "verified" is the canonical tier in the new 2-tier model. The older
+// "profile" / "social" / "performance" values are still accepted so any
+// legacy clients keep working — they all collapse to verification_status
+// = "verified" below.
+const allowedTiers = new Set(["unverified", "reviewing", "verified", "profile", "social", "performance", "rejected"]);
 
 export async function PATCH(request: Request) {
   const user = await getCurrentUser();
@@ -36,7 +40,7 @@ export async function PATCH(request: Request) {
     return NextResponse.json({ error: "Invalid verification request." }, { status: 400 });
   }
 
-  const verified = ["profile", "social", "performance"].includes(tier);
+  const verified = ["verified", "profile", "social", "performance"].includes(tier);
   const payload = {
     verification_status: verified ? "verified" : status,
     verification_tier: tier,

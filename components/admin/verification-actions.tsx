@@ -2,12 +2,18 @@
 
 import { useRouter } from "next/navigation";
 import { useState } from "react";
-import { CheckCircle2, Clock3, ShieldCheck, Star, XCircle } from "lucide-react";
+import { Clock3, ShieldCheck, XCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
+// 2-tier verification model: verified or rejected (with "reviewing" as a
+// transient state if admin wants to mark a profile as in-progress).
+//
+// What used to be Profile / Social / Performance got collapsed in commit
+// 382714e — see lib/campaigns/recommendations.isVerifiedTier. Legacy DB
+// values still count as verified, so no backfill needed.
+
 type EntityType = "creator" | "freelancer" | "brand";
-type Status = "reviewing" | "verified" | "rejected";
-type Tier = "reviewing" | "profile" | "social" | "performance" | "rejected";
+type Decision = "verified" | "reviewing" | "rejected";
 
 const checksByType: Record<EntityType, { key: string; label: string }[]> = {
   creator: [
@@ -40,7 +46,7 @@ export function VerificationActions({
   initialChecks?: Record<string, unknown>;
 }) {
   const router = useRouter();
-  const [loading, setLoading] = useState<Tier | null>(null);
+  const [loading, setLoading] = useState<Decision | null>(null);
   const [error, setError] = useState("");
   const [checks, setChecks] = useState<Record<string, boolean>>(() => {
     return checksByType[entityType].reduce<Record<string, boolean>>((acc, item) => {
@@ -50,24 +56,26 @@ export function VerificationActions({
   });
   const [notes, setNotes] = useState("");
 
-  async function update(tier: Tier) {
-    setLoading(tier);
+  async function update(decision: Decision) {
+    setLoading(decision);
     setError("");
-    const status: Status = tier === "rejected" ? "rejected" : tier === "reviewing" ? "reviewing" : "verified";
+    // The API still accepts the legacy tier values for backwards
+    // compatibility. We send "verified" / "reviewing" / "rejected" — the
+    // backend treats anything non-unverified/non-rejected as verified.
     const response = await fetch("/api/admin/verification", {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         entity_id: entityId,
         entity_type: entityType,
-        status,
-        tier,
+        status: decision,
+        tier: decision,
         checks,
-        notes: notes || noteForTier(tier)
+        notes: notes || noteForDecision(decision)
       })
     });
 
-    const payload = await response.json();
+    const payload = await response.json().catch(() => ({}));
     setLoading(null);
 
     if (!response.ok) {
@@ -79,10 +87,10 @@ export function VerificationActions({
   }
 
   return (
-    <div className="min-w-[360px] space-y-3">
+    <div className="min-w-[320px] space-y-3">
       <div className="grid gap-2 sm:grid-cols-2">
         {checksByType[entityType].map((item) => (
-          <label key={item.key} className="flex items-center gap-2 rounded-md border bg-white px-2.5 py-2 text-xs">
+          <label key={item.key} className="flex items-center gap-2 rounded-md border bg-white px-2.5 py-2 text-xs dark:border-white/10 dark:bg-card">
             <input
               checked={checks[item.key] ?? false}
               className="h-4 w-4"
@@ -94,42 +102,32 @@ export function VerificationActions({
         ))}
       </div>
       <input
-        className="h-9 w-full rounded-md border px-3 text-xs"
+        className="h-9 w-full rounded-md border px-3 text-xs dark:border-white/10 dark:bg-card"
         placeholder="Optional verification note"
         value={notes}
         onChange={(event) => setNotes(event.target.value)}
       />
       <div className="flex flex-wrap items-center gap-2">
+        <Button size="sm" disabled={Boolean(loading)} onClick={() => update("verified")}>
+          <ShieldCheck className="h-4 w-4" />
+          {loading === "verified" ? "Verifying…" : "Verify"}
+        </Button>
         <Button size="sm" variant="secondary" disabled={Boolean(loading)} onClick={() => update("reviewing")}>
           <Clock3 className="h-4 w-4" />
-          Review
-        </Button>
-        <Button size="sm" variant="secondary" disabled={Boolean(loading)} onClick={() => update("profile")}>
-          <CheckCircle2 className="h-4 w-4" />
-          Profile
-        </Button>
-        <Button size="sm" disabled={Boolean(loading)} onClick={() => update("social")}>
-          <ShieldCheck className="h-4 w-4" />
-          Social
-        </Button>
-        <Button size="sm" disabled={Boolean(loading)} onClick={() => update("performance")}>
-          <Star className="h-4 w-4" />
-          Performance
+          {loading === "reviewing" ? "Saving…" : "Hold for review"}
         </Button>
         <Button size="sm" variant="danger" disabled={Boolean(loading)} onClick={() => update("rejected")}>
           <XCircle className="h-4 w-4" />
-          Reject
+          {loading === "rejected" ? "Rejecting…" : "Reject"}
         </Button>
       </div>
-      {error ? <p className="basis-full text-xs text-destructive">{error}</p> : null}
+      {error ? <p className="text-xs font-medium text-red-600 dark:text-red-400">{error}</p> : null}
     </div>
   );
 }
 
-function noteForTier(tier: Tier) {
-  if (tier === "profile") return "Profile reviewed by Agently admin.";
-  if (tier === "social") return "Social, portfolio, or brand web presence checked by Agently admin.";
-  if (tier === "performance") return "Performance verified through Agently workflow history.";
-  if (tier === "reviewing") return "Moved into verification review.";
+function noteForDecision(decision: Decision) {
+  if (decision === "verified") return "Profile verified by Agently admin.";
+  if (decision === "reviewing") return "Held for further admin review.";
   return "Verification rejected pending corrections.";
 }

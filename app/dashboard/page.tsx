@@ -153,10 +153,17 @@ async function getVerificationQueue() {
   if (!admin) return [];
 
   try {
+    // Queue shows anyone who hasn't been decided yet: tier is null,
+    // 'unverified', or 'reviewing'. Rows where the admin already clicked
+    // Verify or Reject drop out of the queue automatically. Legacy
+    // values ('performance', 'social', 'profile') are treated as already
+    // verified per the 2-tier model — see lib/campaigns/recommendations
+    // isVerifiedTier().
+    const pendingFilter = "verification_tier.is.null,verification_tier.eq.unverified,verification_tier.eq.reviewing";
     const [{ data: creators }, { data: freelancers }, { data: brands }] = await Promise.all([
-      admin.from("creators").select("*").neq("verification_tier", "performance").order("created_at", { ascending: false }).limit(8),
-      admin.from("freelancers").select("*").neq("verification_tier", "performance").order("created_at", { ascending: false }).limit(8),
-      admin.from("brands").select("*").neq("verification_tier", "performance").order("created_at", { ascending: false }).limit(8)
+      admin.from("creators").select("*").or(pendingFilter).order("created_at", { ascending: false }).limit(12),
+      admin.from("freelancers").select("*").or(pendingFilter).order("created_at", { ascending: false }).limit(12),
+      admin.from("brands").select("*").or(pendingFilter).order("created_at", { ascending: false }).limit(12)
     ]);
 
     return [
