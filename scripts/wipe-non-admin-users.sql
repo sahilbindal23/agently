@@ -172,10 +172,20 @@ select 'Remaining non-admin profiles (should be 0)' as label, count(*)
 -- This deletes the actual Supabase Auth records so the same email can sign
 -- up again. Cannot be rolled back. Run only after PHASE 2 is committed.
 --
+-- ⚠️  CRITICAL SAFETY: explicitly EXISTS-join against the admin profiles
+-- so we are positively whitelisting admins, not negatively excluding them.
+-- An earlier version of this used `id NOT IN (select id from public.profiles)`
+-- which is unsafe — Postgres treats `x NOT IN (empty_set)` as TRUE for
+-- every row, so if the profiles table was unexpectedly empty the delete
+-- would wipe ALL auth.users including admins.
+--
 -- delete from auth.users
--- where id not in (select id from public.profiles);
+-- where not exists (
+--   select 1 from public.profiles p
+--   where p.id = auth.users.id
+--     and p.role = 'admin'
+-- );
 --
 -- Verify cleanup with:
--- select count(*) as remaining_non_admin_auth_users
---   from auth.users u
---   where u.id not in (select id from public.profiles where role = 'admin');
+-- select count(*) as remaining_admin_auth_users from auth.users;  -- should match admin profile count
+-- select count(*) as total_profiles from public.profiles where role = 'admin';
