@@ -9,7 +9,6 @@ import { Badge } from "@/components/ui/badge";
 import { Card, CardHeader, CardTitle } from "@/components/ui/card";
 import { getCurrentUser } from "@/lib/auth/session";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { formatCurrency } from "@/lib/utils/format";
 
 export const dynamic = "force-dynamic";
 
@@ -117,9 +116,14 @@ export default async function DiscoverCampaignsPage() {
                   <p className="text-sm leading-6 text-muted-foreground">{campaign.campaign_goal}</p>
                 ) : null}
 
+                {/* Budget intentionally hidden from creator-facing discovery.
+                    Stays confidential between the brand and Agently —
+                    creators apply on fit, and the formal offer (which
+                    carries the actual amount) is sent by the brand from
+                    their side. Brand and admin views still show budget. */}
                 <div className="mt-3 grid gap-2 text-xs sm:grid-cols-2">
-                  <Detail label="Budget" value={campaign.budget_cents ? formatCurrency(campaign.budget_cents, "inr") : "Not specified"} />
                   <Detail label="Region" value={campaign.region_focus || campaign.city_focus || "India"} />
+                  <Detail label="Length" value={campaign.campaign_length || "Open"} />
                   <Detail label="Target audience" value={campaign.target_audience || "Open"} />
                   <Detail label="Languages" value={(campaign.languages ?? []).join(", ") || "Any"} />
                 </div>
