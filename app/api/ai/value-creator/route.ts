@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
+import { CLAUDE_MODELS, extractText, getAnthropic } from "@/lib/anthropic/client";
 import { getCurrentUser } from "@/lib/auth/session";
 import { getBenchmarkBlend, getBenchmarkBlendV2 } from "@/lib/benchmarks/rates";
-import { getOpenAI } from "@/lib/openai/client";
 import { rulesBasedValuation, type ValuationInput } from "@/lib/ai/valuation";
 import { gateRateLimit } from "@/lib/security/rate-limit-gate";
 import { createAdminClient } from "@/lib/supabase/admin";
@@ -18,30 +18,48 @@ export async function POST(request: Request) {
   const fallback = rulesBasedValuation(input);
   const admin = createAdminClient();
   const benchmarkBlend = (await getBenchmarkBlendV2(admin, input, fallback)) ?? (await getBenchmarkBlend(admin, input, fallback));
-  const openai = getOpenAI();
+  const anthropic = getAnthropic();
 
-  if (!openai) {
+  if (!anthropic) {
     return NextResponse.json({
       ...withBenchmarkBlend(fallback, benchmarkBlend),
       source: benchmarkBlend ? "rules_plus_benchmarks" : "rules_fallback"
     });
   }
 
-  const completion = await openai.chat.completions.create({
-    model: "gpt-4o-mini",
-    response_format: { type: "json_object" },
+  // Valuation runs on high-volume surfaces (every recommendation card
+  // refresh) so cost matters — use the FAST preset (Haiku 4.5).
+  //
+  // Prompt caching note: cache_control marks the system prompt as
+  // cacheable, but the minimum prefix that actually caches is 4096
+  // tokens for Haiku 4.5. Our current valuationPrompt is much shorter,
+  // so this marker is forward-looking — when we grow the prompt past
+  // that threshold (or switch to Sonnet, where the threshold is 2048),
+  // cached reads become free. Until then it's a no-op, not a regression.
+  const response = await anthropic.messages.create({
+    model: CLAUDE_MODELS.FAST,
+    max_tokens: 2048,
+    system: [
+      {
+        type: "text",
+        text: valuationPrompt,
+        cache_control: { type: "ephemeral" }
+      }
+    ],
     messages: [
-      { role: "system", content: valuationPrompt },
-      { role: "user", content: JSON.stringify({ input, rules_estimate: fallback, benchmark_blend: benchmarkBlend }) }
+      {
+        role: "user",
+        content: JSON.stringify({ input, rules_estimate: fallback, benchmark_blend: benchmarkBlend })
+      }
     ]
   });
 
-  const raw = completion.choices[0]?.message.content ?? JSON.stringify(fallback);
+  const raw = extractText(response) ?? JSON.stringify(fallback);
   const parsed = safeJsonParse(raw, fallback);
 
   return NextResponse.json({
     ...withBenchmarkBlend(parsed, benchmarkBlend),
-    source: benchmarkBlend ? "openai_plus_benchmarks" : "openai"
+    source: benchmarkBlend ? "claude_plus_benchmarks" : "claude"
   });
 }
 

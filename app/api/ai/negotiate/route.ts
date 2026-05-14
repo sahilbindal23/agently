@@ -1,8 +1,8 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
+import { CLAUDE_MODELS, extractText, getAnthropic } from "@/lib/anthropic/client";
 import { getCurrentUser } from "@/lib/auth/session";
 import { buildNegotiateContext } from "@/lib/benchmarks/negotiate-context";
-import { getOpenAI } from "@/lib/openai/client";
 import { negotiateAskPrompt, negotiatePrompt } from "@/prompts/negotiate";
 import { gateRateLimit } from "@/lib/security/rate-limit-gate";
 import { createAdminClient } from "@/lib/supabase/admin";
@@ -46,7 +46,10 @@ export async function POST(request: Request) {
   const mode = body?.mode === "ask" ? "ask" : "counter";
 
   const admin = createAdminClient();
-  const openai = getOpenAI();
+  // Negotiation is quality-critical — use SMART (Sonnet 4.6).
+  // The reasoning behind counter strategies and "what to push back on"
+  // genuinely benefits from a stronger model than valuation does.
+  const anthropic = getAnthropic();
 
   if (mode === "ask") {
     const parsed = askSchema.safeParse(body);
@@ -75,32 +78,35 @@ export async function POST(request: Request) {
       followup_questions: ["What is the planned ad spend behind these posts?", "Is usage capped to 30 days or perpetual?", "Will the brand fund the deliverable before delivery?"]
     };
 
-    if (!openai) {
+    if (!anthropic) {
       return NextResponse.json({ ...fallback, source: "rules_fallback", benchmark_context: benchmarkContext });
     }
 
-    const completion = await openai.chat.completions.create({
-      model: "gpt-4o-mini",
-      response_format: { type: "json_object" },
+    const response = await anthropic.messages.create({
+      model: CLAUDE_MODELS.SMART,
+      max_tokens: 2048,
+      system: [{ type: "text", text: negotiateAskPrompt, cache_control: { type: "ephemeral" } }],
       messages: [
-        { role: "system", content: negotiateAskPrompt },
-        { role: "user", content: JSON.stringify({
-          question: input.question,
-          talent_type: input.talent_type,
-          offer_context: {
-            amount_cents: input.offer_amount_cents,
-            deliverables: input.deliverables,
-            contract_terms: input.contract_terms,
-            brand: input.brand
-          },
-          benchmark_context: benchmarkContext
-        }) }
+        {
+          role: "user",
+          content: JSON.stringify({
+            question: input.question,
+            talent_type: input.talent_type,
+            offer_context: {
+              amount_cents: input.offer_amount_cents,
+              deliverables: input.deliverables,
+              contract_terms: input.contract_terms,
+              brand: input.brand
+            },
+            benchmark_context: benchmarkContext
+          })
+        }
       ]
     });
-    const raw = completion.choices[0]?.message.content ?? JSON.stringify(fallback);
+    const raw = extractText(response) ?? JSON.stringify(fallback);
     let parsedResp: Record<string, unknown> = fallback;
     try { parsedResp = JSON.parse(raw); } catch { /* keep fallback */ }
-    return NextResponse.json({ ...parsedResp, source: "openai_plus_benchmarks", benchmark_context: benchmarkContext });
+    return NextResponse.json({ ...parsedResp, source: "claude_plus_benchmarks", benchmark_context: benchmarkContext });
   }
 
   // counter mode
@@ -148,20 +154,20 @@ export async function POST(request: Request) {
     benchmark_basis: benchmarkContext?.summary ?? "No matching benchmark data; counter based on rules fallback."
   };
 
-  if (!openai) {
+  if (!anthropic) {
     return NextResponse.json({ ...fallback, source: "rules_fallback", benchmark_context: benchmarkContext });
   }
 
-  const completion = await openai.chat.completions.create({
-    model: "gpt-4o-mini",
-    response_format: { type: "json_object" },
+  const response = await anthropic.messages.create({
+    model: CLAUDE_MODELS.SMART,
+    max_tokens: 2048,
+    system: [{ type: "text", text: negotiatePrompt, cache_control: { type: "ephemeral" } }],
     messages: [
-      { role: "system", content: negotiatePrompt },
       { role: "user", content: JSON.stringify({ ...input, benchmark_context: benchmarkContext }) }
     ]
   });
-  const raw = completion.choices[0]?.message.content ?? JSON.stringify(fallback);
+  const raw = extractText(response) ?? JSON.stringify(fallback);
   let parsedResp: Record<string, unknown> = fallback;
   try { parsedResp = JSON.parse(raw); } catch { /* keep fallback */ }
-  return NextResponse.json({ ...parsedResp, source: "openai_plus_benchmarks", benchmark_context: benchmarkContext });
+  return NextResponse.json({ ...parsedResp, source: "claude_plus_benchmarks", benchmark_context: benchmarkContext });
 }

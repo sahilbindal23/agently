@@ -1,9 +1,9 @@
 import { NextResponse } from "next/server";
 import { matchBrandsForCreator, matchCreatorsForBrand, type BrandMatchInput, type CreatorBrandMatchInput } from "@/lib/ai/brand-match";
+import { CLAUDE_MODELS, extractText, getAnthropic } from "@/lib/anthropic/client";
 import { getCurrentUser } from "@/lib/auth/session";
 import { canSeeDemoData } from "@/lib/db/demo-visibility";
 import { getAgentlyData } from "@/lib/db/live-data";
-import { getOpenAI } from "@/lib/openai/client";
 import { brandMatchPrompt } from "@/prompts/brand-match";
 import { gateRateLimit } from "@/lib/security/rate-limit-gate";
 
@@ -19,19 +19,30 @@ export async function POST(request: Request) {
   const fallback = input.direction === "creator_to_brands"
     ? matchBrandsForCreator(input, creators, creatorPlatforms, brands)
     : matchCreatorsForBrand(input as BrandMatchInput, creators, creatorPlatforms);
-  const openai = getOpenAI();
-  if (!openai) return NextResponse.json({ ...fallback, source: "rules_fallback" });
+  // High-volume route on the recommendations surface — use FAST (Haiku 4.5)
+  const anthropic = getAnthropic();
+  if (!anthropic) return NextResponse.json({ ...fallback, source: "rules_fallback" });
 
-  const completion = await openai.chat.completions.create({
-    model: "gpt-4o-mini",
-    response_format: { type: "json_object" },
+  const response = await anthropic.messages.create({
+    model: CLAUDE_MODELS.FAST,
+    max_tokens: 2048,
+    system: [{ type: "text", text: brandMatchPrompt, cache_control: { type: "ephemeral" } }],
     messages: [
-      { role: "system", content: brandMatchPrompt },
-      { role: "user", content: JSON.stringify({ direction: input.direction ?? "brand_to_creators", brief: input, rules_ranked_matches: fallback }) }
+      {
+        role: "user",
+        content: JSON.stringify({
+          direction: input.direction ?? "brand_to_creators",
+          brief: input,
+          rules_ranked_matches: fallback
+        })
+      }
     ]
   });
+  const raw = extractText(response) ?? JSON.stringify(fallback);
+  let parsed: unknown = fallback;
+  try { parsed = JSON.parse(raw); } catch { /* keep fallback */ }
   return NextResponse.json({
-    ...JSON.parse(completion.choices[0]?.message.content ?? JSON.stringify(fallback)),
-    source: "openai"
+    ...(parsed as Record<string, unknown>),
+    source: "claude"
   });
 }

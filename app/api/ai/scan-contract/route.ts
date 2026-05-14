@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { trackEvent, userEventBase } from "@/lib/analytics/track";
-import { getOpenAI } from "@/lib/openai/client";
+import { CLAUDE_MODELS, extractText, getAnthropic } from "@/lib/anthropic/client";
 import { contractScanPrompt } from "@/prompts/contract-scan";
 import { gateRateLimit } from "@/lib/security/rate-limit-gate";
 import { createAdminClient } from "@/lib/supabase/admin";
@@ -37,20 +37,22 @@ export async function POST(request: Request) {
   }
 
   const fallback = scanFallback(text);
-  const openai = getOpenAI();
+  // Contract scanning is quality-critical — wrong clause flags can cause
+  // real legal exposure for creators. Use SMART (Sonnet 4.6).
+  const anthropic = getAnthropic();
   let scan: ContractScanPayload & { source?: string } = { ...fallback, source: "rules_fallback" };
 
-  if (openai) {
-    const completion = await openai.chat.completions.create({
-      model: "gpt-4o-mini",
-      response_format: { type: "json_object" },
-      messages: [
-        { role: "system", content: contractScanPrompt },
-        { role: "user", content: text }
-      ]
+  if (anthropic) {
+    const response = await anthropic.messages.create({
+      model: CLAUDE_MODELS.SMART,
+      max_tokens: 4096,
+      system: [{ type: "text", text: contractScanPrompt, cache_control: { type: "ephemeral" } }],
+      messages: [{ role: "user", content: text }]
     });
-
-    scan = normalizeScan(JSON.parse(completion.choices[0]?.message.content ?? JSON.stringify(fallback)));
+    const raw = extractText(response) ?? JSON.stringify(fallback);
+    let parsed: Partial<ContractScanPayload> = fallback;
+    try { parsed = JSON.parse(raw); } catch { /* keep fallback */ }
+    scan = { ...normalizeScan(parsed), source: "claude" };
   }
 
   if (!dealId) return NextResponse.json(scan);
@@ -121,7 +123,7 @@ export async function POST(request: Request) {
       flag_count: scan.flags.length,
       file_attached: Boolean(filePath),
       file_name: input.file?.name ?? null,
-      source: scan.source ?? "openai"
+      source: scan.source ?? "claude"
     }
   });
 
@@ -131,7 +133,7 @@ export async function POST(request: Request) {
     file_name: input.file?.name ?? null,
     file_path: filePath || null,
     review_status: reviewStatusFor(scan.risk_level),
-    source: scan.source ?? "openai"
+    source: scan.source ?? "claude"
   });
 }
 

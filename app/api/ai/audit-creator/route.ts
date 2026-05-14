@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { auditCreator, type CreatorAuditInput } from "@/lib/ai/audits";
+import { CLAUDE_MODELS, extractText, getAnthropic } from "@/lib/anthropic/client";
 import { getCurrentUser } from "@/lib/auth/session";
-import { getOpenAI } from "@/lib/openai/client";
 import { creatorAuditPrompt } from "@/prompts/audits";
 import { gateRateLimit } from "@/lib/security/rate-limit-gate";
 
@@ -14,21 +14,19 @@ export async function POST(request: Request) {
 
   const input = (await request.json()) as CreatorAuditInput;
   const fallback = auditCreator(input);
-  const openai = getOpenAI();
+  const anthropic = getAnthropic();
 
-  if (!openai) return NextResponse.json({ ...fallback, source: "rules_fallback" });
+  if (!anthropic) return NextResponse.json({ ...fallback, source: "rules_fallback" });
 
-  const completion = await openai.chat.completions.create({
-    model: "gpt-4o-mini",
-    response_format: { type: "json_object" },
-    messages: [
-      { role: "system", content: creatorAuditPrompt },
-      { role: "user", content: JSON.stringify({ input, rules_audit: fallback }) }
-    ]
+  // Creator audit is admin-triggered + low-volume. FAST is appropriate.
+  const response = await anthropic.messages.create({
+    model: CLAUDE_MODELS.FAST,
+    max_tokens: 2048,
+    system: [{ type: "text", text: creatorAuditPrompt, cache_control: { type: "ephemeral" } }],
+    messages: [{ role: "user", content: JSON.stringify({ input, rules_audit: fallback }) }]
   });
-
-  return NextResponse.json({
-    ...JSON.parse(completion.choices[0]?.message.content ?? JSON.stringify(fallback)),
-    source: "openai"
-  });
+  const raw = extractText(response) ?? JSON.stringify(fallback);
+  let parsed: unknown = fallback;
+  try { parsed = JSON.parse(raw); } catch { /* keep fallback */ }
+  return NextResponse.json({ ...(parsed as Record<string, unknown>), source: "claude" });
 }
