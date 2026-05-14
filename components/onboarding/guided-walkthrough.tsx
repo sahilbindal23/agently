@@ -190,9 +190,12 @@ export function GuidedWalkthrough({ role }: { role: Role }) {
 
   const goToIndex = useCallback((nextIndex: number) => {
     const bounded = Math.max(0, Math.min(steps.length - 1, nextIndex));
-    setPositionReady(false);
+    // Intentionally NOT clearing `rect` or `positionReady` here. Keeping
+    // the previous step's highlight visible during navigation means the
+    // user sees a smooth slide to the new target once the new page
+    // paints, instead of a fade-out + fade-in flicker. measure() in the
+    // useLayoutEffect updates the rect in place when the new page mounts.
     setMissingTarget(false);
-    setRect(null);
     setIndex(bounded);
     setActive(true);
     persist(true, bounded);
@@ -277,11 +280,24 @@ export function GuidedWalkthrough({ role }: { role: Role }) {
   useEffect(() => {
     if (!active || !current) return;
     if (current.route !== pathname) {
-      setPositionReady(false);
-      setRect(null);
+      // Don't clear rect / positionReady — keep the previous highlight
+      // visible while the new page loads. router.push() will trigger a
+      // re-render and measure() picks up the new target.
       router.push(current.route);
     }
   }, [active, current, pathname, router]);
+
+  // Prefetch every step's route as soon as the walkthrough activates so
+  // that subsequent navigations come out of the Next.js router cache
+  // instead of doing a full server roundtrip. This is the single biggest
+  // win for perceived "instant Next" — without prefetch each Next click
+  // can wait 500ms-2s for the new server component to render.
+  useEffect(() => {
+    if (!active) return;
+    for (const step of steps) {
+      router.prefetch(step.route);
+    }
+  }, [active, steps, router]);
 
   useLayoutEffect(() => {
     if (pendingStart && current?.route === pathname) {
@@ -325,7 +341,11 @@ export function GuidedWalkthrough({ role }: { role: Role }) {
     <div className="fixed inset-0 z-50">
       {rect ? (
         <div
-          className="pointer-events-none absolute rounded-xl border-2 border-accent bg-transparent shadow-[0_0_0_9999px_rgba(15,23,42,0.62),0_18px_50px_rgba(20,184,166,0.28)] transition-[top,left,width,height] duration-75 ease-out"
+          // duration-200 lets the highlight smoothly SLIDE to the next
+          // target when Next is clicked, instead of vanishing-then-
+          // reappearing. The "next page" loads behind this overlay so
+          // user perceives a continuous experience.
+          className="pointer-events-none absolute rounded-xl border-2 border-accent bg-transparent shadow-[0_0_0_9999px_rgba(15,23,42,0.62),0_18px_50px_rgba(20,184,166,0.28)] transition-[top,left,width,height] duration-200 ease-out"
           style={{ top: rect.top, left: rect.left, width: rect.width, height: rect.height }}
         >
           <div className="absolute -right-3 -top-3 flex h-8 w-8 animate-pulse items-center justify-center rounded-full bg-accent text-accent-foreground shadow-soft">
@@ -337,7 +357,10 @@ export function GuidedWalkthrough({ role }: { role: Role }) {
       )}
 
       <div
-        className={`absolute w-[min(420px,calc(100vw-32px))] rounded-lg border bg-white p-5 shadow-[0_24px_90px_rgba(15,23,42,0.28)] transition-opacity duration-100 ${positionReady && cardPosition ? "opacity-100" : "pointer-events-none opacity-0"}`}
+        // Card stays at opacity-100 once the tour starts; we just move
+        // it. Previously the card faded out on every Next click which
+        // amplified the "page reload" perception.
+        className={`absolute w-[min(420px,calc(100vw-32px))] rounded-lg border bg-white p-5 shadow-[0_24px_90px_rgba(15,23,42,0.28)] transition-[top,left] duration-200 ease-out ${cardPosition ? "opacity-100" : "pointer-events-none opacity-0"}`}
         style={cardPosition}
       >
         <div className="mb-3 flex items-start justify-between gap-4">
