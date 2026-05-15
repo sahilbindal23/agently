@@ -7,6 +7,7 @@ import { AuthLegalFooter } from "@/components/auth/auth-legal-footer";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
+import { PasswordInput } from "@/components/ui/password-input";
 import { HomeLogo } from "@/components/layout/home-logo";
 
 export function LoginForm() {
@@ -70,7 +71,7 @@ export function LoginForm() {
         ) : null}
         <form className="mt-6 space-y-4" method="post" onSubmit={onSubmit} data-login-form>
           <Input name="email" type="email" placeholder="Email" required />
-          <Input name="password" type="password" placeholder="Password" required />
+          <PasswordInput name="password" placeholder="Password" required />
           <div className="flex justify-end">
             <Link className="text-xs font-medium text-primary hover:underline" href="/forgot-password">
               Forgot password?

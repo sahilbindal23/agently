@@ -64,6 +64,16 @@ export default async function CampaignDetailPage({
     freelancerRecommendations,
     shortlists: campaignData.shortlists
   });
+  // Roster = creators + freelancers who actually accepted work on this
+  // campaign. Drives the brand-facing "budget left" view so a brand knows
+  // exactly what they've already committed before sending more offers.
+  const roster = buildCampaignRoster({
+    campaignId: campaign.id,
+    deals,
+    projects: campaignData.projects,
+    creators,
+    freelancers: campaignData.freelancers
+  });
   await persistRecommendationSnapshots(campaign.id, creatorRecommendations, freelancerRecommendations);
 
   return (
@@ -81,6 +91,8 @@ export default async function CampaignDetailPage({
         <Metric label="Length" value={campaign.campaign_length || "Not set"} />
         <Metric label="Shortlisted" value={`${campaignData.shortlists.length}`} />
       </section>
+
+      <RosterBudgetCard campaign={campaign} roster={roster} />
 
       <PerformanceProjectionCard projection={projection} />
 
@@ -282,6 +294,177 @@ function SignalList({ items, title, tone }: { items: string[]; title: string; to
   );
 }
 
+type RosterRow = {
+  id: string;
+  type: "creator" | "freelancer";
+  name: string;
+  amount_cents: number;
+  offer_status: string;
+  payment_status: string;
+  deliverable_status: string;
+  deliverables: string;
+  href: string;
+};
+
+type CampaignRoster = {
+  rows: RosterRow[];
+  pendingOffers: number;
+  committedCents: number;
+  releasedCents: number;
+  fundedCents: number;
+};
+
+function buildCampaignRoster({
+  campaignId,
+  deals,
+  projects,
+  creators,
+  freelancers
+}: {
+  campaignId: string;
+  deals: Deal[];
+  projects: Array<Record<string, unknown>>;
+  creators: Creator[];
+  freelancers: FreelancerRecommendationInput[];
+}): CampaignRoster {
+  const creatorById = new Map(creators.map((creator) => [String(creator.id), creator]));
+  const freelancerById = new Map(freelancers.map((freelancer) => [String(freelancer.id), freelancer]));
+
+  const dealRows = (deals as unknown as Array<Record<string, unknown>>)
+    .filter((deal) => String(deal.campaign_id ?? "") === campaignId)
+    .map((deal): RosterRow => {
+      const creatorId = String(deal.creator_id ?? "");
+      const creator = creatorById.get(creatorId);
+      return {
+        id: String(deal.id),
+        type: "creator",
+        name: creator?.display_name ?? "Creator",
+        amount_cents: Number(deal.amount_cents ?? 0),
+        offer_status: String(deal.offer_status ?? deal.stage ?? "pending"),
+        payment_status: String(deal.payment_status ?? "pending"),
+        deliverable_status: String(deal.deliverable_status ?? ""),
+        deliverables: String(deal.deliverables ?? deal.title ?? ""),
+        href: `/creators/${creatorId}`
+      };
+    });
+
+  const projectRows = projects
+    .filter((project) => String(project.campaign_id ?? "") === campaignId)
+    .map((project): RosterRow => {
+      const freelancerId = String(project.freelancer_id ?? "");
+      const freelancer = freelancerById.get(freelancerId);
+      return {
+        id: String(project.id),
+        type: "freelancer",
+        name: freelancer?.display_name ?? "Freelancer",
+        amount_cents: Number(project.amount_cents ?? 0),
+        offer_status: String(project.status ?? "pending"),
+        payment_status: String(project.payment_status ?? "pending"),
+        deliverable_status: String(project.deliverable_status ?? ""),
+        deliverables: String(project.deliverables ?? ""),
+        href: `/freelancers/${freelancerId}`
+      };
+    });
+
+  const rows = [...dealRows, ...projectRows].sort((a, b) => {
+    // Accepted first, then pending, then declined — gives the brand the
+    // committed roster up top.
+    const order: Record<string, number> = { accepted: 0, sent: 1, pending: 1, countered: 2, declined: 3, cancelled: 4 };
+    return (order[a.offer_status] ?? 9) - (order[b.offer_status] ?? 9);
+  });
+
+  const accepted = rows.filter((row) => row.offer_status === "accepted");
+  const committedCents = accepted.reduce((sum, row) => sum + row.amount_cents, 0);
+  const fundedCents = accepted.filter((row) => ["funded", "release_ready", "released"].includes(row.payment_status)).reduce((sum, row) => sum + row.amount_cents, 0);
+  const releasedCents = accepted.filter((row) => row.payment_status === "released").reduce((sum, row) => sum + row.amount_cents, 0);
+  const pendingOffers = rows.filter((row) => row.offer_status !== "accepted" && row.offer_status !== "declined" && row.offer_status !== "cancelled").length;
+
+  return { rows, pendingOffers, committedCents, releasedCents, fundedCents };
+}
+
+function RosterBudgetCard({ campaign, roster }: { campaign: Campaign; roster: CampaignRoster }) {
+  const budgetCents = Number(campaign.budget_cents ?? 0);
+  const remainingCents = Math.max(0, budgetCents - roster.committedCents);
+  const utilization = budgetCents ? Math.min(100, Math.round((roster.committedCents / budgetCents) * 100)) : 0;
+  const overspend = budgetCents && roster.committedCents > budgetCents ? roster.committedCents - budgetCents : 0;
+  const accepted = roster.rows.filter((row) => row.offer_status === "accepted");
+  const tone = overspend ? "red" : utilization >= 90 ? "amber" : utilization >= 50 ? "blue" : "green";
+
+  return (
+    <Card className="mt-5">
+      <CardHeader>
+        <div>
+          <CardTitle>Campaign roster & budget</CardTitle>
+          <p className="mt-1 text-sm text-muted-foreground">Live view of accepted talent and remaining budget. Updates as creators and freelancers accept offers, deliver work, and get paid.</p>
+        </div>
+        <Badge tone={tone}>{overspend ? `Over by ${formatCurrency(overspend, "inr")}` : `${utilization}% committed`}</Badge>
+      </CardHeader>
+
+      <div className="grid gap-3 md:grid-cols-4">
+        <BudgetStat label="Total budget" value={formatCurrency(budgetCents, "inr")} />
+        <BudgetStat label="Committed" value={formatCurrency(roster.committedCents, "inr")} sub={`${accepted.length} accepted`} />
+        <BudgetStat label="Remaining" value={overspend ? `−${formatCurrency(overspend, "inr")}` : formatCurrency(remainingCents, "inr")} sub={roster.pendingOffers ? `${roster.pendingOffers} pending offers` : "no pending offers"} tone={overspend ? "red" : undefined} />
+        <BudgetStat label="Funded / released" value={`${formatCurrency(roster.fundedCents, "inr")} · ${formatCurrency(roster.releasedCents, "inr")}`} sub="protected payouts" />
+      </div>
+
+      <div className="mt-4 h-2.5 w-full overflow-hidden rounded-full bg-muted">
+        <div
+          className={`h-full rounded-full transition-all ${overspend ? "bg-red-500" : utilization >= 90 ? "bg-amber-500" : "bg-emerald-500"}`}
+          style={{ width: `${overspend ? 100 : utilization}%` }}
+        />
+      </div>
+
+      {accepted.length === 0 ? (
+        <p className="mt-4 rounded-md border bg-muted px-3 py-3 text-sm leading-6 text-muted-foreground dark:border-white/8">
+          No one has accepted yet. Send offers from the recommendation cards below — accepted talent will appear here with their commitment amount so you can track budget left in real time.
+        </p>
+      ) : (
+        <div className="mt-4 space-y-2">
+          {accepted.map((row) => (
+            <div className="flex flex-wrap items-center justify-between gap-3 rounded-md border bg-white p-3 text-sm dark:border-white/8 dark:bg-card" key={row.id}>
+              <div className="min-w-0">
+                <Link className="font-semibold text-primary hover:underline" href={row.href}>{row.name}</Link>
+                <p className="mt-0.5 text-xs text-muted-foreground">
+                  {row.type === "creator" ? "Creator" : "Freelancer"}{row.deliverables ? ` · ${row.deliverables.slice(0, 80)}${row.deliverables.length > 80 ? "…" : ""}` : ""}
+                </p>
+              </div>
+              <div className="flex items-center gap-2">
+                <Badge tone={paymentTone(row.payment_status)}>{paymentLabel(row.payment_status)}</Badge>
+                <span className="font-semibold">{formatCurrency(row.amount_cents, "inr")}</span>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+    </Card>
+  );
+}
+
+function BudgetStat({ label, value, sub, tone }: { label: string; value: string; sub?: string; tone?: "red" }) {
+  return (
+    <div className="rounded-md border bg-white p-3 dark:border-white/8 dark:bg-card">
+      <p className="text-xs font-semibold uppercase text-muted-foreground">{label}</p>
+      <p className={`mt-1 text-xl font-bold ${tone === "red" ? "text-red-600 dark:text-red-400" : ""}`}>{value}</p>
+      {sub ? <p className="mt-1 text-xs text-muted-foreground">{sub}</p> : null}
+    </div>
+  );
+}
+
+function paymentTone(status: string): "green" | "amber" | "blue" | "neutral" {
+  if (status === "released") return "green";
+  if (status === "release_ready" || status === "funded") return "blue";
+  if (status === "pending") return "amber";
+  return "neutral";
+}
+
+function paymentLabel(status: string) {
+  if (status === "released") return "paid";
+  if (status === "release_ready") return "ready to release";
+  if (status === "funded") return "funded";
+  if (status === "pending") return "awaiting funding";
+  return status || "pending";
+}
+
 function Metric({ label, value }: { label: string; value: string }) {
   return (
     <Card>
@@ -312,7 +495,7 @@ async function getCampaignData(id: string, includeDemo: boolean) {
     admin.from("freelancer_service_rates").select("*"),
     admin.from("campaign_shortlists").select("*").eq("campaign_id", id),
     admin.from("campaign_invites").select("*").eq("campaign_id", id),
-    admin.from("freelancer_projects").select("id, freelancer_id, status, payment_status, deliverable_status"),
+    admin.from("freelancer_projects").select("id, freelancer_id, status, payment_status, deliverable_status, campaign_id, amount_cents, currency, deliverables"),
     getProductEvents(admin)
   ]);
 

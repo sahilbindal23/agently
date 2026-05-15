@@ -9,6 +9,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
+import { PasswordInput } from "@/components/ui/password-input";
 
 type Role = "creator" | "brand" | "freelancer";
 
@@ -141,7 +142,7 @@ export function AccountSignupForm() {
             <form className="grid gap-3" onSubmit={onSubmit}>
               <Input name="full_name" placeholder="Full name" required />
               <Input name="email" type="email" placeholder="Email" required />
-              <Input name="password" type="password" placeholder="Password (min 8 characters)" minLength={8} required />
+              <PasswordInput name="password" placeholder="Password (min 8 characters)" minLength={8} required />
               <label className="flex cursor-pointer items-start gap-2 rounded-md border bg-white p-3 text-sm leading-5 dark:bg-card dark:border-white/10">
                 <input
                   checked={agreedToTerms}

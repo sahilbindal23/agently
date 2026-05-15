@@ -8,7 +8,7 @@ import { AuthLegalFooter } from "@/components/auth/auth-legal-footer";
 import { HomeLogo } from "@/components/layout/home-logo";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
+import { PasswordInput } from "@/components/ui/password-input";
 
 export function ResetPasswordForm({ userEmail }: { userEmail: string }) {
   const router = useRouter();
@@ -81,8 +81,8 @@ export function ResetPasswordForm({ userEmail }: { userEmail: string }) {
             </div>
           ) : (
             <form className="mt-6 space-y-4" onSubmit={onSubmit}>
-              <Input name="password" type="password" placeholder="New password (min 8 characters)" minLength={8} required autoFocus />
-              <Input name="confirm" type="password" placeholder="Confirm new password" minLength={8} required />
+              <PasswordInput name="password" placeholder="New password (min 8 characters)" minLength={8} required autoFocus />
+              <PasswordInput name="confirm" placeholder="Confirm new password" minLength={8} required />
               <Button className="w-full" disabled={status === "loading"} type="submit">
                 <KeyRound className="h-4 w-4" />
                 {status === "loading" ? "Updating..." : "Update password"}

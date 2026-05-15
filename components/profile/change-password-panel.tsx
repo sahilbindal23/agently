@@ -4,7 +4,7 @@ import { useState } from "react";
 import { CheckCircle2, KeyRound, Lock } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardHeader, CardTitle } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
+import { PasswordInput } from "@/components/ui/password-input";
 
 export function ChangePasswordPanel() {
   const [current, setCurrent] = useState("");
@@ -83,33 +83,30 @@ export function ChangePasswordPanel() {
         </div>
       ) : (
         <form className="grid gap-3" onSubmit={onSubmit}>
-          <Input
+          <PasswordInput
             autoComplete="current-password"
             name="current_password"
             onChange={(event) => setCurrent(event.target.value)}
             placeholder="Current password"
             required
-            type="password"
             value={current}
           />
-          <Input
+          <PasswordInput
             autoComplete="new-password"
             minLength={8}
             name="new_password"
             onChange={(event) => setNext(event.target.value)}
             placeholder="New password (min 8 characters)"
             required
-            type="password"
             value={next}
           />
-          <Input
+          <PasswordInput
             autoComplete="new-password"
             minLength={8}
             name="confirm_password"
             onChange={(event) => setConfirm(event.target.value)}
             placeholder="Confirm new password"
             required
-            type="password"
             value={confirm}
           />
           <Button
