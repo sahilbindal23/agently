@@ -179,7 +179,7 @@ export default async function BrandInsightsPage() {
         </Card>
       </section>
 
-      <section className="mt-5 grid gap-5 xl:grid-cols-2">
+      <section className="mt-5">
         <Card>
           <CardHeader><CardTitle>Recommendation Quality</CardTitle><Badge tone="blue">{Math.round(avgFit) || 0}/100 avg fit</Badge></CardHeader>
           <div className="space-y-3">
@@ -197,15 +197,6 @@ export default async function BrandInsightsPage() {
             ))}
           </div>
         </Card>
-
-        <Card>
-          <CardHeader><CardTitle>Operating Notes</CardTitle></CardHeader>
-          <div className="space-y-3">
-            <InsightLine label="What Agently learns" value="Recommendation scores, acceptance rates, delivery speed, revision patterns, payout readiness, and estimated reach are now tied into one brand-facing view." />
-            <InsightLine label="Why this matters" value="This moves the product away from a simple listing marketplace and toward a campaign operating system brands can trust after launch." />
-            <InsightLine label="Next data upgrade" value="After real campaigns, replace estimated reach with actual post metrics, discount-code sales, UTM clicks, and payout dispute outcomes." />
-          </div>
-        </Card>
       </section>
     </AppShell>
   );
@@ -217,15 +208,6 @@ function Metric({ label, value }: { label: string; value: string }) {
       <p className="text-sm text-muted-foreground">{label}</p>
       <p className="mt-2 text-xl font-bold">{value}</p>
     </Card>
-  );
-}
-
-function InsightLine({ label, value }: { label: string; value: string }) {
-  return (
-    <div className="rounded-md border bg-white p-3">
-      <p className="text-xs font-semibold uppercase text-muted-foreground">{label}</p>
-      <p className="mt-1 text-sm leading-6">{value}</p>
-    </div>
   );
 }
 

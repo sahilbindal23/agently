@@ -40,10 +40,7 @@ const CAMPAIGN_LENGTHS = [
 const PLATFORM_OPTIONS = [
   "Instagram",
   "YouTube",
-  "Twitter / X",
-  "LinkedIn",
-  "TikTok",
-  "Moj / Josh / Sharechat"
+  "TikTok"
 ];
 
 const CREATOR_CATEGORY_OPTIONS = [
