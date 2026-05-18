@@ -76,13 +76,13 @@ export const deals: Deal[] = [
   { id: "d4", creator_id: "c1", brand_id: "b4", title: "Creator planning workflow", deliverables: "1 TikTok, 1 carousel, newsletter mention", amount_cents: 940000, currency: "inr", stage: "lead", payment_status: "unpaid", deliverable_status: "not_started", risk_score: 12, start_date: "2026-05-01", due_date: "2026-05-22", notes: "Strong audience overlap with creator business tools." }
 ];
 
-// Demo payment rows use the canonical 5% Agently protection fee
+// Demo payment rows use the canonical 2% Agently protection fee
 // (PROTECTION_FEE_RATE in lib/payments/protection.ts). If you change
 // that constant, update these seed rows so demos stay consistent.
 export const payments: Payment[] = [
-  { id: "pay1", deal_id: "d1", amount_cents: 1850000, platform_fee_cents: 92500, creator_payout_cents: 1757500, status: "pending" },
-  { id: "pay2", deal_id: "d2", stripe_checkout_session_id: "cs_demo_funded", amount_cents: 1225000, platform_fee_cents: 61250, creator_payout_cents: 1163750, status: "funded", funded_at: "2026-04-20T16:00:00Z" },
-  { id: "pay3", deal_id: "d3", stripe_checkout_session_id: "cs_demo_ready", amount_cents: 680000, platform_fee_cents: 34000, creator_payout_cents: 646000, status: "release_ready", funded_at: "2026-04-03T16:00:00Z" }
+  { id: "pay1", deal_id: "d1", amount_cents: 1850000, platform_fee_cents: 37000, creator_payout_cents: 1813000, status: "pending" },
+  { id: "pay2", deal_id: "d2", stripe_checkout_session_id: "cs_demo_funded", amount_cents: 1225000, platform_fee_cents: 24500, creator_payout_cents: 1200500, status: "funded", funded_at: "2026-04-20T16:00:00Z" },
+  { id: "pay3", deal_id: "d3", stripe_checkout_session_id: "cs_demo_ready", amount_cents: 680000, platform_fee_cents: 13600, creator_payout_cents: 666400, status: "release_ready", funded_at: "2026-04-03T16:00:00Z" }
 ];
 
 export const brandMatches: BrandMatch[] = [

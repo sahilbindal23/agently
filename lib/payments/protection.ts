@@ -5,11 +5,14 @@
 // move together.
 //
 // This is the TOTAL fee the brand sees. Razorpay's ~2% payment-
-// processing cost comes out of this 5% before Agently keeps a margin —
-// it is absorbed inside the rate, not charged on top. So a ₹100 deal
-// looks like: brand pays ₹100, creator receives ₹95, Razorpay takes
-// ~₹2 from settlement, Agently keeps ~₹3.
-export const PROTECTION_FEE_RATE = 0.05;
+// processing cost comes out of this fee before Agently keeps a margin
+// — it is absorbed inside the rate, not charged on top.
+//
+// Current pricing is positioned to undercut competitors during beta;
+// at 2% gross the net to Agently is near-zero on Razorpay Standard
+// Checkout. Margin recovers once RazorpayX (flat-fee payouts) replaces
+// the variable processing cost on the payout side.
+export const PROTECTION_FEE_RATE = 0.02;
 
 export function calculateProtectionFee(amountCents: number) {
   const eligible = amountCents > 0;

@@ -23,7 +23,7 @@ This Agreement is entered into between the Brand and the Talent (creator or free
 
 3. PAYMENT PROTECTION
 3.1 Brand funds the contract value into Agently before the Talent is required to deliver final, brand-approved assets.
-3.2 Agently charges a 5% platform fee on the contract value, which covers payment processing, protected escrow, dispute handling, and payout. The fee is deducted from the contract value before the Talent's payout is released. Brands who want the Talent to receive a specific net amount should gross up the contract value accordingly when sending the offer.
+3.2 Agently charges a 2% platform fee on the contract value, which covers payment processing, protected escrow, dispute handling, and payout. The fee is deducted from the contract value before the Talent's payout is released. Brands who want the Talent to receive a specific net amount should gross up the contract value accordingly when sending the offer.
 3.3 Payout to Talent is released by Agently after the deliverables match the accepted scope, or after a dispute review resolves in the Talent's favour.
 3.4 If Brand fails to fund within seven (7) business days of acceptance, Talent may pause work without penalty.
 

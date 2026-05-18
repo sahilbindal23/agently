@@ -35,7 +35,7 @@ const terms = [
   },
   {
     title: "7. Payments And Fees",
-    body: "Payment processing may be handled by third-party providers such as Razorpay or Stripe. Agently charges a platform fee, currently positioned at 5 percent for protected payout workflows during this beta, which covers payment processing, protected escrow, dispute handling, and payout. Payment availability, refunds, chargebacks, taxes, KYC, settlement timing, and payout methods may depend on the relevant payment provider."
+    body: "Payment processing may be handled by third-party providers such as Razorpay or Stripe. Agently charges a platform fee, currently positioned at 2 percent for protected payout workflows during this beta, which covers payment processing, protected escrow, dispute handling, and payout. Payment availability, refunds, chargebacks, taxes, KYC, settlement timing, and payout methods may depend on the relevant payment provider."
   },
   {
     title: "8. AI And Recommendation Tools",
