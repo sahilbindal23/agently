@@ -19,20 +19,40 @@ type NotificationRow = {
 
 export async function ensureNotificationsForUser(admin: AdminClient, user: User) {
   const nudges = await getWorkflowNudges(admin, user);
-  if (!nudges.length) return [];
   const preferences = await getNotificationPreferences(admin, user.id);
   if (preferences.delivery_mode === "paused") return nudges;
 
-  const dedupeKeys = nudges.map((nudge) => nudgeKey(nudge));
-  const { data: existing, error } = await admin
+  const currentKeys = new Set(nudges.map((nudge) => nudgeKey(nudge)));
+
+  // Pull every active workflow-derived notification this user has. We need
+  // the full set (not just the ones matching the current nudges) so we can
+  // auto-resolve the rows whose underlying condition no longer fires —
+  // e.g. "Accepted work is not funded" once payment_status flips to funded.
+  // Without this, a brand sees the stale nudge forever and has to dismiss
+  // it manually, which makes the notifications bell feel broken.
+  const { data: workflowRows, error } = await admin
     .from("app_notifications")
-    .select("dedupe_key")
+    .select("id, dedupe_key, status")
     .eq("profile_id", user.id)
-    .in("dedupe_key", dedupeKeys);
+    .neq("status", "dismissed")
+    .like("dedupe_key", "workflow:%");
 
   if (error) return nudges;
 
-  const existingKeys = new Set((existing ?? []).map((row) => String(row.dedupe_key)));
+  const existingKeys = new Set((workflowRows ?? []).map((row) => String(row.dedupe_key)));
+  const staleIds = (workflowRows ?? [])
+    .filter((row) => !currentKeys.has(String(row.dedupe_key)))
+    .map((row) => String(row.id));
+
+  if (staleIds.length) {
+    await admin
+      .from("app_notifications")
+      .update({ status: "dismissed", dismissed_at: new Date().toISOString() })
+      .in("id", staleIds);
+  }
+
+  if (!nudges.length) return nudges;
+
   const rowsToInsert = nudges
     .filter((nudge) => shouldCreateNotification(nudge, preferences) && !existingKeys.has(nudgeKey(nudge)))
     .map((nudge) => ({

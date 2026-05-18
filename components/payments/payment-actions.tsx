@@ -41,7 +41,14 @@ export function PaymentActions({
 
   const isFunded = ["funded", "release_ready", "released"].includes(paymentStatus);
   const isPending = paymentStatus === "pending";
-  const canVerifyStripe = isPending && paymentProvider !== "razorpay";
+  // Only surface the Stripe "Check funding" button when Stripe is the
+  // explicit provider. Earlier this was `paymentProvider !== "razorpay"`,
+  // which leaked the Stripe path into Razorpay flows whenever the payments
+  // row hadn't been written yet (provider still null/undefined). The
+  // Razorpay flow doesn't need this button — verify-razorpay is called
+  // synchronously from the checkout handler, so success is detected
+  // without a separate poll.
+  const canVerifyStripe = isPending && paymentProvider === "stripe";
   const fundButtonLabel = isPending
     ? paymentProvider === "stripe" ? "Open funding link" : "Open Razorpay"
     : "Fund with Razorpay";
