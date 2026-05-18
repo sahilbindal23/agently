@@ -1,5 +1,7 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
+import { trackEvent } from "@/lib/analytics/track";
+import { notifyContractSigned } from "@/lib/email/workflow";
 import { getCurrentUser } from "@/lib/auth/session";
 import { gateRateLimit } from "@/lib/security/rate-limit-gate";
 import { createAdminClient } from "@/lib/supabase/admin";
@@ -69,6 +71,36 @@ export async function POST(request: Request) {
   }
 
   const { data: final } = await admin.from("deal_agreements").select("*").eq("id", agreement.id).single();
+
+  // Notify the counter-party (and track the event) so the workflow doesn't
+  // silently stall after a single-side signature. When the agreement
+  // becomes fully signed, both parties get the confirmation email.
+  if (final) {
+    const entityType: "deal" | "freelancer_project" = final.deal_id ? "deal" : "freelancer_project";
+    const entityId = String(final.deal_id ?? final.freelancer_project_id ?? "");
+    const fullySigned = String(final.status ?? "") === "fully_signed";
+    if (entityId) {
+      try {
+        await notifyContractSigned(admin, { entityType, entityId, side, fullySigned });
+      } catch {
+        // Best-effort — never block a successful signature on email delivery.
+      }
+      await trackEvent(admin, {
+        profileId: user.id,
+        role: user.role,
+        eventName: fullySigned ? "agreement_fully_signed" : "agreement_signed",
+        entityType: "deal_agreement",
+        entityId: String(final.id ?? ""),
+        metadata: {
+          side,
+          fully_signed: fullySigned,
+          deal_id: final.deal_id ?? null,
+          freelancer_project_id: final.freelancer_project_id ?? null
+        }
+      });
+    }
+  }
+
   return NextResponse.json({ data: final });
 }
 

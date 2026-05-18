@@ -94,6 +94,80 @@ export async function notifyDeliverableReviewed(admin: AdminClient, deliverableI
   });
 }
 
+// Notify the counter-party when one side signs a deal_agreement. The brand
+// learned about this the hard way: a creator signed an agreement, the
+// brand had no idea, and the brand had to dig through /offers → /deals to
+// notice. This email closes that gap so the brand can fund as soon as
+// the talent signs.
+export async function notifyContractSigned(admin: AdminClient, options: {
+  entityType: EntityType;
+  entityId: string;
+  side: "brand" | "talent";
+  fullySigned: boolean;
+}) {
+  const context = options.entityType === "deal"
+    ? await getDealContext(admin, options.entityId)
+    : await getProjectContext(admin, options.entityId);
+  if (!context) return;
+
+  // Send the "they signed, your turn" email to whoever still needs to sign.
+  // When fully signed, both parties get a short confirmation.
+  if (options.fullySigned) {
+    const subject = `Agreement fully signed — ${context.title}`;
+    const heading = "Agreement fully signed";
+    const intro = "Both parties have signed the Agently agreement. The deal is ready to fund — protected payout will hold the amount until deliverables are approved.";
+    const rows: EmailRow[] = [
+      ["Work item", context.title],
+      ["Amount", context.amount],
+      ["Status", "Fully signed"]
+    ];
+    if (context.brandEmail) {
+      await sendWorkflowEmail({
+        to: context.brandEmail,
+        subject,
+        heading,
+        intro: `${intro} Open Agently to fund the deal.`,
+        rows,
+        buttonLabel: "Fund the deal",
+        buttonPath: "/payments"
+      });
+    }
+    if (context.talentEmail) {
+      await sendWorkflowEmail({
+        to: context.talentEmail,
+        subject,
+        heading,
+        intro: `${intro} You will receive another notification when the brand funds the deal.`,
+        rows,
+        buttonLabel: "Open Agently",
+        buttonPath: "/offers"
+      });
+    }
+    return;
+  }
+
+  // Single-side signature — notify the other side so they know it's their turn.
+  const signerLabel = options.side === "brand" ? context.brandName : context.talentName;
+  const recipientEmail = options.side === "brand" ? context.talentEmail : context.brandEmail;
+  if (!recipientEmail) return;
+
+  await sendWorkflowEmail({
+    to: recipientEmail,
+    subject: `${signerLabel} signed the agreement — ${context.title}`,
+    heading: `${signerLabel} signed the agreement`,
+    intro: options.side === "brand"
+      ? "The brand has signed the Agently agreement. Open Agently to add your signature and unlock the funded workflow."
+      : "The talent has signed the Agently agreement. Open Agently to add your signature so the deal can move to funding.",
+    rows: [
+      ["Work item", context.title],
+      ["Amount", context.amount],
+      ["Status", "Awaiting your signature"]
+    ],
+    buttonLabel: options.side === "brand" ? "Sign the agreement" : "Sign and fund",
+    buttonPath: options.entityType === "deal" ? "/deals" : "/offers"
+  });
+}
+
 export async function notifyPaymentStatusChanged(admin: AdminClient, entityType: EntityType, entityId: string, status: string) {
   if (!["funded", "release_ready", "released", "refunded", "disputed"].includes(status)) return;
   const context = entityType === "deal" ? await getDealContext(admin, entityId) : await getProjectContext(admin, entityId);

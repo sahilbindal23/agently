@@ -45,7 +45,7 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "The offer or project must be accepted before funding." }, { status: 409 });
   }
   if (entityType === "deal" && target.contractReady === false) {
-    return NextResponse.json({ error: "Attach and scan the contract before funding this creator deal." }, { status: 409 });
+    return NextResponse.json({ error: "Attach and scan the contract — or have both parties sign the Agently agreement — before funding this creator deal." }, { status: 409 });
   }
 
   if (profile === "brand") {
@@ -157,18 +157,42 @@ async function getProfileRole(admin: NonNullable<ReturnType<typeof createAdminCl
 async function getDealTarget(admin: NonNullable<ReturnType<typeof createAdminClient>>, id: string) {
   const { data } = await admin.from("deals").select("*").eq("id", id).single();
   if (!data) return null;
-  const { data: contract } = await admin
-    .from("contracts")
-    .select("id, review_status, risk_level")
-    .eq("deal_id", id)
-    .order("created_at", { ascending: false })
-    .limit(1)
-    .maybeSingle();
+  // Funding readiness has TWO acceptable paths:
+  //
+  //   a) The latest contract scan came back without high-risk flags
+  //      (review_status != "blocked" AND risk_level != "high_risk")
+  //   b) A deal_agreements row for this deal is fully_signed (both parties
+  //      typed their name with IP + timestamp inside Agently)
+  //
+  // Path (b) was added because a stale scan can outlive its usefulness:
+  // a contract may have been flagged on an earlier draft, the parties then
+  // negotiate offline, both sign the corrected packet, and the deal is
+  // ready to fund — even though the original scan row still carries the
+  // high_risk badge. A mutual IP-stamped signature is stronger evidence
+  // of consent than a rules-fallback flag.
+  const [{ data: contract }, { data: agreement }] = await Promise.all([
+    admin
+      .from("contracts")
+      .select("id, review_status, risk_level")
+      .eq("deal_id", id)
+      .order("created_at", { ascending: false })
+      .limit(1)
+      .maybeSingle(),
+    admin
+      .from("deal_agreements")
+      .select("status")
+      .eq("deal_id", id)
+      .order("created_at", { ascending: false })
+      .limit(1)
+      .maybeSingle()
+  ]);
+  const scanReady = contract ? String(contract.review_status ?? "") !== "blocked" && String(contract.risk_level ?? "") !== "high_risk" : false;
+  const signaturesComplete = String(agreement?.status ?? "") === "fully_signed";
   return {
     acceptanceStatus: String(data.offer_status ?? ""),
     amountCents: Number(data.amount_cents ?? 0),
     brandId: data.brand_id ? String(data.brand_id) : "",
-    contractReady: contract ? String(contract.review_status ?? "") !== "blocked" && String(contract.risk_level ?? "") !== "high_risk" : false,
+    contractReady: scanReady || signaturesComplete,
     currency: String(data.currency ?? "inr"),
     description: String(data.deliverables ?? ""),
     title: String(data.title ?? "Creator deal")
