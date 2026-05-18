@@ -3,6 +3,7 @@ import { z } from "zod";
 import { trackEvent, userEventBase } from "@/lib/analytics/track";
 import { notifyDeliverableReviewed } from "@/lib/email/workflow";
 import { applyLedgerEvent } from "@/lib/engines/outcome-ledger";
+import { PROTECTION_FEE_RATE } from "@/lib/payments/protection";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
 import { runWorkflowAutomations } from "@/lib/workflow/automation";
@@ -122,11 +123,18 @@ async function updateDealAfterReview(admin: NonNullable<ReturnType<typeof create
     .single();
 
   if (status === "approved" && deal) {
+    // Fee rate lives in lib/payments/protection.ts as the single source of
+    // truth (PROTECTION_FEE_RATE = 0.01 / 1%). This previously hardcoded
+    // 0.1 (10%) by typo, which contradicted the contract template, the
+    // terms page, the protection calculator, and the ledger payouts —
+    // creators were being short-changed by ~9% at release_ready time.
+    const amountCents = Number(deal.amount_cents ?? 0);
+    const platformFeeCents = Math.round(amountCents * PROTECTION_FEE_RATE);
     await admin.from("payments").upsert({
       deal_id: dealId,
-      amount_cents: Number(deal.amount_cents ?? 0),
-      platform_fee_cents: Math.round(Number(deal.amount_cents ?? 0) * 0.1),
-      creator_payout_cents: Math.max(0, Number(deal.amount_cents ?? 0) - Math.round(Number(deal.amount_cents ?? 0) * 0.1)),
+      amount_cents: amountCents,
+      platform_fee_cents: platformFeeCents,
+      creator_payout_cents: Math.max(0, amountCents - platformFeeCents),
       status: "release_ready"
     }, { onConflict: "deal_id" });
     // Preserve the real Stripe funding timestamp — only set if not already recorded

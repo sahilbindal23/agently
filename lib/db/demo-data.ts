@@ -76,10 +76,14 @@ export const deals: Deal[] = [
   { id: "d4", creator_id: "c1", brand_id: "b4", title: "Creator planning workflow", deliverables: "1 TikTok, 1 carousel, newsletter mention", amount_cents: 940000, currency: "inr", stage: "lead", payment_status: "unpaid", deliverable_status: "not_started", risk_score: 12, start_date: "2026-05-01", due_date: "2026-05-22", notes: "Strong audience overlap with creator business tools." }
 ];
 
+// Demo payment rows use the canonical 1% Agently protection fee
+// (PROTECTION_FEE_RATE). They were previously hardcoded at 10% which
+// contradicted the contract template + terms page and would confuse
+// anyone walking through the demo.
 export const payments: Payment[] = [
-  { id: "pay1", deal_id: "d1", amount_cents: 1850000, platform_fee_cents: 185000, creator_payout_cents: 1665000, status: "pending" },
-  { id: "pay2", deal_id: "d2", stripe_checkout_session_id: "cs_demo_funded", amount_cents: 1225000, platform_fee_cents: 122500, creator_payout_cents: 1102500, status: "funded", funded_at: "2026-04-20T16:00:00Z" },
-  { id: "pay3", deal_id: "d3", stripe_checkout_session_id: "cs_demo_ready", amount_cents: 680000, platform_fee_cents: 68000, creator_payout_cents: 612000, status: "release_ready", funded_at: "2026-04-03T16:00:00Z" }
+  { id: "pay1", deal_id: "d1", amount_cents: 1850000, platform_fee_cents: 18500, creator_payout_cents: 1831500, status: "pending" },
+  { id: "pay2", deal_id: "d2", stripe_checkout_session_id: "cs_demo_funded", amount_cents: 1225000, platform_fee_cents: 12250, creator_payout_cents: 1212750, status: "funded", funded_at: "2026-04-20T16:00:00Z" },
+  { id: "pay3", deal_id: "d3", stripe_checkout_session_id: "cs_demo_ready", amount_cents: 680000, platform_fee_cents: 6800, creator_payout_cents: 673200, status: "release_ready", funded_at: "2026-04-03T16:00:00Z" }
 ];
 
 export const brandMatches: BrandMatch[] = [
