@@ -46,7 +46,15 @@ export async function createRazorpayOrder(input: RazorpayOrderInput): Promise<Ra
 
   const body = await response.json().catch(() => ({}));
   if (!response.ok) {
-    throw new Error(String(body.error?.description ?? "Could not create Razorpay order."));
+    const description = String(body.error?.description ?? "");
+    // Razorpay returns 401 + "Authentication failed" when the Key ID /
+    // Key Secret don't match an active key pair. Re-surface a message
+    // that names the actual fix — env-var update + redeploy — instead
+    // of leaving someone hunting through logs.
+    if (response.status === 401 || /authentication failed/i.test(description)) {
+      throw new Error("Razorpay rejected the API credentials. Check RAZORPAY_KEY_ID and RAZORPAY_KEY_SECRET in the environment (and redeploy on Vercel — env-var changes only take effect on a new deployment).");
+    }
+    throw new Error(description || "Could not create Razorpay order.");
   }
 
   return body as RazorpayOrder;
