@@ -71,7 +71,7 @@ export default async function DealDetailPage({ params }: { params: Promise<{ id:
         <Card>
           <CardHeader><CardTitle>Payment Control</CardTitle></CardHeader>
           <p className="text-2xl font-bold">{payment ? formatCurrency(payment.creator_payout_cents, deal.currency) : "Not funded"}</p>
-          <p className="mt-2 text-sm text-muted-foreground">Creator payout after platform fee. Manual release now, Stripe Connect-ready later.</p>
+          <p className="mt-2 text-sm text-muted-foreground">Creator payout after platform fee. Reviewed release now, RazorpayX-ready later.</p>
         </Card>
         <Card>
           <CardHeader><CardTitle>Deliverable Review</CardTitle></CardHeader>
