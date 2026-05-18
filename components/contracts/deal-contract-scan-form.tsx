@@ -2,9 +2,10 @@
 
 import { FormEvent, useState } from "react";
 import { useRouter } from "next/navigation";
-import { Upload } from "lucide-react";
+import { FileText, Upload } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input, Textarea } from "@/components/ui/input";
+import { AGENTLY_CONTRACT_PACKET_TEXT } from "@/components/contracts/agently-contract-template";
 import { RiskBadge } from "@/components/contracts/risk-badge";
 import type { RiskLevel } from "@/types";
 
@@ -40,6 +41,13 @@ export function DealContractScanForm({
   const [status, setStatus] = useState<"idle" | "loading" | "done" | "error">("idle");
   const [message, setMessage] = useState("");
   const [result, setResult] = useState<ScanResult | null>(null);
+  const [rawText, setRawText] = useState("");
+
+  function fillAgentlyPacket() {
+    setRawText(AGENTLY_CONTRACT_PACKET_TEXT);
+    setMessage("Agently packet loaded — pick a deal above (if needed) and click Run contract scan.");
+    setStatus("idle");
+  }
 
   async function onSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -86,6 +94,7 @@ export function DealContractScanForm({
     setStatus("done");
     setMessage(payload.source === "rules_fallback" ? "Contract packet saved with the local rules fallback." : "Contract packet saved to the deal.");
     form.reset();
+    setRawText("");
     router.refresh();
   }
 
@@ -106,13 +115,21 @@ export function DealContractScanForm({
         </select>
       )}
       <Input name="file" type="file" accept=".txt,.md,.csv,.rtf,.pdf,.doc,.docx" />
-      <p className="text-xs leading-5 text-muted-foreground">
-        Start from the Agently template whenever possible. Brand-supplied contracts should be treated as exception cases and scanned for usage, payment, exclusivity, revision, cancellation, and dispute risks before anyone accepts.
-      </p>
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <p className="text-xs leading-5 text-muted-foreground">
+          Start from the Agently template whenever possible. Brand-supplied contracts should be treated as exception cases and scanned for usage, payment, exclusivity, revision, cancellation, and dispute risks before anyone accepts.
+        </p>
+        <Button type="button" variant="secondary" size="sm" onClick={fillAgentlyPacket}>
+          <FileText className="h-4 w-4" />
+          Use Agently packet
+        </Button>
+      </div>
       <Textarea
         name="raw_text"
         placeholder="Paste the Agently contract packet or redlined brand terms here: scope, payment timing, usage rights, exclusivity, whitelisting, revisions, cancellation, dispute process, and licensing duration."
         className="min-h-48"
+        value={rawText}
+        onChange={(event) => setRawText(event.target.value)}
       />
       <Button type="submit" disabled={status === "loading"}>
         <Upload className="h-4 w-4" />

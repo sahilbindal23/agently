@@ -31,6 +31,11 @@ export default async function ContractsPage() {
   const needsScan = visibleDeals.filter((deal) => !visibleContracts.some((contract) => contract.deal_id === deal.id)).length;
   const cautionCount = visibleContracts.filter((contract) => contract.risk_level === "caution").length;
   const highRiskCount = visibleContracts.filter((contract) => contract.risk_level === "high_risk").length;
+  // Brands and admins attach the contract packet. Creators and freelancers
+  // are recipients — they get a read-only view (template + saved reviews)
+  // so the "Open contract review" link from /offers lands somewhere useful
+  // instead of letting them upload contracts that aren't theirs to attach.
+  const canAttach = user?.role === "admin" || user?.role === "brand";
 
   return (
     <AppShell>
@@ -46,15 +51,21 @@ export default async function ContractsPage() {
         <StatusMetric label="High risk" value={highRiskCount} tone={highRiskCount ? "red" : "green"} />
       </section>
       <AgentlyContractTemplate />
-      <section className="grid gap-5 xl:grid-cols-[0.9fr_1.1fr]">
-        <Card>
-          <CardHeader><CardTitle>Attach Contract Packet</CardTitle><Badge>{dealOptions.length ? "role scoped" : "no eligible deals"}</Badge></CardHeader>
-          {dealOptions.length ? <DealContractScanForm deals={dealOptions} /> : (
-            <p className="text-sm leading-6 text-muted-foreground">No deals are currently available for contract scanning in your account.</p>
-          )}
-        </Card>
-        <ContractSummaryCard contract={latestContract} />
-      </section>
+      {canAttach ? (
+        <section className="grid gap-5 xl:grid-cols-[0.9fr_1.1fr]">
+          <Card>
+            <CardHeader><CardTitle>Attach Contract Packet</CardTitle><Badge>{dealOptions.length ? "role scoped" : "no eligible deals"}</Badge></CardHeader>
+            {dealOptions.length ? <DealContractScanForm deals={dealOptions} /> : (
+              <p className="text-sm leading-6 text-muted-foreground">No deals are currently available for contract scanning in your account.</p>
+            )}
+          </Card>
+          <ContractSummaryCard contract={latestContract} />
+        </section>
+      ) : (
+        <section>
+          <ContractSummaryCard contract={latestContract} />
+        </section>
+      )}
 
       <section className="mt-5">
         <Card>
