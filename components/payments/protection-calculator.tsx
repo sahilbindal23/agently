@@ -25,7 +25,7 @@ export function ProtectionCalculator({ amountCents }: { amountCents: number }) {
           <p className="text-sm font-semibold">Eligibility rule</p>
         </div>
         <p className="text-sm leading-6 text-muted-foreground">
-          {protection.reason} Agently charges a 1% platform fee on protected payout workflows.
+          {protection.reason} Agently charges a {protection.rate_percent}% platform fee on protected payout workflows.
         </p>
       </div>
     </Card>

@@ -11,6 +11,7 @@ import { AppShell } from "@/components/layout/app-shell";
 import { EmptyState } from "@/components/layout/empty-state";
 import { PageHeader } from "@/components/layout/page-header";
 import { MessageRecipientButton } from "@/components/messages/message-recipient-button";
+import { FeeBreakdown } from "@/components/payments/fee-breakdown";
 import { DealProtectionTimeline } from "@/components/protection/deal-protection-timeline";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -150,6 +151,7 @@ export default async function OffersPage() {
                   <Metric label="Stage" value={offer.stage} />
                   <Metric label="Payment" value={offer.payment_status} />
                 </div>
+                <FeeBreakdown amountCents={offer.amount_cents} audience="creator" />
                 <OfferDecisionPanel
                   accepted={offer.offer_status === "accepted"}
                   hasContract={offerContracts.has(offer.id)}
@@ -251,6 +253,7 @@ export default async function OffersPage() {
                   <Metric label="Type" value="Freelancer project" />
                   <Metric label="Payment" value={project.payment_status} />
                 </div>
+                <FeeBreakdown amountCents={project.amount_cents} audience="creator" />
                 <OfferDecisionPanel
                   accepted={project.status === "accepted"}
                   hasContract={Boolean(project.usage_context || project.approval_terms)}
