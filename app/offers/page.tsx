@@ -555,7 +555,7 @@ function OfferContractNotice({ contract }: { contract?: ContractRow & { flags: C
       <div className="rounded-md border border-amber-200 bg-amber-50 p-3 dark:border-amber-900/50 dark:bg-amber-950/30">
         <p className="text-xs font-semibold uppercase text-amber-700 dark:text-amber-300">Contract protection</p>
         <p className="mt-1 text-sm leading-6 text-amber-800 dark:text-amber-200">
-          No contract scan is attached yet. Ask Agently/admin to review usage, exclusivity, whitelisting, revision, and payment terms before accepting.
+          No contract scan is attached yet. Ask Agently/admin to review usage, exclusivity, revision, and payment terms before accepting.
         </p>
         <Link className="mt-2 inline-flex text-sm font-semibold text-amber-900 underline underline-offset-4 dark:text-amber-200" href="/contracts">
           Open contract review

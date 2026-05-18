@@ -168,7 +168,7 @@ function recommendSizeBand(budget: number) {
 
 function recommendCampaignPackage(budget: number, categoriesFound: string[]) {
   if (!budget) return "Start with 2-3 creator pilots and compare response quality.";
-  if (budget < 50000) return "1-2 nano/micro creators, Reels plus story frames, no paid usage.";
+  if (budget < 50000) return "1-2 nano/micro creators, Reels plus story frames, organic only.";
   if (budget < 200000) return "3-5 micro creators, mixed Reels/stories, one bridge-audience creator.";
   const category = categoriesFound[0] || "category";
   return `One ${category} anchor creator plus 4-6 micro creators across Reels, stories, and event/store activation.`;
@@ -178,7 +178,7 @@ function budgetFit(budget: number) {
   if (budget < 25000) return "Tight budget: use nano creators or UGC-only briefs.";
   if (budget < 100000) return "Good for a small Bangalore pilot with micro creators.";
   if (budget < 300000) return "Strong for a city launch with several creators and one anchor.";
-  return "Enough for a structured Bangalore campaign with testing and paid usage add-ons.";
+  return "Enough for a structured Bangalore campaign with testing and extended-usage add-ons.";
 }
 
 function buildContentAngles(input: BrandAuditInput, categoriesFound: string[]) {

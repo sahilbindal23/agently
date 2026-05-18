@@ -74,7 +74,7 @@ export default async function DashboardPage() {
               <Bot className="h-5 w-5 text-primary" />
             </CardHeader>
             <div className="space-y-3 text-sm">
-              <Insight icon={<ShieldCheck className="h-4 w-4" />} title="Contract intelligence" copy="1 deal has paid usage language that should be capped before signature." />
+              <Insight icon={<ShieldCheck className="h-4 w-4" />} title="Contract intelligence" copy="1 deal has open-ended usage language that should be capped before signature." />
               <Insight icon={<TrendingUp className="h-4 w-4" />} title="Pricing signal" copy="Maya's TikTok package is underpriced if usage extends beyond 30 days." />
               <Insight icon={<CheckCircle2 className="h-4 w-4" />} title="Payment control" copy={`${releaseQueue.length} funded payment is ready for release review.`} />
             </div>

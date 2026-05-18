@@ -157,7 +157,7 @@ const stepsByRole: Record<Role, Step[]> = {
     },
     {
       title: "Contracts protect the talent relationship",
-      body: "Contract intelligence scans usage, payment timing, exclusivity, whitelisting, revisions, cancellation, and licensing duration.",
+      body: "Contract intelligence scans usage, payment timing, exclusivity, revisions, cancellation, and licensing duration.",
       target: "nav-contracts",
       route: "/contracts",
       cta: "Open contracts"

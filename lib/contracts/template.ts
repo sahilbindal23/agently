@@ -38,7 +38,7 @@ const TEMPLATE_VERSION = "v1" as const;
 export function renderAgreement(parties: AgreementParties, terms: AgreementTerms): RenderedAgreement {
   const inrFormatted = formatINR(terms.amount_inr);
   const dueDateText = terms.due_date ? formatDate(terms.due_date) : "as agreed in writing";
-  const usageRightsText = terms.usage_rights?.trim() || "Organic posting on the talent's own social channels for 30 days. Any paid amplification, whitelisting, or extended usage requires a separately priced addendum.";
+  const usageRightsText = terms.usage_rights?.trim() || "Posting on the talent's own social channels for 30 days. Any reuse beyond the listed channels or duration requires a separately priced addendum.";
   const approvalTermsText = terms.approval_terms?.trim() || "One reasonable revision round included. Brand-side delays beyond 5 business days release the talent to publish as-submitted.";
   const todayText = formatDate(terms.generated_at);
 
@@ -69,7 +69,7 @@ export function renderAgreement(parties: AgreementParties, terms: AgreementTerms
   <section>
     <h2>3. Usage rights</h2>
     <p>${esc(usageRightsText)}</p>
-    <p>Paid ads, whitelisting, perpetual usage, and category exclusivity must be explicitly priced and added in writing. Absent that, default usage applies.</p>
+    <p>Reuse outside the listed channels or beyond the listed duration must be explicitly priced and added in writing. Absent that, default usage applies.</p>
   </section>
 
   <section>

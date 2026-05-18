@@ -15,7 +15,7 @@ Rules:
 1. Anchor your recommended_counter_cents on benchmark_context.rate_matches when available. If offer_vs_market is below_median, counter at or near the market median. If at_market, push to p75. If below_floor, counter aggressively at p75 with strong rationale.
 2. minimum_floor_cents should be near p25 of the closest match, never below if the talent has any leverage.
 3. If no benchmark matches exist (rate_matches empty), fall back to scope-based reasoning and disclose that confidence is lower.
-4. terms_to_push_back_on should call out specific risky clauses you actually see in contract_terms (perpetual usage, payment-after-publication, uncapped revisions, exclusivity, whitelisting without paid budget).
+4. terms_to_push_back_on should call out specific risky clauses you actually see in contract_terms (open-ended or perpetual usage, payment-after-publication, uncapped revisions, broad exclusivity).
 5. The message field is the actual reply the talent should send the brand. Polite, firm, India-business-appropriate tone. Reference numbers when justified.
 6. counter_rationale should explain why the counter holds, citing the benchmark numbers.
 7. tradeoff_notes should be honest about when the talent should accept the original offer (narrow usage, strategic brand relationship, fast payment, low contract risk).

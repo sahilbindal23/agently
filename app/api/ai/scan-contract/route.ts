@@ -175,13 +175,28 @@ function normalizeScan(scan: Partial<ContractScanPayload>): ContractScanPayload 
 }
 
 function scanFallback(text: string): ContractScanPayload {
+  // Naive substring scan. Whitelisting / paid-amplification clauses are
+  // intentionally NOT flagged — they're standard in modern campaigns and the
+  // product no longer treats them as a distinct risk class. The other
+  // checks use word-boundary regexes (not raw includes) so that disclaiming
+  // language like "perpetual usage is not granted" or "no category
+  // exclusivity is granted" does not trigger a false positive.
   const flags: ContractFlagPayload[] = [];
   const lower = text.toLowerCase();
-  if (lower.includes("perpetual")) flags.push({ flag_type: "usage_rights", severity: "high", excerpt: "perpetual", recommendation: "Limit usage duration and charge for extensions." });
-  if (lower.includes("net 60") || lower.includes("net 45")) flags.push({ flag_type: "payment_terms", severity: "medium", excerpt: "delayed payment terms", recommendation: "Request funded payment or net 15 after approval." });
-  if (lower.includes("exclusiv")) flags.push({ flag_type: "exclusivity", severity: "medium", excerpt: "exclusivity", recommendation: "Narrow category, geography, and duration." });
-  if (lower.includes("whitelist") || lower.includes("boost") || lower.includes("paid usage")) flags.push({ flag_type: "whitelisting", severity: "high", excerpt: "paid usage or whitelisting", recommendation: "Require a clear paid usage window, spend cap, and extension fee." });
-  if (lower.includes("unlimited revision")) flags.push({ flag_type: "revisions", severity: "medium", excerpt: "unlimited revisions", recommendation: "Cap revision rounds and define what counts as a revision." });
+  const hasDisclaimer = (term: string) => new RegExp(`(no |not |never )[^.]*${term}|${term}[^.]*(not granted|not included|excluded|prohibited|disclaimed)`, "i").test(lower);
+
+  if (/\bperpetual\b/.test(lower) && !hasDisclaimer("perpetual")) {
+    flags.push({ flag_type: "usage_rights", severity: "high", excerpt: "perpetual usage", recommendation: "Limit usage duration and charge for extensions." });
+  }
+  if (lower.includes("net 60") || lower.includes("net 45")) {
+    flags.push({ flag_type: "payment_terms", severity: "medium", excerpt: "delayed payment terms", recommendation: "Request funded payment or net 15 after approval." });
+  }
+  if (/\bexclusiv/.test(lower) && !hasDisclaimer("exclusiv")) {
+    flags.push({ flag_type: "exclusivity", severity: "medium", excerpt: "exclusivity clause", recommendation: "Narrow category, geography, and duration." });
+  }
+  if (lower.includes("unlimited revision")) {
+    flags.push({ flag_type: "revisions", severity: "medium", excerpt: "unlimited revisions", recommendation: "Cap revision rounds and define what counts as a revision." });
+  }
   return {
     risk_level: flags.some((flag) => flag.severity === "high") ? "high_risk" : flags.length ? "caution" : "safe",
     summary: flags.length ? "Review flagged terms before signature." : "No obvious high-risk creator sponsorship terms detected by fallback scan.",

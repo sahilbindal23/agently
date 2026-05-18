@@ -15,7 +15,7 @@ const modules = [
   { title: "Sponsor Growth Calculator", icon: Sparkles, copy: "India-first pricing and target planning for creators who want to understand what metrics unlock higher sponsorship income." },
   { title: "Brand match engine", icon: SearchCheck, copy: "Scores brands by niche, audience, category fit, content style, and outreach angle." },
   { title: "Negotiation copilot", icon: Handshake, copy: "Recommends counters, floors, pushback terms, and talent-friendly response copy for creators and freelancers." },
-  { title: "Contract intelligence", icon: ShieldAlert, copy: "Finds risky terms across usage, exclusivity, revisions, cancellation, whitelisting, and payment timing." },
+  { title: "Contract intelligence", icon: ShieldAlert, copy: "Finds risky terms across usage, exclusivity, revisions, cancellation, and payment timing." },
   { title: "Payment risk scoring", icon: WalletCards, copy: "Tracks payment delays, dispute states, release readiness, and future brand reliability signals." }
 ];
 

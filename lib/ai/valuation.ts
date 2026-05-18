@@ -28,15 +28,15 @@ export function rulesBasedValuation(input: ValuationInput) {
     baseInr = input.avg_views * cpv;
     if (deliverable.includes("dedicated")) baseInr *= 1.9;
     packageRecommendation = deliverable.includes("dedicated")
-      ? "Dedicated YouTube video with pinned comment and one revision round. Negotiate usage rights, paid usage, and exclusivity separately in the offer."
-      : "90-second YouTube integration with pinned comment and one revision round. Negotiate usage rights and paid usage separately in the offer.";
+      ? "Dedicated YouTube video with pinned comment and one revision round. Negotiate usage rights and exclusivity separately in the offer."
+      : "90-second YouTube integration with pinned comment and one revision round. Negotiate usage rights separately in the offer.";
   } else if (platform.includes("instagram")) {
     if (deliverable.includes("story")) {
       baseInr = Math.max(input.followers * 0.012 * Math.max(0.8, input.engagement_rate / 5), input.avg_views * 0.28);
       packageRecommendation = "Three-story frame package with link sticker and one revision round. Negotiate usage rights separately in the offer.";
     } else {
       baseInr = Math.max(input.avg_views * 0.65, input.followers * 0.18);
-      packageRecommendation = "One Reel plus three story frames with one revision round. Negotiate usage rights, paid usage, and exclusivity separately in the offer.";
+      packageRecommendation = "One Reel plus three story frames with one revision round. Negotiate usage rights and exclusivity separately in the offer.";
     }
   } else if (platform.includes("tiktok") || platform.includes("short")) {
     baseInr = Math.max(input.avg_views * 0.45, input.followers * 0.035);
@@ -75,11 +75,11 @@ export function rulesBasedValuation(input: ValuationInput) {
   baseInr *= categoryMultiplier.multiplier;
   adjustments.push(categoryMultiplier.reason);
 
-  // Commercial-rights multipliers (usage rights, paid usage / whitelisting,
-  // exclusivity) intentionally removed. Those are case-by-case commercial
-  // terms a creator should negotiate in the offer flow, not baked into a
-  // base sponsorship estimate. Keeping them in the model encouraged users
-  // to think of the estimate as a final price rather than a starting band.
+  // Commercial-rights multipliers (usage rights, exclusivity) intentionally
+  // removed. Those are case-by-case commercial terms a creator should
+  // negotiate in the offer flow, not baked into a base sponsorship
+  // estimate. Keeping them in the model encouraged users to think of the
+  // estimate as a final price rather than a starting band.
 
   const revisions = Number(input.revisions ?? 1);
   if (revisions > 1) {

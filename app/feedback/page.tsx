@@ -39,7 +39,7 @@ const faqs = [
   {
     icon: <FileText className="h-5 w-5" />,
     question: "Why should I scan a contract before accepting?",
-    answer: "Contract scans help spot terms that can hurt creators and freelancers, such as delayed payment, unlimited usage, broad exclusivity, too many revisions, unclear cancellation terms, whitelisting, or unpaid licensing rights."
+    answer: "Contract scans help spot terms that can hurt creators and freelancers, such as delayed payment, unlimited usage, broad exclusivity, too many revisions, unclear cancellation terms, or unpaid licensing rights."
   },
   {
     icon: <MessageSquareText className="h-5 w-5" />,

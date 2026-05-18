@@ -19,8 +19,7 @@ This Agreement is entered into between the Brand and the Talent (creator or free
 
 2. USAGE RIGHTS
 2.1 Brand receives only the usage rights listed in the deal scope, for the duration listed in the deal scope.
-2.2 Paid amplification (boosted posts, dark posts, whitelisting, Spark Ads or equivalent) requires a separately priced add-on. Default is organic usage only.
-2.3 Perpetual usage, exclusivity beyond the listed duration, and reuse outside the listed channels are not granted unless added in writing.
+2.2 Reuse of the deliverables outside the listed channels or beyond the listed duration requires a separately priced add-on agreed in writing inside Agently.
 
 3. PAYMENT PROTECTION
 3.1 Brand funds the contract value into Agently before the Talent is required to deliver final, brand-approved assets.
@@ -29,7 +28,7 @@ This Agreement is entered into between the Brand and the Talent (creator or free
 
 4. REVISIONS
 4.1 One reasonable revision round is included.
-4.2 Revisions caused by brand-side brief changes, delayed feedback (more than five business days), or new scope require an updated fee agreed in writing inside Agently.
+4.2 Further rounds caused by brand-side brief changes, delayed feedback (more than five business days), or new scope require an updated fee agreed in writing inside Agently.
 
 5. CANCELLATION
 5.1 If Brand cancels after acceptance but before delivery start, a 25% kill fee applies on the contract value.
@@ -64,7 +63,7 @@ const templateSections = [
   },
   {
     title: "Usage rights",
-    copy: "Brand receives only the listed usage rights for the listed duration. Paid ads, whitelisting, reshoots, perpetual usage, and category exclusivity must be explicitly priced and written."
+    copy: "Brand receives only the listed usage rights for the listed duration. Reuse of the deliverables outside the listed channels or beyond the listed duration requires a separately priced add-on agreed in writing."
   },
   {
     title: "Payment protection",

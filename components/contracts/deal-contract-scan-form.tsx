@@ -126,7 +126,7 @@ export function DealContractScanForm({
       </div>
       <Textarea
         name="raw_text"
-        placeholder="Paste the Agently contract packet or redlined brand terms here: scope, payment timing, usage rights, exclusivity, whitelisting, revisions, cancellation, dispute process, and licensing duration."
+        placeholder="Paste the Agently contract packet or redlined brand terms here: scope, payment timing, usage rights, exclusivity, revisions, cancellation, dispute process, and licensing duration."
         className="min-h-48"
         value={rawText}
         onChange={(event) => setRawText(event.target.value)}

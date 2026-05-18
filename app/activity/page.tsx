@@ -248,7 +248,7 @@ async function getCreatorActivity(admin: AdminClient, user: NonNullable<Awaited<
       group: "Contract protection",
       severity: contract.risk_level === "high_risk" ? "high" : "medium",
       title: contract.risk_level === "high_risk" ? "High-risk terms detected" : "Contract caution flags detected",
-      description: toText(contract.summary, "Review payment terms, usage rights, exclusivity, whitelisting, and licensing before delivery."),
+      description: toText(contract.summary, "Review payment terms, usage rights, exclusivity, and licensing before delivery."),
       href: "/contracts",
       cta: "Review scan"
     });

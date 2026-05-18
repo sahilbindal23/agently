@@ -93,12 +93,12 @@ export const contracts: Contract[] = [
     id: "ct1",
     deal_id: "d1",
     file_path: null,
-    raw_text: "Brand requests perpetual paid usage, two rounds of revisions, payment net 60 after approval.",
+    raw_text: "Brand requests perpetual usage, two rounds of revisions, payment net 60 after approval.",
     scan_status: "complete",
     risk_level: "caution",
     summary: "The deal is commercially viable, but usage and payment timing need tighter limits before signature.",
     flags: [
-      { id: "f1", contract_id: "ct1", flag_type: "usage_rights", severity: "high", excerpt: "perpetual paid usage", recommendation: "Limit paid usage to 30-90 days and price extensions separately." },
+      { id: "f1", contract_id: "ct1", flag_type: "usage_rights", severity: "high", excerpt: "perpetual usage", recommendation: "Limit usage to 30-90 days and price extensions separately." },
       { id: "f2", contract_id: "ct1", flag_type: "payment_terms", severity: "medium", excerpt: "net 60 after approval", recommendation: "Ask for payment on funding or net 15 from delivery approval." }
     ]
   }

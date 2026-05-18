@@ -111,7 +111,7 @@ export function ValuationEngine() {
           <Input name="revisions" placeholder="Revision rounds" type="number" />
           <Input name="turnaround_days" placeholder="Turnaround days" type="number" />
           <p className="md:col-span-2 rounded-md border bg-muted px-3 py-2 text-xs leading-5 text-muted-foreground">
-            Usage rights, paid usage / whitelisting, and exclusivity aren&apos;t included in this base estimate. Negotiate them case-by-case in the offer flow — that&apos;s where they belong.
+            Usage rights and exclusivity aren&apos;t included in this base estimate. Negotiate them case-by-case in the offer flow — that&apos;s where they belong.
           </p>
           <Button className="md:col-span-2" disabled={status === "loading"}>
             <Bot className="h-4 w-4" />
@@ -189,7 +189,7 @@ function TargetGap({ targetInr, currentInr, baseCents }: { targetInr: number; cu
       <p className="text-xs font-semibold uppercase text-sky-800">Target sponsorship path</p>
       <p className="mt-2 text-sm leading-6 text-sky-950">
         Target: <span className="font-semibold">{formatCurrency(targetInr * 100, "inr")}</span>. Current estimate: <span className="font-semibold">{formatCurrency(baseCents, "inr")}</span>.
-        {multiplier > 1.05 ? ` You likely need about ${multiplier.toFixed(1)}x stronger pricing power through higher average views, stronger India/Bangalore audience proof, better engagement, premium category fit, or more valuable deliverables.` : " Your current estimate is already close to or above that target. Focus on negotiating usage rights, paid usage, and exclusivity as separate paid add-ons in the offer."}
+        {multiplier > 1.05 ? ` You likely need about ${multiplier.toFixed(1)}x stronger pricing power through higher average views, stronger India/Bangalore audience proof, better engagement, premium category fit, or more valuable deliverables.` : " Your current estimate is already close to or above that target. Focus on negotiating usage rights and exclusivity as separate paid add-ons in the offer."}
       </p>
       {currentGap > 0 ? <p className="mt-2 text-sm text-sky-900">Gap from your current typical deal: {formatCurrency(currentGap * 100, "inr")}.</p> : null}
     </div>
