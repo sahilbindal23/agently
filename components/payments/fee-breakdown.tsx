@@ -1,12 +1,6 @@
 import { PROTECTION_FEE_RATE } from "@/lib/payments/protection";
 import { formatCurrency } from "@/lib/utils/format";
 
-// Razorpay charges ~2% on standard checkout. Used here purely for the
-// brand-facing breakdown so they understand the total cost picture.
-// Razorpay deducts this themselves before settling into Agently's
-// account — it's not stored on any deal/payment row.
-const RAZORPAY_FEE_RATE = 0.02;
-
 export function FeeBreakdown({
   amountCents,
   audience,
@@ -18,8 +12,8 @@ export function FeeBreakdown({
 }) {
   const safeAmount = Math.max(0, Math.round(amountCents || 0));
   const platformFee = Math.round(safeAmount * PROTECTION_FEE_RATE);
-  const razorpayFee = Math.round(safeAmount * RAZORPAY_FEE_RATE);
   const creatorPayout = Math.max(0, safeAmount - platformFee);
+  const ratePercent = Math.round(PROTECTION_FEE_RATE * 100);
 
   const empty = safeAmount <= 0;
 
@@ -29,9 +23,7 @@ export function FeeBreakdown({
         <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
           Fee breakdown
         </p>
-        <span className="text-[11px] text-muted-foreground">
-          {Math.round(PROTECTION_FEE_RATE * 100)}% Agently fee
-        </span>
+        <span className="text-[11px] text-muted-foreground">{ratePercent}% Agently fee</span>
       </div>
 
       {empty ? (
@@ -39,7 +31,7 @@ export function FeeBreakdown({
       ) : (
         <dl className="space-y-1.5">
           <Row label="Contract value" value={formatCurrency(safeAmount, "inr")} bold />
-          <Row label={`Agently platform fee (${Math.round(PROTECTION_FEE_RATE * 100)}%)`} value={`− ${formatCurrency(platformFee, "inr")}`} tone="muted" />
+          <Row label={`Agently platform fee (${ratePercent}%)`} value={`− ${formatCurrency(platformFee, "inr")}`} tone="muted" />
           <div className="my-1 border-t border-border/60 dark:border-white/10" />
           <Row
             label={audience === "brand" ? "Creator receives" : "You receive"}
@@ -49,12 +41,12 @@ export function FeeBreakdown({
           />
           {audience === "brand" ? (
             <p className="mt-2 text-xs leading-5 text-muted-foreground">
-              Razorpay also deducts ~{Math.round(RAZORPAY_FEE_RATE * 100)}% (~{formatCurrency(razorpayFee, "inr")}) before funds settle into Agently — that's the payment-processing cost and is separate from the Agently fee.
-              If you want the creator to receive a specific net amount, gross up the contract value to cover the {Math.round(PROTECTION_FEE_RATE * 100)}% platform fee.
+              The {ratePercent}% fee covers payment processing, protected escrow, dispute handling, and payout to the creator. Nothing else is added on top — what you fund is exactly the contract value above.
+              If you want the creator to receive a specific net amount, gross up the contract value to cover the {ratePercent}% platform fee.
             </p>
           ) : (
             <p className="mt-2 text-xs leading-5 text-muted-foreground">
-              Agently keeps a {Math.round(PROTECTION_FEE_RATE * 100)}% protected-payout fee on every approved delivery. Your net is paid out after the brand approves your deliverable.
+              Agently keeps a {ratePercent}% protected-payout fee on every approved delivery. Your net is paid out after the brand approves your deliverable.
             </p>
           )}
         </dl>

@@ -81,7 +81,7 @@ export function renderAgreement(parties: AgreementParties, terms: AgreementTerms
   <section>
     <h2>5. Payment protection</h2>
     <p>The brand funds the agreed value through Agently's protected payment workflow before final delivery. Funds are released to the ${parties.talent_role === "freelancer" ? "freelancer" : "creator"} after deliverables match the accepted scope, or after dispute review resolves in their favour.</p>
-    <p>Agently charges a 3% platform fee on protected payouts. The fee is deducted from the contract value before the talent's payout is released. Brands who want the talent to receive a specific net amount should gross up the contract value accordingly when sending the offer.</p>
+    <p>Agently charges a 5% platform fee on protected payouts. The fee is deducted from the contract value before the talent's payout is released and covers payment processing, protected escrow, dispute handling, and payout. Brands who want the talent to receive a specific net amount should gross up the contract value accordingly when sending the offer.</p>
   </section>
 
   <section>
