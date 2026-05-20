@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { ArrowLeft } from "lucide-react";
+import { CreatorRecommendations } from "@/components/campaigns/creator-recommendations";
 import { RecommendationCard } from "@/components/campaigns/recommendation-card";
 import { RemoveShortlistButton } from "@/components/campaigns/remove-shortlist-button";
 import { AppShell } from "@/components/layout/app-shell";
@@ -21,14 +22,11 @@ import type { Campaign, CampaignInvite, CampaignShortlist, Creator, Deal } from 
 export const dynamic = "force-dynamic";
 
 export default async function CampaignDetailPage({
-  params,
-  searchParams
+  params
 }: {
   params: Promise<{ id: string }>;
-  searchParams: Promise<Record<string, string | string[] | undefined>>;
 }) {
   const { id } = await params;
-  const query = await searchParams;
   const user = await getCurrentUser();
   const includeDemo = canSeeDemoData(user);
   const [{ creators, creatorPlatforms, deals, brands }, campaignData] = await Promise.all([
@@ -55,10 +53,11 @@ export default async function CampaignDetailPage({
     freelancer: freelancer as unknown as Record<string, unknown>,
     serviceRates: campaignData.serviceRates.filter((rate) => rate.freelancer_id === freelancer.id) as unknown as Array<Record<string, unknown>>
   })));
-  const creatorTrustFilter = ["verified", "api_synced"].includes(String(first(query.creatorTrust))) ? "verified" : "all";
   const snapshots = await getCreatorMetricSnapshots(eligibleCreators.map((c) => c.id));
-  const allCreatorRecommendations = applyEventInformedRanking(rankCreators(campaign, eligibleCreators, creatorPlatforms, snapshots, campaignBrand), "creator", campaignData.productEvents, campaign.id);
-  const creatorRecommendations = filterCreatorRecommendations(allCreatorRecommendations, creatorTrustFilter).slice(0, 8);
+  // The trust filter ("All eligible" vs "Verified only") is handled
+  // client-side in CreatorRecommendations now so toggling is instant.
+  // Server just ranks once and sends the full top-N list down.
+  const creatorRecommendations = applyEventInformedRanking(rankCreators(campaign, eligibleCreators, creatorPlatforms, snapshots, campaignBrand), "creator", campaignData.productEvents, campaign.id).slice(0, 8);
   const freelancerRecommendations = applyEventInformedRanking(rankFreelancers(campaign, eligibleFreelancers, campaignData.serviceRates), "freelancer", campaignData.productEvents, campaign.id).slice(0, 8);
   const creatorShortlist = campaignData.shortlists.filter((item) => item.entity_type === "creator");
   const freelancerShortlist = campaignData.shortlists.filter((item) => item.entity_type === "freelancer");
@@ -114,25 +113,6 @@ export default async function CampaignDetailPage({
       </Card>
 
       <Card className="mt-5">
-        <CardHeader>
-          <div>
-            <CardTitle>Discovery Preferences</CardTitle>
-            <p className="mt-1 text-sm text-muted-foreground">Keep recommendations broad, or show only creators with synced platform metrics when brand trust matters more than reach volume.</p>
-          </div>
-          <Badge tone={creatorTrustFilter === "verified" ? "green" : "blue"}>{creatorTrustFilter === "verified" ? "verified creators" : "all eligible creators"}</Badge>
-        </CardHeader>
-        <div className="flex flex-wrap gap-2">
-          <FilterLink active={creatorTrustFilter === "all"} href={`/campaigns/${campaign.id}`}>All eligible creators</FilterLink>
-          <FilterLink active={creatorTrustFilter === "verified"} href={`/campaigns/${campaign.id}?creatorTrust=verified`}>Verified creators only</FilterLink>
-        </div>
-        {creatorTrustFilter === "verified" && creatorRecommendations.length === 0 ? (
-          <p className="mt-3 rounded-md bg-amber-50 p-3 text-sm leading-6 text-amber-800">
-            No verified creators match this brief yet. Switch back to all eligible creators or ask shortlisted talent to connect their Instagram, Facebook, or YouTube account for verification.
-          </p>
-        ) : null}
-      </Card>
-
-      <Card className="mt-5">
         <CardHeader><CardTitle>Shortlist</CardTitle><Badge tone="blue">{campaignData.shortlists.length}</Badge></CardHeader>
         {campaignData.shortlists.length ? (
           <div className="grid gap-3 md:grid-cols-2">
@@ -145,12 +125,10 @@ export default async function CampaignDetailPage({
       </Card>
 
       <section className="mt-5 grid gap-5 xl:grid-cols-2">
-        <RecommendationColumn
+        <CreatorRecommendations
           campaign={campaign}
           recommendations={creatorRecommendations}
           shortlists={campaignData.shortlists}
-          title="Recommended Creators"
-          type="creator"
         />
         <RecommendationColumn
           campaign={campaign}
@@ -162,22 +140,6 @@ export default async function CampaignDetailPage({
       </section>
     </AppShell>
   );
-}
-
-function FilterLink({ active, children, href }: { active: boolean; children: React.ReactNode; href: string }) {
-  return (
-    <Link
-      className={`inline-flex h-9 items-center rounded-md border px-3 text-sm font-medium transition ${active ? "border-primary bg-primary text-primary-foreground" : "bg-white hover:bg-muted dark:bg-card dark:border-white/8 dark:hover:bg-muted"}`}
-      href={href}
-    >
-      {children}
-    </Link>
-  );
-}
-
-function filterCreatorRecommendations(recommendations: CampaignRecommendation[], filter: "all" | "verified") {
-  if (filter === "verified") return recommendations.filter((item) => item.trust_source === "api_synced");
-  return recommendations;
 }
 
 function ShortlistGroup({
@@ -598,10 +560,6 @@ function toStringArray(value: unknown) {
   if (Array.isArray(value)) return value.map(String);
   if (typeof value === "string" && value.trim()) return value.split(",").map((item) => item.trim()).filter(Boolean);
   return [];
-}
-
-function first(value: string | string[] | undefined) {
-  return Array.isArray(value) ? value[0] : value;
 }
 
 async function persistRecommendationSnapshots(campaignId: string, creators: CampaignRecommendation[], freelancers: CampaignRecommendation[]) {

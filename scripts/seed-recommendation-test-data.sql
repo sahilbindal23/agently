@@ -61,6 +61,8 @@ on conflict (id) do update set
 -- 2. Creators (20). Diverse niches so gradedCategoryFit has variety.
 --    profile_id intentionally null — these are recommendation candidates,
 --    not login accounts.
+--    All marked verification_tier='verified' so the demo brand sees them
+--    on the "Verified only" tab in the campaign recommendations.
 -- ----------------------------------------------------------------------------
 insert into creators (id, profile_id, display_name, primary_niche, bio, country, india_audience_percent, home_city, languages, top_indian_cities, audience_age_range, content_style, prior_sponsor_categories, monetization_score, valuation_score, is_demo)
 values
@@ -110,6 +112,15 @@ on conflict (id) do update set
   monetization_score = excluded.monetization_score,
   valuation_score = excluded.valuation_score,
   is_demo = excluded.is_demo;
+
+-- Mark all seeded creators verified. Done as a separate UPDATE so the
+-- INSERT row list stays readable (no inline verification_tier per row).
+-- isVerifiedTier() in lib/campaigns/recommendations.ts treats any tier
+-- other than 'unverified' / 'rejected' / 'reviewing' as verified.
+update creators
+set verification_tier = 'verified',
+    verification_status = 'verified'
+where id::text like 'a1d0c001-0000%';
 
 -- ----------------------------------------------------------------------------
 -- 3. Creator platforms (25). At least one per creator, two for the bigger ones.
@@ -208,6 +219,13 @@ on conflict (id) do update set
   availability_status = excluded.availability_status,
   portfolio_score = excluded.portfolio_score,
   is_demo = excluded.is_demo;
+
+-- Mark all seeded freelancers verified too, so brand-side talent
+-- listings show the Agently-verified badge.
+update freelancers
+set verification_tier = 'verified',
+    verification_status = 'verified'
+where id::text like 'a1d0f001-0000%';
 
 -- ----------------------------------------------------------------------------
 -- 5. Service rates (one or two per freelancer for the most common services)
