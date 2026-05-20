@@ -361,12 +361,13 @@ declare
   rate_count int;
   campaign_count int;
 begin
-  select count(*) into brand_count from brands where id like 'a1d0b001%';
-  select count(*) into creator_count from creators where id like 'a1d0c001-0000%';
-  select count(*) into platform_count from creator_platforms where id like 'a1d0c001-0001%';
-  select count(*) into freelancer_count from freelancers where id like 'a1d0f001-0000%';
-  select count(*) into rate_count from freelancer_service_rates where id like 'a1d0f001-0001%';
-  select count(*) into campaign_count from campaigns where id like 'a1d0a001%';
+  -- ::text cast required: Postgres has no `uuid LIKE text` operator
+  select count(*) into brand_count from brands where id::text like 'a1d0b001%';
+  select count(*) into creator_count from creators where id::text like 'a1d0c001-0000%';
+  select count(*) into platform_count from creator_platforms where id::text like 'a1d0c001-0001%';
+  select count(*) into freelancer_count from freelancers where id::text like 'a1d0f001-0000%';
+  select count(*) into rate_count from freelancer_service_rates where id::text like 'a1d0f001-0001%';
+  select count(*) into campaign_count from campaigns where id::text like 'a1d0a001%';
 
   raise notice '✅ Recommendation test data seeded:';
   raise notice '   brands:                %', brand_count;
