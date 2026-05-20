@@ -51,17 +51,20 @@ export default async function BrandHomePage() {
     : { data: [] };
   const completeness = brandCompleteness({ brand, audit: audit ?? null, campaigns: campaigns ?? [], deals: deals ?? [], projects: projects ?? [], connectedAccounts: brandConnectedAccounts ?? [] });
   const automation = brand ? brandAutomationDecision({ brand, audit: audit ?? null, campaigns: campaigns ?? [] }) : null;
-  // Home dashboards show a preview grid. 12 is a reasonable
-  // "above the fold" count once the marketplace has variety; the full
-  // browsing experience lives at /creators and /freelancers.
+  // Home dashboards pass the full eligible marketplace into MarketplaceTabs
+  // which handles pagination (9 cards per page) + filters in the client.
+  // Brands who want the dedicated browsing experience get a "View full
+  // marketplace" link inside the tabs that routes to /creators or
+  // /freelancers. Stops capping at a small N which was hiding the
+  // depth of the catalogue.
   const visibleCreators = withoutDemoRows(creators ?? [], includeDemo).filter((creator) => isDiscoverable(creatorAutomationDecision({
     creator,
     platforms: (platforms ?? []).filter((platform) => platform.creator_id === creator.id)
-  }))).slice(0, 12);
+  })));
   const visibleFreelancers = withoutDemoRows(freelancers ?? [], includeDemo).filter((freelancer) => isDiscoverable(freelancerAutomationDecision({
     freelancer,
     serviceRates: (serviceRates ?? []).filter((rate) => rate.freelancer_id === freelancer.id)
-  }))).slice(0, 12);
+  })));
 
   if (!brand) {
     return (

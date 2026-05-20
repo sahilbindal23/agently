@@ -1,10 +1,20 @@
 "use client";
 
-import { Search, ShieldCheck } from "lucide-react";
-import { useMemo, useState } from "react";
+import Link from "next/link";
+import { ArrowRight, ChevronLeft, ChevronRight, Search, ShieldCheck } from "lucide-react";
+import { useEffect, useMemo, useState } from "react";
 import { CreatorMarketCard, FreelancerMarketCard, BrandMarketCard } from "@/components/marketplace/marketplace-cards";
 import { Input } from "@/components/ui/input";
 import { BRAND_INDUSTRIES, FREELANCER_SERVICES, INDIAN_CITIES, NICHES, PLATFORMS } from "@/lib/taxonomies";
+
+const PAGE_SIZE = 9;
+const VIEW_ALL_HREF: Record<TabType, string> = {
+  creator: "/creators",
+  freelancer: "/freelancers",
+  brand: "/brands"
+};
+
+type TabType = "creator" | "freelancer" | "brand";
 
 type TabItem =
   | { id: string; label: string; type: "creator"; items: Array<Record<string, unknown>>; platforms?: Array<Record<string, unknown>> }
@@ -30,6 +40,7 @@ export function MarketplaceTabs({ tabs }: { tabs: TabItem[] }) {
   const [followerRange, setFollowerRange] = useState("any");
   const [service, setService] = useState("");
   const [industry, setIndustry] = useState("");
+  const [page, setPage] = useState(0);
 
   const active = tabs.find((tab) => tab.id === activeId) ?? tabs[0];
 
@@ -75,6 +86,18 @@ export function MarketplaceTabs({ tabs }: { tabs: TabItem[] }) {
       return true;
     });
   }, [active, query, verifiedOnly, niche, city, platform, followerRange, service, industry]);
+
+  // Reset to page 0 whenever the visible set changes (filter, tab,
+  // search), so the user doesn't land on a now-empty page 3.
+  useEffect(() => {
+    setPage(0);
+  }, [activeId, query, verifiedOnly, niche, city, platform, followerRange, service, industry]);
+
+  const totalPages = Math.max(1, Math.ceil(visibleItems.length / PAGE_SIZE));
+  const safePage = Math.min(page, totalPages - 1);
+  const pageStart = safePage * PAGE_SIZE;
+  const pageItems = visibleItems.slice(pageStart, pageStart + PAGE_SIZE);
+  const viewAllHref = active ? VIEW_ALL_HREF[active.type] : "/creators";
 
   if (!active) return null;
 
@@ -141,18 +164,56 @@ export function MarketplaceTabs({ tabs }: { tabs: TabItem[] }) {
       </div>
 
       {visibleItems.length ? (
-        <div className="grid gap-3 md:grid-cols-3">
-          {visibleItems.map((item) => {
-            if (active.type === "creator") {
-              const platformRow = active.platforms?.find((entry) => entry.creator_id === item.id);
-              return <CreatorMarketCard creator={item} key={String(item.id)} platform={platformRow} />;
-            }
-            if (active.type === "freelancer") {
-              return <FreelancerMarketCard freelancer={item} key={String(item.id)} />;
-            }
-            return <BrandMarketCard brand={item} key={String(item.id)} />;
-          })}
-        </div>
+        <>
+          <div className="grid gap-3 md:grid-cols-3">
+            {pageItems.map((item) => {
+              if (active.type === "creator") {
+                const platformRow = active.platforms?.find((entry) => entry.creator_id === item.id);
+                return <CreatorMarketCard creator={item} key={String(item.id)} platform={platformRow} />;
+              }
+              if (active.type === "freelancer") {
+                return <FreelancerMarketCard freelancer={item} key={String(item.id)} />;
+              }
+              return <BrandMarketCard brand={item} key={String(item.id)} />;
+            })}
+          </div>
+
+          <div className="mt-4 flex flex-wrap items-center justify-between gap-3">
+            <p className="text-xs text-muted-foreground">
+              Showing <span className="font-semibold">{pageStart + 1}-{Math.min(pageStart + PAGE_SIZE, visibleItems.length)}</span> of <span className="font-semibold">{visibleItems.length}</span>
+            </p>
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={() => setPage((p) => Math.max(0, p - 1))}
+                disabled={safePage === 0}
+                className="inline-flex h-9 items-center gap-1 rounded-md border bg-white px-3 text-sm font-medium transition hover:bg-muted disabled:cursor-not-allowed disabled:opacity-40 dark:border-white/10 dark:bg-card dark:hover:bg-muted"
+              >
+                <ChevronLeft className="h-4 w-4" />
+                Prev
+              </button>
+              <span className="text-sm text-muted-foreground">
+                Page <span className="font-semibold text-foreground">{safePage + 1}</span> / {totalPages}
+              </span>
+              <button
+                type="button"
+                onClick={() => setPage((p) => Math.min(totalPages - 1, p + 1))}
+                disabled={safePage >= totalPages - 1}
+                className="inline-flex h-9 items-center gap-1 rounded-md border bg-white px-3 text-sm font-medium transition hover:bg-muted disabled:cursor-not-allowed disabled:opacity-40 dark:border-white/10 dark:bg-card dark:hover:bg-muted"
+              >
+                Next
+                <ChevronRight className="h-4 w-4" />
+              </button>
+              <Link
+                href={viewAllHref}
+                className="ml-1 inline-flex h-9 items-center gap-1 rounded-md bg-primary px-3 text-sm font-medium text-primary-foreground transition hover:bg-primary/90"
+              >
+                View full marketplace
+                <ArrowRight className="h-4 w-4" />
+              </Link>
+            </div>
+          </div>
+        </>
       ) : (
         <div className="rounded-md border bg-white p-4 text-sm text-muted-foreground dark:border-white/8 dark:bg-card">
           No profiles match these filters. Clear some filters or turn off verified-only.
