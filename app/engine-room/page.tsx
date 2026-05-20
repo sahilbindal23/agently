@@ -34,11 +34,12 @@ export default async function EngineRoomPage() {
     );
   }
 
-  const [{ creators, creatorPlatforms }, campaignData] = await Promise.all([getAgentlyData(), getCampaignData()]);
+  const [{ creators, creatorPlatforms, brands }, campaignData] = await Promise.all([getAgentlyData(), getCampaignData()]);
   const snapshots = await getCreatorMetricSnapshots(creators.map((c) => c.id));
   const latestCampaign = campaignData.campaigns[0];
+  const latestCampaignBrand = latestCampaign?.brand_id ? brands.find((brand) => brand.id === latestCampaign.brand_id) ?? null : null;
   const creatorRecommendations = latestCampaign
-    ? applyEventInformedRanking(rankCreators(latestCampaign, creators, creatorPlatforms, snapshots), "creator", campaignData.productEvents, latestCampaign.id).slice(0, 6)
+    ? applyEventInformedRanking(rankCreators(latestCampaign, creators, creatorPlatforms, snapshots, latestCampaignBrand), "creator", campaignData.productEvents, latestCampaign.id).slice(0, 6)
     : [];
   const freelancerRecommendations = latestCampaign
     ? applyEventInformedRanking(rankFreelancers(latestCampaign, campaignData.freelancers, campaignData.serviceRates), "freelancer", campaignData.productEvents, latestCampaign.id).slice(0, 6)

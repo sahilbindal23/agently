@@ -19,11 +19,12 @@ import type { Campaign, CampaignShortlist } from "@/types";
 export default async function CampaignsPage() {
   const user = await getCurrentUser();
   const includeDemo = canSeeDemoData(user);
-  const [{ creators, creatorPlatforms }, campaignData] = await Promise.all([
+  const [{ creators, creatorPlatforms, brands }, campaignData] = await Promise.all([
     getAgentlyData({ includeDemo }),
     getCampaignData(includeDemo)
   ]);
   const latestCampaign = campaignData.campaigns[0];
+  const latestCampaignBrand = latestCampaign?.brand_id ? brands.find((brand) => brand.id === latestCampaign.brand_id) ?? null : null;
   const latestInvites = latestCampaign ? campaignData.invites.filter((invite) => invite.campaign_id === latestCampaign.id) : [];
   const creatorPool = latestCampaign?.visibility === "invite_only" && latestInvites.length
     ? creators.filter((creator) => latestInvites.some((invite) => invite.creator_id === creator.id))
@@ -38,7 +39,7 @@ export default async function CampaignsPage() {
   })));
   const snapshots = await getCreatorMetricSnapshots(eligibleCreators.map((c) => c.id));
   const creatorRecommendations = latestCampaign
-    ? applyEventInformedRanking(rankCreators(latestCampaign, eligibleCreators, creatorPlatforms, snapshots), "creator", campaignData.productEvents, latestCampaign.id).slice(0, 5)
+    ? applyEventInformedRanking(rankCreators(latestCampaign, eligibleCreators, creatorPlatforms, snapshots, latestCampaignBrand), "creator", campaignData.productEvents, latestCampaign.id).slice(0, 5)
     : [];
   const freelancerRecommendations = latestCampaign
     ? applyEventInformedRanking(rankFreelancers(latestCampaign, eligibleFreelancers, campaignData.serviceRates), "freelancer", campaignData.productEvents, latestCampaign.id).slice(0, 5)

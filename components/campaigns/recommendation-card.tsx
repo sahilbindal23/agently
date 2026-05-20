@@ -61,7 +61,10 @@ export function RecommendationCard({
             <p className="text-xs font-semibold uppercase text-muted-foreground">Why this match</p>
             <p className="mt-1 line-clamp-2 text-sm leading-6">{item.reason}</p>
           </div>
-          <Badge tone="blue">{item.match_type}</Badge>
+          {/* Tone matches the gradedCategoryFit tier so brands can read
+              ranking quality at a glance: green = niche/industry hit,
+              blue = adjacent, amber = style/keyword only. */}
+          <Badge tone={matchTypeTone(item.category_match_tier, item.match_type)}>{item.match_type}</Badge>
         </div>
       </div>
 
@@ -176,6 +179,22 @@ function scoreHighlights(score: CampaignRecommendation["score_breakdown"]) {
 
 function scoreLows(score: CampaignRecommendation["score_breakdown"]) {
   return scoreEntries(score).sort((a, b) => a.value - b.value);
+}
+
+function matchTypeTone(
+  tier: CampaignRecommendation["category_match_tier"],
+  fallbackLabel: string
+): "green" | "blue" | "amber" | "neutral" {
+  if (tier === "direct" || tier === "industry") return "green";
+  if (tier === "adjacent") return "blue";
+  if (tier === "style") return "amber";
+  // Tiers can be undefined on freelancer recs or older snapshots — fall
+  // back to label-based heuristics for those.
+  const label = fallbackLabel.toLowerCase();
+  if (label.includes("direct") || label.includes("industry") || label.includes("verified")) return "green";
+  if (label.includes("bridge") || label.includes("adjacent") || label.includes("bangalore")) return "blue";
+  if (label.includes("style")) return "amber";
+  return "neutral";
 }
 
 function scoreEntries(score: CampaignRecommendation["score_breakdown"]) {

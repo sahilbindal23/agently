@@ -31,13 +31,17 @@ export default async function CampaignDetailPage({
   const query = await searchParams;
   const user = await getCurrentUser();
   const includeDemo = canSeeDemoData(user);
-  const [{ creators, creatorPlatforms, deals }, campaignData] = await Promise.all([
+  const [{ creators, creatorPlatforms, deals, brands }, campaignData] = await Promise.all([
     getAgentlyData({ includeDemo }),
     getCampaignData(id, includeDemo)
   ]);
   if (!campaignData.campaign) notFound();
 
   const campaign = campaignData.campaign;
+  // Brand context lets gradedCategoryFit reason about industry alignment
+  // (e.g. a tech reviewer should rank above a lifestyle reviewer on an
+  // earbuds campaign because the brand industry is consumer electronics).
+  const campaignBrand = campaign.brand_id ? brands.find((brand) => brand.id === campaign.brand_id) ?? null : null;
   const creatorsWithTrust = withCreatorCompletedWork(creators, deals);
   const freelancersWithTrust = withFreelancerCompletedWork(campaignData.freelancers, campaignData.projects);
   const creatorPool = campaign.visibility === "invite_only" && campaignData.invites.length
@@ -53,7 +57,7 @@ export default async function CampaignDetailPage({
   })));
   const creatorTrustFilter = ["verified", "api_synced"].includes(String(first(query.creatorTrust))) ? "verified" : "all";
   const snapshots = await getCreatorMetricSnapshots(eligibleCreators.map((c) => c.id));
-  const allCreatorRecommendations = applyEventInformedRanking(rankCreators(campaign, eligibleCreators, creatorPlatforms, snapshots), "creator", campaignData.productEvents, campaign.id);
+  const allCreatorRecommendations = applyEventInformedRanking(rankCreators(campaign, eligibleCreators, creatorPlatforms, snapshots, campaignBrand), "creator", campaignData.productEvents, campaign.id);
   const creatorRecommendations = filterCreatorRecommendations(allCreatorRecommendations, creatorTrustFilter).slice(0, 8);
   const freelancerRecommendations = applyEventInformedRanking(rankFreelancers(campaign, eligibleFreelancers, campaignData.serviceRates), "freelancer", campaignData.productEvents, campaign.id).slice(0, 8);
   const creatorShortlist = campaignData.shortlists.filter((item) => item.entity_type === "creator");

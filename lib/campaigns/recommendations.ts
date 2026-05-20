@@ -1,7 +1,8 @@
 import { audienceFitScore, engagementQualityScore, latestPerProvider, type SocialMetricSnapshot } from "@/lib/campaigns/engagement-quality";
+import { categoryTierLabel, gradedCategoryFit, type CategoryMatchTier } from "@/lib/campaigns/niche-adjacency";
 import { getCityFit, getCreatorLanguages } from "@/lib/utils/creator-metrics";
 import { isTrustedMetricSource, socialTrustFromSource } from "@/lib/social/trust";
-import type { Campaign, Creator, CreatorPlatform } from "@/types";
+import type { Brand, Campaign, Creator, CreatorPlatform } from "@/types";
 
 export type { SocialMetricSnapshot } from "@/lib/campaigns/engagement-quality";
 
@@ -56,6 +57,11 @@ export type CampaignRecommendation = {
   score: number;
   reason: string;
   match_type: string;
+  // Tier from gradedCategoryFit — populated for creator recommendations
+  // so the UI can show WHY a creator ranked where they did. Undefined
+  // for freelancer recommendations since freelancers use skill-based
+  // matching, not the niche graph.
+  category_match_tier?: CategoryMatchTier;
   best_use_case: string;
   expected_outcome: string;
   risk_level: "low" | "medium" | "high";
@@ -82,7 +88,8 @@ export function rankCreators(
   campaign: Campaign,
   creators: Creator[],
   platforms: CreatorPlatform[],
-  snapshots: SocialMetricSnapshot[] = []
+  snapshots: SocialMetricSnapshot[] = [],
+  brand?: Brand | null
 ): CampaignRecommendation[] {
   const briefText = briefKeywords(campaign);
   return creators.map((creator) => {
@@ -90,7 +97,15 @@ export function rankCreators(
     const primary = creatorPlatforms[0];
     const creatorSnapshots = snapshots.filter((snap) => snap.creator_id === creator.id);
     const platformFit = campaign.platforms.length && creatorPlatforms.some((platform) => includesAny(platform.platform, campaign.platforms)) ? 88 : campaign.platforms.length ? 45 : 70;
-    const categoryFit = includesAny(creator.primary_niche, campaign.creator_categories) || includesAny(creator.content_style, campaign.creator_categories) ? 90 : 48;
+    // Graded category fit replaces the previous binary 90/48 cliff so a
+    // tech reviewer ranks above a lifestyle reviewer on a tech brief.
+    // The tier is preserved on the recommendation row for the UI label.
+    const { score: categoryFit, tier: categoryMatchTier } = gradedCategoryFit({
+      creatorNiche: creator.primary_niche,
+      creatorContentStyle: creator.content_style,
+      campaignCategories: campaign.creator_categories ?? [],
+      brandIndustry: brand?.industry ?? null
+    });
     // audience_fit V2: blend Phyllo demographic snapshots with the legacy
     // topic-keyword check. Falls back to keyword-only when no snapshots.
     const topicKeywordHit = includesAny(`${creator.primary_niche} ${creator.bio} ${creator.content_style}`, briefText);
@@ -131,7 +146,7 @@ export function rankCreators(
     // product is ready to position anti-bot as a brand-facing feature.
     void engagementQualityResult; // kept in scope for future reactivation
     const watchouts = creatorWatchouts(campaign, creator, primary, scoreBreakdown);
-    const matchType = creatorMatchType(campaign, scoreBreakdown, creator);
+    const matchType = creatorMatchType(campaign, scoreBreakdown, creator, categoryMatchTier);
 
     return {
       id: creator.id,
@@ -141,6 +156,7 @@ export function rankCreators(
       score,
       reason: `${creator.display_name} fits through ${creator.primary_niche.toLowerCase()}, ${creator.home_city || "India"} relevance, and ${creator.content_style || "audience"} style.`,
       match_type: matchType,
+      category_match_tier: categoryMatchTier,
       best_use_case: creatorBestUseCase(matchType, campaign, creator),
       expected_outcome: creatorExpectedOutcome(campaign, primary, roi),
       risk_level: riskLevel(score, watchouts.length, scoreBreakdown.data_confidence),
@@ -339,10 +355,25 @@ function trustScore(tier?: string, status?: string) {
   return 0;
 }
 
-function creatorMatchType(campaign: Campaign, breakdown: ScoreBreakdown, creator: Creator) {
-  if (breakdown.category_fit >= 80 && breakdown.audience_fit >= 70) return "Direct category fit";
+function creatorMatchType(
+  campaign: Campaign,
+  breakdown: ScoreBreakdown,
+  creator: Creator,
+  categoryMatchTier?: CategoryMatchTier
+) {
+  // Prefer the graded-categoryFit label when it gives us a concrete
+  // tier (direct/industry/adjacent). The categoryFit score and the
+  // label now move together, so brands no longer see "Direct category
+  // fit" on a lifestyle-only-keyword-overlap match.
+  if (categoryMatchTier === "direct") return categoryTierLabel("direct");
+  if (categoryMatchTier === "industry") return categoryTierLabel("industry");
+
   if (breakdown.audience_fit >= 75 && breakdown.category_fit < 70) return "Bridge audience fit";
   if (breakdown.city_fit >= 75 && includesAny(`${campaign.city_focus} ${campaign.region_focus}`, ["Bangalore", "Bengaluru"])) return "Bangalore activation fit";
+
+  if (categoryMatchTier === "adjacent") return categoryTierLabel("adjacent");
+  if (categoryMatchTier === "style") return categoryTierLabel("style");
+
   if (isVerifiedTier(creator.verification_tier, creator.verification_status)) return "Verified creator fit";
   return "Pilot test fit";
 }
