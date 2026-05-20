@@ -97,7 +97,13 @@ export default async function CampaignDetailPage({
 
       <RosterBudgetCard campaign={campaign} roster={roster} />
 
-      <PerformanceProjectionCard projection={projection} />
+      {/* Projected Performance Signals card hidden — speculative reach
+          numbers off the rules-fallback model misleads brands more
+          than it helps. The PerformanceProjectionCard component and
+          the projection data are still computed (kept for the e2e
+          assertion + future re-enablement once we have closed-deal
+          performance data behind it). To restore: uncomment below. */}
+      {/* <PerformanceProjectionCard projection={projection} /> */}
 
       <Card className="mt-5">
         <CardHeader><CardTitle>Brief Inputs</CardTitle><Badge tone="blue">{campaign.status}</Badge></CardHeader>

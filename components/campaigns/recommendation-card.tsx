@@ -6,7 +6,7 @@ import { ShortlistButton } from "@/components/campaigns/shortlist-button";
 import { MessageRecipientButton } from "@/components/messages/message-recipient-button";
 import { SocialTrustBadge } from "@/components/social/social-trust-badge";
 import { Badge } from "@/components/ui/badge";
-import { formatCurrency, formatNumber } from "@/lib/utils/format";
+import { formatCurrency } from "@/lib/utils/format";
 import type { CampaignRecommendation } from "@/lib/campaigns/recommendations";
 
 export function RecommendationCard({
@@ -23,11 +23,16 @@ export function RecommendationCard({
   const strongestSignals = scoreHighlights(item.score_breakdown).slice(0, 2);
   const reviewSignals = scoreLows(item.score_breakdown).slice(0, 2);
   const profileHref = type === "creator" ? `/creators/${item.id}` : `/freelancers/${item.id}`;
+  // Reach + CPM removed from creator cards — they were computed from a
+  // creator's static avg_views and the campaign's full budget divided
+  // by that single creator's reach, which made both numbers misleading
+  // without closed-deal performance data behind them. Freelancers still
+  // show unit cost + confidence because those are direct quote signals.
   const primaryMetric = type === "creator"
-    ? `${formatNumber(item.roi_estimate.expected_reach)} reach`
+    ? null
     : `${formatCurrency(item.roi_estimate.estimated_cpe_cents, "inr")} unit cost`;
   const secondaryMetric = type === "creator"
-    ? `${formatCurrency(item.roi_estimate.estimated_cpm_cents, "inr")} CPM`
+    ? null
     : `${Math.round(item.roi_estimate.confidence_score * 100)}% confidence`;
 
   return (
@@ -49,10 +54,12 @@ export function RecommendationCard({
             </div>
           </div>
         </div>
-        <div className="grid shrink-0 grid-cols-2 gap-2 text-right sm:min-w-52">
-          <CompactMetric label={type === "creator" ? "Reach" : "Cost"} value={primaryMetric} />
-          <CompactMetric label={type === "creator" ? "CPM" : "Confidence"} value={secondaryMetric} />
-        </div>
+        {primaryMetric && secondaryMetric ? (
+          <div className="grid shrink-0 grid-cols-2 gap-2 text-right sm:min-w-52">
+            <CompactMetric label="Cost" value={primaryMetric} />
+            <CompactMetric label="Confidence" value={secondaryMetric} />
+          </div>
+        ) : null}
       </div>
 
       <div className="mt-4 rounded-md border bg-muted/50 p-3 dark:border-white/8">

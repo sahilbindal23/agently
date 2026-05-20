@@ -22,7 +22,7 @@ test.describe("synthetic tester agents", () => {
       await firstCampaign.click();
       await page.waitForLoadState("networkidle");
       await checkNoAppError(page);
-      await expect(page.getByText(/Projected Performance Signals|Recommended Creators|Shortlist/i).first()).toBeVisible();
+      await expect(page.getByText(/Recommended Creators|Shortlist/i).first()).toBeVisible();
     }
 
     await expectPageReady(page, "/deals", /Sent offers and projects|Creator Offers Sent/i);
