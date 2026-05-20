@@ -62,11 +62,13 @@ export default async function FreelancerHomePage() {
   const hourlyRate = freelancer.hourly_rate_cents ?? freelancer.day_rate_cents ?? 0;
   const completeness = freelancerCompleteness({ freelancer, serviceRates: serviceRates ?? [], portfolio: portfolio ?? [], projects: projects ?? [] });
   const automation = freelancerAutomationDecision({ freelancer, serviceRates: serviceRates ?? [], portfolio: portfolio ?? [] });
-  const visibleBrands = withoutDemoRows(brands ?? [], includeDemo).filter((brand) => isDiscoverable(brandAutomationDecision({ brand }))).slice(0, 6);
+  // 12 cards on the home preview grid. Full marketplace lives at
+  // /creators and /brands.
+  const visibleBrands = withoutDemoRows(brands ?? [], includeDemo).filter((brand) => isDiscoverable(brandAutomationDecision({ brand }))).slice(0, 12);
   const visibleCreators = withoutDemoRows(creators ?? [], includeDemo).filter((creator) => isDiscoverable(creatorAutomationDecision({
     creator,
     platforms: (platforms ?? []).filter((platform) => platform.creator_id === creator.id)
-  }))).slice(0, 6);
+  }))).slice(0, 12);
 
   return (
     <AppShell>

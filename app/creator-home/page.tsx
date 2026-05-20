@@ -65,14 +65,16 @@ export default async function CreatorHomePage() {
   const latestAudit = audits?.[0]?.result as Record<string, unknown> | undefined;
   const completeness = creatorCompleteness({ creator, platforms: platforms ?? [], deals: deals ?? [], hasAudit: Boolean(latestAudit) });
   const automation = creatorAutomationDecision({ creator, platforms: platforms ?? [] });
-  const visibleBrands = withoutDemoRows(brands ?? [], includeDemo).filter((brand) => isDiscoverable(brandAutomationDecision({ brand }))).slice(0, 6);
+  // 12 cards on the home preview grid. Full marketplace lives at
+  // /creators, /freelancers, /brands.
+  const visibleBrands = withoutDemoRows(brands ?? [], includeDemo).filter((brand) => isDiscoverable(brandAutomationDecision({ brand }))).slice(0, 12);
   const visibleFreelancers = withoutDemoRows(freelancers ?? [], includeDemo).filter((freelancer) => isDiscoverable(freelancerAutomationDecision({
     freelancer,
     serviceRates: (serviceRates ?? []).filter((rate) => rate.freelancer_id === freelancer.id)
-  }))).slice(0, 6);
+  }))).slice(0, 12);
   const visibleCreators = withoutDemoRows(otherCreators ?? [], includeDemo)
     .filter((c) => isDiscoverable(creatorAutomationDecision({ creator: c, platforms: (otherCreatorPlatforms ?? []).filter((p) => p.creator_id === c.id) })))
-    .slice(0, 6);
+    .slice(0, 12);
 
   return (
     <AppShell>
