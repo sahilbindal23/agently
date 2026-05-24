@@ -205,12 +205,12 @@ export default async function CreatorDetailPage({ params }: { params: Promise<{ 
         </div>
       </Card>
 
-      {/* CreatorReauditPanel hidden until an LLM (Claude or OpenAI) is
+      {/* CreatorReauditPanel hidden until the AI audit endpoint is
           wired with a real API key. Without it, the audit echoes back
           intake data instead of adding insight — not worth surfacing.
           Component still exists at components/creators/creator-reaudit-panel
           and the /api/ai/audit-creator route is intact, so re-enabling is
-          a one-import change once the LLM is configured. */}
+          a one-import change once the provider is configured. */}
     </AppShell>
   );
 }

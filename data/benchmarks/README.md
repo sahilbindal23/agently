@@ -2,11 +2,11 @@
 
 ## TL;DR / Honesty Statement
 
-This dataset was scaffolded by an LLM (Claude, model knowledge cutoff Jan 2026) **without live web access at generation time**. Every figure here should be treated as a **directionally-reasonable starting prior**, not verified ground truth. The structure is production-ready; the numbers are placeholders that need human verification before powering pricing or ROI decisions shown to real users.
+This dataset was scaffolded from public-report recall (Qoruz / IMH / HypeAuditor / GroupM-INCA bands seen during research) **without live web verification at generation time**. Every figure here should be treated as a **directionally-reasonable starting prior**, not verified ground truth. The structure is production-ready; the numbers are placeholders that need human verification before powering pricing or ROI decisions shown to real users.
 
 Each row carries a `source` field that is one of:
 
-- `training_data_recall` - I recall this range appearing in Qoruz / IMH / HypeAuditor / GroupM-INCA reports during training. Directionally reasonable, but the specific number and the URL should be re-verified.
+- `training_data_recall` - This range appears in Qoruz / IMH / HypeAuditor / GroupM-INCA reports based on prior research. Directionally reasonable, but the specific number and the URL should be re-verified.
 - `estimated` - Interpolated from adjacent tiers/niches. Treat as placeholder.
 - `verified` - Reserved for rows you replace with audited data.
 

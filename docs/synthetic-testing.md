@@ -28,7 +28,7 @@ The report is written to:
 test-results/e2e-feedback-report.md
 ```
 
-Paste that report back into Codex when something fails.
+Paste that report into your dev workflow when something fails.
 
 ## Run Against Vercel
 
