@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input, Textarea } from "@/components/ui/input";
 import { MultiCheckbox, Select } from "@/components/ui/select";
+import { trackMetaEvent } from "@/components/analytics/meta-pixel";
 import { HomeLogo } from "@/components/layout/home-logo";
 import {
   AVAILABILITY_STATUSES,
@@ -63,6 +64,13 @@ export function EnrollmentSignup({ initialMode = "creator" }: { initialMode?: Mo
       setError(body.error ?? "Could not create enrollment profile.");
       return;
     }
+
+    // The user finished intake and now has a real profile. Report this as a
+    // Lead so we can see funnel drop-off between signup (CompleteRegistration)
+    // and a completed profile — the gap tells us how many people abandon
+    // before becoming usable. Tagged with role for creator/brand/freelancer
+    // segmentation in Events Manager.
+    trackMetaEvent("Lead", { content_name: mode });
 
     setResult(await response.json());
     setStatus("complete");
