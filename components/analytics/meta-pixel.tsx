@@ -23,6 +23,14 @@ declare global {
   }
 }
 
+// Fire a standard Meta Pixel event (e.g. "CompleteRegistration", "Lead").
+// Safe to call from anywhere on the client: no-ops on the server or before
+// the Pixel script has loaded, so it never throws and never blocks a flow.
+export function trackMetaEvent(event: string, params?: Record<string, unknown>) {
+  if (typeof window === "undefined" || typeof window.fbq !== "function") return;
+  window.fbq("track", event, params);
+}
+
 function PageViewTracker() {
   const pathname = usePathname();
   const searchParams = useSearchParams();

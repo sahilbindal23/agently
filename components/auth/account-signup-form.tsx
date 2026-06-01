@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { ArrowRight, UserPlus } from "lucide-react";
+import { trackMetaEvent } from "@/components/analytics/meta-pixel";
 import { HomeLogo } from "@/components/layout/home-logo";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -62,6 +63,13 @@ export function AccountSignupForm() {
       setError(body.error ?? "Could not create account.");
       return;
     }
+
+    // The account was created successfully. Report the conversion to Meta so
+    // ad campaigns can optimize for signups (not just clicks) and so we get a
+    // real cost-per-signup. Fired here (before the verify/login branch) so it
+    // counts regardless of the email-verification flow. role lets us segment
+    // creator vs. brand vs. freelancer signups in Events Manager.
+    trackMetaEvent("CompleteRegistration", { content_name: role });
 
     const signupBody = await signup.json().catch(() => ({}));
     if (signupBody?.requires_email_verification) {
