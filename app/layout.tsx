@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from "next";
 import { Analytics } from "@vercel/analytics/next";
 import { CookieConsentBanner } from "@/components/legal/cookie-consent-banner";
+import { MetaPixel } from "@/components/analytics/meta-pixel";
 import "./globals.css";
 
 const SITE_URL = process.env.NEXT_PUBLIC_APP_URL || process.env.APP_URL || "https://agently.co.in";
@@ -35,6 +36,15 @@ export const metadata: Metadata = {
   // rollout. Beta sub-domains can be noindex'd via per-route metadata.
   alternates: {
     canonical: SITE_URL
+  },
+  // Meta (Facebook) Business domain verification — unlocks ad link-edit
+  // controls + Aggregated Event Measurement for ads pointing at agently.co.in.
+  // Set in Business settings → Brand safety → Domains. Renders
+  // <meta name="facebook-domain-verification" content="…" />.
+  verification: {
+    other: {
+      "facebook-domain-verification": "8wqy58qml7o7ws91w1cq34y8skpi23"
+    }
   }
 };
 
@@ -58,6 +68,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         {children}
         <CookieConsentBanner />
         <Analytics />
+        <MetaPixel />
       </body>
     </html>
   );
