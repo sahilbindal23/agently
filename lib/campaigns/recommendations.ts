@@ -1,5 +1,5 @@
 import { audienceFitScore, engagementQualityScore, latestPerProvider, type SocialMetricSnapshot } from "@/lib/campaigns/engagement-quality";
-import { categoryTierLabel, gradedCategoryFit, type CategoryMatchTier } from "@/lib/campaigns/niche-adjacency";
+import { categoryTierLabel, gradedCategoryFit, nicheRelations, normalizeNiche, type CategoryMatchTier } from "@/lib/campaigns/niche-adjacency";
 import { getCityFit, getCreatorLanguages } from "@/lib/utils/creator-metrics";
 import { isTrustedMetricSource, socialTrustFromSource } from "@/lib/social/trust";
 import type { Brand, Campaign, Creator, CreatorPlatform } from "@/types";
@@ -136,7 +136,12 @@ export function rankCreators(
       budget_fit: budgetFit,
       data_confidence: dataConfidence
     };
-    const score = weightedScore(scoreBreakdown);
+    // Two-sided matching: nudge the brand-side fit score by the creator's
+    // own stated preferences so we don't surface talent that would decline
+    // (wrong category, budget below their floor, not taking work). Neutral
+    // when the creator hasn't set any preferences.
+    const preference = mutualPreferenceAdjustment(campaign, creator, brand);
+    const score = Math.max(35, Math.min(96, weightedScore(scoreBreakdown) + preference.points));
     const roi = estimateCreatorRoi(campaign, primary);
     // engagement_quality (anti-bot) bot-signal reasons are intentionally
     // NOT bubbled into watchouts right now — we're keeping the early
@@ -145,8 +150,11 @@ export function rankCreators(
     // ranking under the hood (10% weight). Surface this later when the
     // product is ready to position anti-bot as a brand-facing feature.
     void engagementQualityResult; // kept in scope for future reactivation
-    const watchouts = creatorWatchouts(campaign, creator, primary, scoreBreakdown);
+    const watchouts = [...creatorWatchouts(campaign, creator, primary, scoreBreakdown), ...preference.watchouts];
     const matchType = creatorMatchType(campaign, scoreBreakdown, creator, categoryMatchTier);
+    const proofPoints = preference.proofs.length
+      ? [...creatorProofPoints(creator, primary, scoreBreakdown), ...preference.proofs]
+      : creatorProofPoints(creator, primary, scoreBreakdown);
 
     return {
       id: creator.id,
@@ -160,7 +168,7 @@ export function rankCreators(
       best_use_case: creatorBestUseCase(matchType, campaign, creator),
       expected_outcome: creatorExpectedOutcome(campaign, primary, roi),
       risk_level: riskLevel(score, watchouts.length, scoreBreakdown.data_confidence),
-      proof_points: creatorProofPoints(creator, primary, scoreBreakdown),
+      proof_points: proofPoints,
       score_breakdown: scoreBreakdown,
       watchouts,
       roi_estimate: roi,
@@ -287,6 +295,63 @@ function freelancerWatchouts(campaign: Campaign, freelancer: FreelancerRecommend
     !freelancer.portfolio_score ? "Portfolio score missing, review links manually." : "",
     campaign.freelancer_needs.length && !includesAny([freelancer.service_category, ...(freelancer.skills ?? [])].join(" "), campaign.freelancer_needs) ? "Service category may not directly match requested production need." : ""
   ].filter(Boolean);
+}
+
+// Mutual (two-sided) preference adjustment. The weighted brand-side score
+// answers "does this creator fit the brief"; this answers "would the creator
+// take it". Returns a bounded score delta plus watchouts / proof points to
+// surface so the brand sees WHY a well-matched creator was deprioritized.
+// Neutral (0, no labels) when the creator has stated no preferences, so
+// existing creators rank exactly as before.
+function mutualPreferenceAdjustment(campaign: Campaign, creator: Creator, brand?: Brand | null) {
+  const watchouts: string[] = [];
+  const proofs: string[] = [];
+  let points = 0;
+
+  const campaignKeys = new Set((campaign.creator_categories ?? []).map(normalizeNiche).filter(Boolean));
+  const brandIndustry = String(brand?.industry ?? "").toLowerCase().trim();
+  const preferred = (creator.preferred_categories ?? []).map(normalizeNiche).filter(Boolean);
+  const excluded = (creator.excluded_categories ?? []).map(normalizeNiche).filter(Boolean);
+
+  // Excluded category — the creator explicitly opted out (alcohol, gambling,
+  // etc.). Strong penalty so it sinks to the bottom, with a clear watchout.
+  if (excluded.some((key) => preferenceMatchesCampaign(key, campaignKeys, brandIndustry))) {
+    points -= 40;
+    watchouts.push("Creator has excluded this category from brand work.");
+  } else if (preferred.some((key) => preferenceMatchesCampaign(key, campaignKeys, brandIndustry))) {
+    // Actively-sought category — small boost + proof point.
+    points += 6;
+    proofs.push("Actively seeking this category");
+  }
+
+  // Budget floor — below the creator's stated minimum they likely decline.
+  const floor = Number(creator.min_deal_cents ?? 0);
+  if (floor > 0 && campaign.budget_cents > 0 && campaign.budget_cents < floor) {
+    points -= 12;
+    watchouts.push(`Brief budget is below the creator's stated minimum (${currency(floor)}).`);
+  }
+
+  // Not currently taking new brand offers.
+  if (creator.open_to_offers === false) {
+    points -= 16;
+    watchouts.push("Creator is not currently taking new brand offers.");
+  }
+
+  return { points: Math.max(-40, Math.min(8, points)), watchouts, proofs };
+}
+
+// A creator preference key matches a campaign when it appears in the brief's
+// requested categories, OR aligns with the brand's industry — directly
+// (substring) or through the niche → industry graph.
+function preferenceMatchesCampaign(key: string, campaignKeys: Set<string>, brandIndustry: string) {
+  if (!key) return false;
+  if (campaignKeys.has(key)) return true;
+  if (brandIndustry) {
+    if (brandIndustry.includes(key) || key.includes(brandIndustry)) return true;
+    const industries = nicheRelations(key).industries;
+    if (industries.some((industry) => brandIndustry.includes(industry) || industry.includes(brandIndustry))) return true;
+  }
+  return false;
 }
 
 function getCreatorBudgetFit(budgetCents: number, avgViews: number) {

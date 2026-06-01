@@ -22,6 +22,13 @@ import {
   SPONSOR_CATEGORIES
 } from "@/lib/taxonomies";
 
+// Local to the creator preferences block. "paused" maps to open_to_offers=false
+// in the update route; anything else (incl. empty) is treated as open.
+const OFFER_AVAILABILITY = [
+  { value: "open", label: "Yes — actively taking offers" },
+  { value: "paused", label: "Not right now" }
+];
+
 type ProfileEditProps = {
   role: "creator" | "brand" | "freelancer";
   profile: Record<string, unknown>;
@@ -90,6 +97,19 @@ function CreatorFields({ profile }: { profile: Record<string, unknown> }) {
       <MultiCheckbox className="md:col-span-2" name="languages" label="Languages you create in" options={LANGUAGES} defaultSelected={normalizeArray(profile.languages)} />
       <MultiCheckbox className="md:col-span-2" name="top_indian_cities" label="Top Indian audience cities" options={INDIAN_CITIES} defaultSelected={normalizeArray(profile.top_indian_cities)} maxVisible={9} />
       <MultiCheckbox className="md:col-span-2" name="prior_sponsor_categories" label="Past sponsor categories" options={SPONSOR_CATEGORIES} defaultSelected={normalizeArray(profile.prior_sponsor_categories)} maxVisible={6} />
+
+      {/* Two-sided matching: what the creator WANTS. These nudge how the
+          recommendation engine ranks this creator for brand briefs, so we
+          stop surfacing talent that would decline the offer anyway. */}
+      <div className="md:col-span-2 mt-2 rounded-md border bg-muted/40 px-3 py-2">
+        <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Your offer preferences</p>
+        <p className="mt-1 text-xs leading-4 text-muted-foreground">Optional. These tune which brand briefs Agently recommends you for — they don&apos;t hide you from search.</p>
+      </div>
+      <Select name="open_to_offers" label="Open to new brand offers?" options={OFFER_AVAILABILITY} defaultValue={value(profile.open_to_offers) === "false" ? "paused" : "open"} placeholderOption="Are you taking work?" />
+      <LabeledInput label="Minimum deal value (INR)" name="min_deal_inr" type="number" min={0} placeholder="e.g. 15000" defaultValue={profile.min_deal_cents ? String(Math.round(Number(profile.min_deal_cents) / 100)) : ""} />
+      <MultiCheckbox className="md:col-span-2" name="preferred_categories" label="Categories you want more of" options={SPONSOR_CATEGORIES} defaultSelected={normalizeArray(profile.preferred_categories)} maxVisible={6} />
+      <MultiCheckbox className="md:col-span-2" name="excluded_categories" label="Categories you won't work with" options={SPONSOR_CATEGORIES} defaultSelected={normalizeArray(profile.excluded_categories)} maxVisible={6} />
+
       <ReadOnlySignal label="India audience" value={`${value(profile.india_audience_percent) || 0}%`} />
       <ReadOnlySignal label="Monetization score" value={`${value(profile.monetization_score) || 0}/100`} />
       <ReadOnlySignal label="Valuation score" value={`${value(profile.valuation_score) || 0}/100`} />

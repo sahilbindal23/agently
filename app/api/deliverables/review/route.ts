@@ -124,10 +124,10 @@ async function updateDealAfterReview(admin: NonNullable<ReturnType<typeof create
 
   if (status === "approved" && deal) {
     // Fee rate lives in lib/payments/protection.ts as the single source of
-    // truth (PROTECTION_FEE_RATE = 0.01 / 1%). This previously hardcoded
-    // 0.1 (10%) by typo, which contradicted the contract template, the
-    // terms page, the protection calculator, and the ledger payouts —
-    // creators were being short-changed by ~9% at release_ready time.
+    // truth (PROTECTION_FEE_RATE). This previously hardcoded 0.1 (10%) by
+    // typo, which contradicted the contract template, the terms page, the
+    // protection calculator, and the ledger payouts — creators were being
+    // short-changed at release_ready time. Covered by tests/unit/protection-fee.test.ts.
     const amountCents = Number(deal.amount_cents ?? 0);
     const platformFeeCents = Math.round(amountCents * PROTECTION_FEE_RATE);
     await admin.from("payments").upsert({

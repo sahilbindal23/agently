@@ -26,6 +26,13 @@ export type Creator = {
   verification_status?: VerificationStatus | string;
   verification_tier?: string;
   completed_deal_count?: number;
+  // Creator-side preferences for two-sided matching (migration 031).
+  // Optional — absent/empty means "no preference stated" and ranking
+  // behaves exactly as before.
+  preferred_categories?: string[];
+  excluded_categories?: string[];
+  min_deal_cents?: number | null;
+  open_to_offers?: boolean;
 };
 
 export type CreatorPlatform = {

@@ -36,7 +36,12 @@ async function updateCreator(admin: NonNullable<ReturnType<typeof createAdminCli
     top_indian_cities: list(body.top_indian_cities),
     audience_age_range: text(body.audience_age_range),
     content_style: text(body.content_style),
-    prior_sponsor_categories: list(body.prior_sponsor_categories)
+    prior_sponsor_categories: list(body.prior_sponsor_categories),
+    // Creator-side preferences (migration 031) — feed two-sided matching.
+    preferred_categories: list(body.preferred_categories),
+    excluded_categories: list(body.excluded_categories),
+    min_deal_cents: text(body.min_deal_inr) ? Math.round(number(body.min_deal_inr) * 100) : null,
+    open_to_offers: text(body.open_to_offers) !== "paused"
   };
 
   const { data, error } = await admin.from("creators").update(payload).eq("id", creator.id).select("*").single();
