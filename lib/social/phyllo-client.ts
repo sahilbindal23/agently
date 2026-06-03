@@ -166,6 +166,125 @@ export async function fetchAccountProfile(accountId: string): Promise<PhylloProf
   };
 }
 
+// ---------- 3b. Audience demographics for a connected account ----------
+
+export type PhylloAudienceData = {
+  ok: true;
+  countries: Array<{ code: string; name: string | null; percent: number }>;
+  cities: Array<{ name: string; percent: number }>;
+  age_range: string | null;
+  raw: Record<string, unknown>;
+};
+
+export async function fetchAccountAudience(accountId: string): Promise<PhylloAudienceData | { ok: false; error: string; status: number }> {
+  // Requires the IDENTITY.AUDIENCE product. Returns a country/city/age
+  // breakdown for the connected account's audience.
+  const result = await phylloFetch<Record<string, unknown>>(
+    `/v1/audience?account_id=${encodeURIComponent(accountId)}`,
+    { method: "GET" }
+  );
+  if (!result.ok) return { ok: false, error: result.error, status: result.status };
+  const body = result.data;
+  const audience = (Array.isArray((body as { data?: unknown[] }).data) ? ((body as { data: Record<string, unknown>[] }).data[0]) : null)
+    ?? (body.audience as Record<string, unknown> | undefined)
+    ?? body;
+
+  const countries = parseDemographic(audience.countries ?? audience.country_distribution, "code", "name");
+  const cities = parseDemographic(audience.cities ?? audience.city_distribution, "name").map((row) => ({ name: row.code, percent: row.percent }));
+  const ages = parseDemographic(audience.age_distribution ?? audience.age_groups ?? audience.ages, "code");
+  const dominantAge = ages.sort((a, b) => b.percent - a.percent)[0]?.code ?? null;
+
+  return {
+    ok: true,
+    countries: countries.map((row) => ({ code: row.code, name: row.name ?? null, percent: row.percent })),
+    cities,
+    age_range: dominantAge,
+    raw: audience as Record<string, unknown>
+  };
+}
+
+type DemographicRow = { code: string; name: string | null; percent: number };
+
+function parseDemographic(value: unknown, codeKey: string, nameKey?: string): DemographicRow[] {
+  if (!Array.isArray(value)) return [];
+  const rows: DemographicRow[] = [];
+  for (const entry of value) {
+    if (!entry || typeof entry !== "object") continue;
+    const row = entry as Record<string, unknown>;
+    const code = stringOrNull(row[codeKey]) ?? stringOrNull(row.code) ?? stringOrNull(row.name) ?? stringOrNull(row.id);
+    if (!code) continue;
+    const percentRaw = numberOrNull(row.value) ?? numberOrNull(row.percentage) ?? numberOrNull(row.percent) ?? numberOrNull(row.share);
+    // Phyllo returns either a 0-100 percent or a 0-1 fraction depending
+    // on endpoint and product. Normalise to a percent (0-100).
+    const percent = percentRaw === null ? 0 : (percentRaw <= 1 ? percentRaw * 100 : percentRaw);
+    const name = nameKey ? stringOrNull(row[nameKey]) : null;
+    rows.push({ code, name, percent: Math.round(percent * 100) / 100 });
+  }
+  return rows;
+}
+
+// ---------- 3c. Recent contents / posts for engagement metrics ----------
+
+export type PhylloContentsData = {
+  ok: true;
+  avg_views_30d: number;
+  total_views_30d: number;
+  engagement_rate_30d: number;
+  sample_count: number;
+  raw: unknown;
+};
+
+export async function fetchAccountContents(accountId: string): Promise<PhylloContentsData | { ok: false; error: string; status: number }> {
+  // Requires the ENGAGEMENT product. Pulls recent posts and computes avg
+  // views / engagement rate across the last 30 days where possible.
+  const since = new Date();
+  since.setDate(since.getDate() - 30);
+  const fromDate = since.toISOString().slice(0, 10);
+
+  const result = await phylloFetch<Record<string, unknown>>(
+    `/v1/social/contents?account_id=${encodeURIComponent(accountId)}&from_date=${fromDate}&limit=50`,
+    { method: "GET" }
+  );
+  if (!result.ok) return { ok: false, error: result.error, status: result.status };
+
+  const body = result.data;
+  const items = Array.isArray((body as { data?: unknown[] }).data)
+    ? (body as { data: Record<string, unknown>[] }).data
+    : Array.isArray((body as { contents?: unknown[] }).contents)
+      ? (body as { contents: Record<string, unknown>[] }).contents
+      : [];
+
+  let totalViews = 0;
+  let totalEngagementInteractions = 0;
+  let sampleCount = 0;
+
+  for (const raw of items) {
+    if (!raw || typeof raw !== "object") continue;
+    const engagement = (raw.engagement as Record<string, unknown> | undefined) ?? {};
+    const views = numberOrNull(engagement.view_count) ?? numberOrNull(engagement.impression_count) ?? numberOrNull(raw.view_count) ?? 0;
+    const likes = numberOrNull(engagement.like_count) ?? numberOrNull(raw.like_count) ?? 0;
+    const comments = numberOrNull(engagement.comment_count) ?? numberOrNull(raw.comment_count) ?? 0;
+    const shares = numberOrNull(engagement.share_count) ?? numberOrNull(raw.share_count) ?? 0;
+    totalViews += views ?? 0;
+    totalEngagementInteractions += (likes ?? 0) + (comments ?? 0) + (shares ?? 0);
+    sampleCount += 1;
+  }
+
+  const avgViews = sampleCount > 0 ? Math.round(totalViews / sampleCount) : 0;
+  const engagementRate = totalViews > 0
+    ? Number(((totalEngagementInteractions / totalViews) * 100).toFixed(2))
+    : 0;
+
+  return {
+    ok: true,
+    avg_views_30d: avgViews,
+    total_views_30d: totalViews,
+    engagement_rate_30d: engagementRate,
+    sample_count: sampleCount,
+    raw: body
+  };
+}
+
 // ---------- 4. Disconnect a connected account ----------
 
 export async function disconnectAccount(accountId: string) {

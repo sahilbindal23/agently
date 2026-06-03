@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { buildMockSocialSnapshot } from "@/lib/social/mock-sync";
-import { fetchAccountProfile, type PhylloProfileData } from "@/lib/social/phyllo-client";
+import { fetchAccountAudience, fetchAccountContents, fetchAccountProfile, type PhylloAudienceData, type PhylloContentsData, type PhylloProfileData } from "@/lib/social/phyllo-client";
 import { refreshCreatorScoresFromSnapshots } from "@/lib/social/sync-engine";
 import { unsealToken } from "@/lib/social/token-seal";
 import { createAdminClient } from "@/lib/supabase/admin";
@@ -48,11 +48,19 @@ export async function POST(request: Request) {
   // same source the initial connect used). Works for every entity type.
   let snapshot: Record<string, unknown>;
   if (account.phyllo_account_id) {
-    const profile = await fetchAccountProfile(String(account.phyllo_account_id));
+    const phylloAccountId = String(account.phyllo_account_id);
+    const [profile, audience, contents] = await Promise.all([
+      fetchAccountProfile(phylloAccountId),
+      fetchAccountAudience(phylloAccountId),
+      fetchAccountContents(phylloAccountId)
+    ]);
     if (!profile.ok) {
       return NextResponse.json({ error: `Phyllo sync failed: ${profile.error}` }, { status: 502 });
     }
-    snapshot = buildPhylloSnapshot(String(account.provider), profile);
+    // Audience + contents are best-effort - some providers/plans don't
+    // grant the IDENTITY.AUDIENCE or ENGAGEMENT products, so a 4xx here
+    // shouldn't fail the sync. We just persist whatever we got.
+    snapshot = buildPhylloSnapshot(String(account.provider), profile, audience.ok ? audience : null, contents.ok ? contents : null);
   } else {
     const matchingPlatform = platforms.find((platform) => providerMatchesPlatform(String(account.provider), String(platform.platform)));
     const oauthSnapshot = await buildOAuthSnapshot(account);
@@ -136,20 +144,42 @@ function buildSelfReportedSnapshot({
   };
 }
 
-function buildPhylloSnapshot(provider: string, profile: PhylloProfileData) {
+function buildPhylloSnapshot(
+  provider: string,
+  profile: PhylloProfileData,
+  audience: PhylloAudienceData | null,
+  contents: PhylloContentsData | null
+) {
   const followers = profile.followers ?? 0;
-  const hasMetrics = followers > 0;
+  const avgViews = contents?.avg_views_30d ?? 0;
+  const totalViews = contents?.total_views_30d ?? 0;
+  const engagementRate = contents?.engagement_rate_30d ?? 0;
+
+  const indiaPercent = audience?.countries.find((row) => row.code.toUpperCase() === "IN")?.percent ?? 0;
+  const bangalorePercent = audience?.cities.find((row) => row.name.toLowerCase().includes("bangalore") || row.name.toLowerCase().includes("bengaluru"))?.percent ?? 0;
+  const topCities = (audience?.cities ?? [])
+    .slice()
+    .sort((a, b) => b.percent - a.percent)
+    .slice(0, 5)
+    .map((row) => row.name);
+
+  const hasMetrics = followers > 0 || avgViews > 0;
+  const signals = [provider];
+  if (hasMetrics) signals.push("phyllo verified");
+  if (contents) signals.push("phyllo engagement");
+  if (audience) signals.push("phyllo audience");
+
   return {
     followers,
-    avg_views_30d: 0,
-    reach_30d: 0,
-    impressions_30d: 0,
-    engagement_rate_30d: 0,
-    india_audience_percent: 0,
-    bangalore_audience_percent: 0,
-    top_cities: [],
-    audience_age_range: null,
-    content_category_signals: [provider, hasMetrics ? "phyllo verified" : "phyllo connected"],
+    avg_views_30d: avgViews,
+    reach_30d: totalViews,
+    impressions_30d: totalViews,
+    engagement_rate_30d: engagementRate,
+    india_audience_percent: indiaPercent,
+    bangalore_audience_percent: bangalorePercent,
+    top_cities: topCities,
+    audience_age_range: audience?.age_range ?? null,
+    content_category_signals: signals,
     raw_metrics: {
       provider,
       source: "phyllo",
@@ -158,7 +188,10 @@ function buildPhylloSnapshot(provider: string, profile: PhylloProfileData) {
       following: profile.following,
       content_count: profile.content_count,
       is_verified: profile.is_verified,
-      profile_url: profile.url
+      profile_url: profile.url,
+      engagement_samples: contents?.sample_count ?? 0,
+      audience_countries: audience?.countries ?? [],
+      audience_cities: audience?.cities ?? []
     },
     source: hasMetrics ? `phyllo_${provider}_api` : `phyllo_${provider}_no_metrics`
   };

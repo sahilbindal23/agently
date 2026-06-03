@@ -38,11 +38,21 @@ export function LoginForm() {
     setError("");
 
     const formData = new FormData(event.currentTarget);
-    const response = await fetch("/api/auth/login", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(Object.fromEntries(formData.entries()))
-    });
+    let response: Response;
+    try {
+      response = await fetch("/api/auth/login", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(Object.fromEntries(formData.entries()))
+      });
+    } catch {
+      // iOS Safari throws "TypeError: Load failed" on transient network
+      // drops (wifi handoff, brief 4G dips). Catch it so the button resets
+      // and Sentry doesn't see an unhandled rejection.
+      setStatus("error");
+      setError("Network problem. Check your connection and try again.");
+      return;
+    }
 
     const body = await response.json().catch(() => ({}));
     if (!response.ok) {
