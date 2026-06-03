@@ -112,6 +112,7 @@ async function updateBrand(admin: NonNullable<ReturnType<typeof createAdminClien
     target_audience: text(body.target_audience),
     category: payload.industry,
     city_focus: text(body.city_focus),
+    brand_tone: text(body.brand_tone),
     brand_notes: text(body.brand_notes)
   };
 

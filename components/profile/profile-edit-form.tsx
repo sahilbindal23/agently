@@ -10,6 +10,8 @@ import {
   AUDIENCE_AGE_RANGES,
   AVAILABILITY_STATUSES,
   BRAND_INDUSTRIES,
+  BRAND_TONES,
+  CAMPAIGN_GOALS,
   CAMPAIGN_LENGTHS,
   CONTENT_STYLES,
   COUNTRIES,
@@ -183,8 +185,9 @@ function BrandFields({ profile, audit }: { profile: Record<string, unknown>; aud
       {/* "Bangalore launch fit" signal removed — city fit is now internal,
           fed dynamically per campaign via the recommendation engine. */}
       <Textarea className="md:col-span-2" name="target_audience" placeholder="Who is your target customer? (e.g. 25-34 urban women in metros)" defaultValue={value(auditInput?.target_audience)} />
-      <Textarea className="md:col-span-2" name="campaign_goal" placeholder="What's the campaign goal? (awareness, signups, sales, app installs…)" defaultValue={value(auditInput?.campaign_goal)} />
-      <Textarea className="md:col-span-2" name="brand_notes" placeholder="Brand tone, constraints, competitors, product notes (optional)" defaultValue={value(auditInput?.brand_notes)} />
+      <Select name="campaign_goal" label="Primary campaign goal" options={CAMPAIGN_GOALS} defaultValue={value(auditInput?.campaign_goal)} placeholderOption="Pick the main goal" />
+      <Select name="brand_tone" label="Brand tone" options={BRAND_TONES} defaultValue={value(auditInput?.brand_tone)} placeholderOption="How should creators sound?" />
+      <Textarea className="md:col-span-2" name="brand_notes" placeholder="Anything else: constraints, competitors, product notes (optional)" defaultValue={value(auditInput?.brand_notes)} />
     </>
   );
 }

@@ -172,6 +172,38 @@ export const CREATOR_SIZE_BANDS: Option[] = [
   { value: "mixed", label: "Mixed tiers" }
 ];
 
+// Preset campaign goals. Kept as a controlled list so brand intake never
+// receives free-text junk or off-brief copy. Values are canonical strings
+// the recommendation engine understands; labels are user-facing.
+export const CAMPAIGN_GOALS: Option[] = [
+  { value: "awareness",       label: "Brand awareness / reach" },
+  { value: "consideration",   label: "Product consideration" },
+  { value: "launch",          label: "Product or brand launch" },
+  { value: "sales",           label: "Sales / conversions" },
+  { value: "app_installs",    label: "App installs" },
+  { value: "signups",         label: "Signups / lead generation" },
+  { value: "ugc",             label: "User-generated content" },
+  { value: "event",           label: "Event promotion" },
+  { value: "community",       label: "Community building / engagement" },
+  { value: "rebrand",         label: "Rebrand / repositioning" }
+];
+
+// Preset brand tones for campaigns. Same rationale as CAMPAIGN_GOALS:
+// short, controlled list so we never accept unmoderated free text on
+// intake. Used on brand profile + signup forms.
+export const BRAND_TONES: Option[] = [
+  { value: "playful",     label: "Playful / fun" },
+  { value: "premium",     label: "Premium / luxury" },
+  { value: "minimal",     label: "Minimal / understated" },
+  { value: "bold",        label: "Bold / loud" },
+  { value: "authentic",   label: "Authentic / down-to-earth" },
+  { value: "professional", label: "Professional / corporate" },
+  { value: "youthful",    label: "Youthful / Gen-Z" },
+  { value: "aspirational", label: "Aspirational" },
+  { value: "trustworthy", label: "Trustworthy / dependable" },
+  { value: "irreverent",  label: "Irreverent / edgy" }
+];
+
 export const CAMPAIGN_LENGTHS: Option[] = [
   { value: "1_week",    label: "1 week burst" },
   { value: "2_4_weeks", label: "2–4 weeks" },

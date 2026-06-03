@@ -12,6 +12,8 @@ import { HomeLogo } from "@/components/layout/home-logo";
 import {
   AVAILABILITY_STATUSES,
   BRAND_INDUSTRIES,
+  BRAND_TONES,
+  CAMPAIGN_GOALS,
   CAMPAIGN_LENGTHS,
   CREATOR_SIZE_BANDS,
   FREELANCER_SERVICES,
@@ -173,8 +175,9 @@ function BrandEnrollmentFields() {
       <Select name="campaign_length" label="Campaign length" options={CAMPAIGN_LENGTHS} placeholderOption="How long will the campaign run?" />
       <Select name="creator_size_band" label="Preferred creator size" options={CREATOR_SIZE_BANDS} placeholderOption="What size creators do you want?" />
       <Input className="md:col-span-2" name="target_audience" placeholder="Who is your target customer? (e.g. 25-34 urban women in metros)" />
-      <Textarea className="md:col-span-2" name="campaign_goal" placeholder="What is the campaign goal? (awareness, signups, sales, app installs…)" />
-      <Textarea className="md:col-span-2" name="brand_notes" placeholder="Brand tone, competitors, constraints (optional)" />
+      <Select name="campaign_goal" label="Primary campaign goal" options={CAMPAIGN_GOALS} placeholderOption="Pick the main goal" />
+      <Select name="brand_tone" label="Brand tone" options={BRAND_TONES} placeholderOption="How should creators sound?" />
+      <Textarea className="md:col-span-2" name="brand_notes" placeholder="Anything else: constraints, competitors, product notes (optional)" />
     </>
   );
 }

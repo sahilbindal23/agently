@@ -4,6 +4,8 @@ import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input, Textarea } from "@/components/ui/input";
+import { Select } from "@/components/ui/select";
+import { CAMPAIGN_GOALS } from "@/lib/taxonomies";
 import type { Creator } from "@/types";
 
 export function BrandOfferForm({ creators }: { creators: Creator[] }) {
@@ -58,7 +60,7 @@ export function BrandOfferForm({ creators }: { creators: Creator[] }) {
       <Input name="title" placeholder="Campaign title" required />
       <Input name="due_date" type="date" />
       <Textarea className="md:col-span-2" name="deliverables" placeholder="Requested deliverables" required />
-      <Textarea className="md:col-span-2" name="campaign_goal" placeholder="Campaign goal or product launch context" />
+      <Select className="md:col-span-2" name="campaign_goal" label="Primary campaign goal" options={CAMPAIGN_GOALS} placeholderOption="Pick the main goal" />
       <Button className="md:col-span-2" disabled={status === "saving"}>
         {status === "saving" ? "Submitting..." : "Submit brand offer"}
       </Button>

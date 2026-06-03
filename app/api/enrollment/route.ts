@@ -19,7 +19,8 @@ const FREE_TEXT_RULES: Record<EnrollmentRole, Array<{ field: string; label: stri
   brand: [
     { field: "brand_name",      label: "Brand name",       minLength: 2,  optional: false },
     { field: "target_audience", label: "Target audience",  minLength: 10, optional: true },
-    { field: "campaign_goal",   label: "Campaign goal",    minLength: 10, optional: true },
+    // campaign_goal and brand_tone are dropdowns of preset values now, so
+    // no sanity check is needed - the form can only submit canonical values.
     { field: "brand_notes",     label: "Brand notes",      minLength: 10, optional: true }
   ],
   freelancer: [

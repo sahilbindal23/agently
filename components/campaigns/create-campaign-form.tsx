@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { ClipboardList } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input, Textarea } from "@/components/ui/input";
+import { CAMPAIGN_GOALS } from "@/lib/taxonomies";
 import type { Creator } from "@/types";
 
 // Curated India-first option sets. Keeps the form low-friction (clicks
@@ -251,7 +252,10 @@ export function CreateCampaignForm({ creators = [] }: { creators?: Creator[] }) 
         </div>
       ) : null}
       <Textarea className="md:col-span-2" name="target_audience" placeholder="Target audience" />
-      <Textarea className="md:col-span-2" name="campaign_goal" placeholder="Campaign goal and context" required />
+      <Select className="md:col-span-2" name="campaign_goal" defaultValue="" required>
+        <option value="">Primary campaign goal…</option>
+        {CAMPAIGN_GOALS.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}
+      </Select>
       <Button className="md:col-span-2" disabled={status === "saving"}>
         <ClipboardList className="h-4 w-4" />
         {status === "saving" ? "Creating..." : "Create campaign brief"}
