@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { buildMockSocialSnapshot } from "@/lib/social/mock-sync";
+import { fetchAccountProfile, type PhylloProfileData } from "@/lib/social/phyllo-client";
 import { refreshCreatorScoresFromSnapshots } from "@/lib/social/sync-engine";
 import { unsealToken } from "@/lib/social/token-seal";
 import { createAdminClient } from "@/lib/supabase/admin";
@@ -24,24 +25,48 @@ export async function POST(request: Request) {
     if (profile?.role !== "admin") return NextResponse.json({ error: "Not allowed to sync this account." }, { status: 403 });
   }
 
-  const [{ data: creator }, { data: platforms }] = await Promise.all([
-    admin.from("creators").select("*").eq("id", account.creator_id).single(),
-    admin.from("creator_platforms").select("*").eq("creator_id", account.creator_id)
-  ]);
-  if (!creator) return NextResponse.json({ error: "Creator not found." }, { status: 404 });
+  // A connection can belong to a creator, brand, or freelancer (migration 038).
+  // Only creator-owned accounts have a creators row and feed the scoring
+  // pipeline; brand and freelancer connections still sync a metric snapshot so
+  // their profile shows verified follower counts.
+  let creator: Record<string, unknown> | null = null;
+  let platforms: Array<Record<string, unknown>> = [];
+  if (account.creator_id) {
+    const [{ data: creatorRow }, { data: platformRows }] = await Promise.all([
+      admin.from("creators").select("*").eq("id", account.creator_id).single(),
+      admin.from("creator_platforms").select("*").eq("creator_id", account.creator_id)
+    ]);
+    if (!creatorRow) return NextResponse.json({ error: "Creator not found." }, { status: 404 });
+    creator = creatorRow;
+    platforms = platformRows ?? [];
+  } else if (!account.brand_id && !account.freelancer_id) {
+    return NextResponse.json({ error: "This connection is not linked to a profile." }, { status: 404 });
+  }
 
-  const matchingPlatform = (platforms ?? []).find((platform) => providerMatchesPlatform(String(account.provider), String(platform.platform)));
-  const oauthSnapshot = await buildOAuthSnapshot(account);
-  const snapshot = oauthSnapshot ?? (isDemoProfile(authData.user.email ?? "") ? buildMockSocialSnapshot({
-    provider: account.provider,
-    handle: String(account.handle ?? ""),
-    creator,
-    platform: matchingPlatform
-  }) : buildSelfReportedSnapshot({
-    provider: account.provider,
-    handle: String(account.handle ?? ""),
-    creator
-  }));
+  // Phyllo-connected accounts carry no stored OAuth token - refresh by
+  // re-fetching the latest profile from Phyllo's /v1/profiles endpoint (the
+  // same source the initial connect used). Works for every entity type.
+  let snapshot: Record<string, unknown>;
+  if (account.phyllo_account_id) {
+    const profile = await fetchAccountProfile(String(account.phyllo_account_id));
+    if (!profile.ok) {
+      return NextResponse.json({ error: `Phyllo sync failed: ${profile.error}` }, { status: 502 });
+    }
+    snapshot = buildPhylloSnapshot(String(account.provider), profile);
+  } else {
+    const matchingPlatform = platforms.find((platform) => providerMatchesPlatform(String(account.provider), String(platform.platform)));
+    const oauthSnapshot = await buildOAuthSnapshot(account);
+    snapshot = oauthSnapshot ?? (creator && isDemoProfile(authData.user.email ?? "") ? buildMockSocialSnapshot({
+      provider: account.provider,
+      handle: String(account.handle ?? ""),
+      creator,
+      platform: matchingPlatform
+    }) : buildSelfReportedSnapshot({
+      provider: account.provider,
+      handle: String(account.handle ?? ""),
+      creator: creator ?? {}
+    }));
+  }
 
   const { data: inserted, error } = await admin
     .from("social_metric_snapshots")
@@ -56,12 +81,13 @@ export async function POST(request: Request) {
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
 
-  const latestSignals = await refreshCreatorScoresFromSnapshots(admin, String(account.creator_id));
+  // Score recompute only applies to creators; brand/freelancer connections
+  // just persist the snapshot for profile display.
+  const latestSignals = account.creator_id
+    ? await refreshCreatorScoresFromSnapshots(admin, String(account.creator_id))
+    : null;
   const nextStatus = socialAccountStatusAfterSync(String(snapshot.source ?? ""));
-  await Promise.all([
-    admin.from("connected_social_accounts").update({ last_synced_at: new Date().toISOString(), status: nextStatus }).eq("id", account.id),
-    Promise.resolve()
-  ]);
+  await admin.from("connected_social_accounts").update({ last_synced_at: new Date().toISOString(), status: nextStatus }).eq("id", account.id);
 
   return NextResponse.json({ data: inserted, summary: latestSignals });
 }
@@ -107,6 +133,34 @@ function buildSelfReportedSnapshot({
       note: "Manual connect does not verify audience metrics. Use OAuth/API sync or admin review for score-driving metrics."
     },
     source: "self_reported_pending_review"
+  };
+}
+
+function buildPhylloSnapshot(provider: string, profile: PhylloProfileData) {
+  const followers = profile.followers ?? 0;
+  const hasMetrics = followers > 0;
+  return {
+    followers,
+    avg_views_30d: 0,
+    reach_30d: 0,
+    impressions_30d: 0,
+    engagement_rate_30d: 0,
+    india_audience_percent: 0,
+    bangalore_audience_percent: 0,
+    top_cities: [],
+    audience_age_range: null,
+    content_category_signals: [provider, hasMetrics ? "phyllo verified" : "phyllo connected"],
+    raw_metrics: {
+      provider,
+      source: "phyllo",
+      handle: profile.platform_username,
+      followers: profile.followers,
+      following: profile.following,
+      content_count: profile.content_count,
+      is_verified: profile.is_verified,
+      profile_url: profile.url
+    },
+    source: hasMetrics ? `phyllo_${provider}_api` : `phyllo_${provider}_no_metrics`
   };
 }
 
