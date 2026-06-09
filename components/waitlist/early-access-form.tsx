@@ -66,6 +66,18 @@ export function EarlyAccessForm() {
 
   return (
     <form className="grid gap-3" onSubmit={onSubmit}>
+      {/* Honeypot: hidden from humans, bots fill it. Server silently drops
+          submissions where this is non-empty. Not display:none alone — also
+          off-screen + aria-hidden so it's robust and never focusable. */}
+      <input
+        type="text"
+        name="homepage"
+        tabIndex={-1}
+        autoComplete="off"
+        aria-hidden="true"
+        className="absolute left-[-9999px] h-0 w-0 opacity-0"
+        defaultValue=""
+      />
       <Input name="full_name" placeholder="Full name" required autoComplete="name" />
       <Input name="email" type="email" placeholder="Email" required autoComplete="email" />
       <div className="grid gap-3 sm:grid-cols-2">

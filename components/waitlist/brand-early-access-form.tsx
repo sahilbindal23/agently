@@ -73,6 +73,17 @@ export function BrandEarlyAccessForm() {
 
   return (
     <form className="grid gap-3" onSubmit={onSubmit}>
+      {/* Honeypot: hidden from humans, bots fill it. Server silently drops
+          submissions where this is non-empty. */}
+      <input
+        type="text"
+        name="homepage"
+        tabIndex={-1}
+        autoComplete="off"
+        aria-hidden="true"
+        className="absolute left-[-9999px] h-0 w-0 opacity-0"
+        defaultValue=""
+      />
       <Input name="company" placeholder="Company / brand name" required autoComplete="organization" />
       <Input name="full_name" placeholder="Your name" required autoComplete="name" />
       <Input name="email" type="email" placeholder="Work email" required autoComplete="email" />

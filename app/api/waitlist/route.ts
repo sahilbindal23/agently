@@ -12,8 +12,21 @@ function optional(value: unknown, max = 200): string | null {
   return text.length > 0 ? text : null;
 }
 
+// Max successful waitlist submissions per IP per hour. Generous enough for
+// shared/NAT'd networks and legitimate retries, tight enough to stop a bot
+// using the endpoint to blast confirmation emails at arbitrary addresses
+// (which would damage the sending domain's reputation).
+const MAX_PER_IP_PER_HOUR = 8;
+
 export async function POST(request: Request) {
   const body = await request.json().catch(() => ({}));
+
+  // Honeypot: this hidden field is invisible to humans but eagerly filled by
+  // dumb form bots. If it's populated, pretend success and do nothing — no
+  // insert, no email — so the bot gets no signal that it was caught.
+  if (optional(body.homepage)) {
+    return NextResponse.json({ ok: true });
+  }
 
   const role = String(body.role ?? "creator") as Role;
   const email = String(body.email ?? "").trim().toLowerCase();
@@ -69,6 +82,29 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Server is not configured. Please try again later." }, { status: 500 });
   }
 
+  const ipAddress =
+    request.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ??
+    request.headers.get("x-real-ip") ??
+    null;
+
+  // Per-IP throttle. Counts this IP's submissions in the last hour before
+  // accepting another. Fails open (allows) if the count query itself errors,
+  // so a transient DB issue never blocks a genuine signup.
+  if (ipAddress) {
+    const sinceIso = new Date(Date.now() - 60 * 60 * 1000).toISOString();
+    const { count, error: countError } = await supabase
+      .from("waitlist")
+      .select("id", { count: "exact", head: true })
+      .eq("ip_address", ipAddress)
+      .gte("created_at", sinceIso);
+    if (!countError && (count ?? 0) >= MAX_PER_IP_PER_HOUR) {
+      return NextResponse.json(
+        { error: "Too many requests from your network. Please try again later." },
+        { status: 429, headers: { "Retry-After": "3600" } }
+      );
+    }
+  }
+
   const row = {
     role,
     full_name: nameCheck.cleaned,
@@ -85,7 +121,7 @@ export async function POST(request: Request) {
     note,
     source: optional(body.source, 60),
     consent_at: new Date().toISOString(),
-    ip_address: request.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ?? request.headers.get("x-real-ip") ?? null,
+    ip_address: ipAddress,
     user_agent: request.headers.get("user-agent") ?? null
   };
 
