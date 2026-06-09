@@ -17,15 +17,22 @@ create table if not exists waitlist (
   -- because the beta seeds the supply (creator/freelancer) side first, but the
   -- column is general so the same table can capture brands later.
   role text not null default 'creator' check (role in ('creator', 'brand', 'freelancer')),
+  -- For creators this is the person's name; for brands it's the contact
+  -- person's name (brand name goes in `company`).
   full_name text not null,
   email text not null,
-  -- Lightweight profile snapshot so we can prioritise invites by niche/size
-  -- without making people fill a full intake before they're even accepted.
+  -- Creator-side snapshot so we can prioritise invites by niche/size without
+  -- making people fill a full intake before they're even accepted.
   primary_platform text,
   handle text,
   primary_niche text,
   follower_band text,
   city text,
+  -- Brand-side snapshot (null for creators).
+  company text,
+  website text,
+  industry text,
+  budget_band text,
   note text,
   -- Pipeline state: pending (new) -> invited (we sent an invite) ->
   -- joined (they created an account) | rejected (not a fit for beta).

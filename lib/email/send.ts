@@ -53,10 +53,11 @@ export function signupConfirmationEmail({ fullName, confirmationUrl }: {
   return { html: renderAgentlyEmail(input), text: renderAgentlyEmailText(input) };
 }
 
-export function waitlistConfirmationEmail({ fullName }: { fullName: string }) {
+export function waitlistConfirmationEmail({ fullName, role = "creator" }: { fullName: string; role?: "creator" | "brand" | "freelancer" }) {
+  const audience = role === "brand" ? "brands" : "founding creators";
   const input = {
     heading: "You're on the Agently early-access list",
-    intro: `Hi ${fullName}, thanks for requesting early access. Agently is onboarding founding creators in small batches so every profile gets proper attention. We'll email you from this address when your invite is ready — keep an eye on your inbox (and spam, just in case).`,
+    intro: `Hi ${fullName}, thanks for requesting early access. Agently is onboarding ${audience} in small batches so every account gets proper attention. We'll email you from this address when your invite is ready — keep an eye on your inbox (and spam, just in case).`,
     footnote: "If you didn't request early access to Agently, you can ignore this email — we won't add you to anything else."
   };
   return { html: renderAgentlyEmail(input), text: renderAgentlyEmailText(input) };

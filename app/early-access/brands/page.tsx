@@ -1,43 +1,43 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { BadgeCheck, IndianRupee, ShieldCheck, Sparkles } from "lucide-react";
+import { BadgeCheck, FileCheck2, ShieldCheck, Target } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardTitle } from "@/components/ui/card";
 import { HomeLogo } from "@/components/layout/home-logo";
-import { EarlyAccessForm } from "@/components/waitlist/early-access-form";
+import { BrandEarlyAccessForm } from "@/components/waitlist/brand-early-access-form";
 
 export const metadata: Metadata = {
-  title: "Early access for creators",
+  title: "Early access for brands",
   description:
-    "Agently is onboarding founding creators in India. Request early access to get matched with brands, price your work with INR rate bands, scan contracts, and get paid through protected payments.",
-  alternates: { canonical: "/early-access" },
+    "Run creator campaigns in India with less risk. Agently matches you to vetted creators on fit, scans contracts, and protects payments from funding to release. Request early access.",
+  alternates: { canonical: "/early-access/brands" },
   openGraph: {
-    title: "Agently — early access for founding creators",
+    title: "Agently — early access for brands",
     description:
-      "Join the first wave of creators on Agently. Brand matching, INR pricing guidance, contract scans, and protected payouts.",
-    url: "/early-access"
+      "Get matched to vetted creators on fit, scan contracts, and run protected payments. Request early access.",
+    url: "/early-access/brands"
   }
 };
 
 const perks = [
   {
-    title: "Founding-creator pricing",
-    copy: "0% platform fee on your first deals. Lock in early-member terms before public pricing goes live.",
-    icon: IndianRupee
+    title: "Matched on fit, not follower count",
+    copy: "Brief your goal once. Agently ranks creators on category, city, language, audience, and budget — not vanity metrics.",
+    icon: Target
   },
   {
-    title: "Get matched, not lost in a search",
-    copy: "Tell us your niche and audience once. Brands are matched to you on fit — city, category, language, and budget.",
-    icon: Sparkles
+    title: "Contracts scanned before you sign",
+    copy: "Every agreement is checked for risky clauses, so usage rights, exclusivity, and deliverables are clear up front.",
+    icon: FileCheck2
   },
   {
-    title: "Protected from brief to payout",
-    copy: "Contract risk scans before you sign, and protected payments so you're never chasing money after delivering.",
+    title: "Protected payments",
+    copy: "Funds are held and released against approved deliverables — you pay for work that actually ships.",
     icon: ShieldCheck
   }
 ];
 
-export default function EarlyAccessPage() {
+export default function BrandEarlyAccessPage() {
   return (
     <main className="min-h-screen">
       <header className="mx-auto flex max-w-6xl items-center justify-between px-4 py-5 sm:px-6 lg:px-8">
@@ -51,15 +51,15 @@ export default function EarlyAccessPage() {
         <div className="flex flex-col justify-center">
           <Badge tone="green" className="mb-5 flex w-fit items-center gap-1.5">
             <BadgeCheck className="h-3.5 w-3.5" />
-            Founding creators · India first
+            For brands · India first
           </Badge>
           <h1 className="max-w-2xl text-5xl font-bold tracking-normal text-foreground">
-            Be one of the first creators on Agently.
+            Run creator campaigns with less guesswork and less risk.
           </h1>
           <p className="mt-5 max-w-xl text-base leading-7 text-muted-foreground">
-            We&apos;re opening Agently to a small group of founding creators before the public launch.
-            Get matched with brands that fit your audience, price your work with real INR rate bands,
-            avoid risky contracts, and get paid through protected payments.
+            We&apos;re opening Agently to a small group of brands before the public launch. Get matched
+            to vetted creators on real fit, scan contracts before you sign, and run protected payments —
+            all in one workspace.
           </p>
           <div className="mt-8 grid gap-3">
             {perks.map((perk) => {
@@ -78,9 +78,9 @@ export default function EarlyAccessPage() {
             })}
           </div>
           <p className="mt-6 text-sm text-muted-foreground">
-            Are you a brand?{" "}
-            <Link href="/early-access/brands" className="font-semibold text-primary hover:underline">
-              Request brand access →
+            Are you a creator?{" "}
+            <Link href="/early-access" className="font-semibold text-primary hover:underline">
+              Request creator access →
             </Link>
           </p>
         </div>
@@ -91,9 +91,9 @@ export default function EarlyAccessPage() {
             <Badge tone="blue">Free</Badge>
           </div>
           <p className="mb-5 text-sm text-muted-foreground">
-            Takes a minute. We invite founding creators in small batches and email you when it&apos;s your turn.
+            Takes a minute. We invite brands in small batches and email you when it&apos;s your turn.
           </p>
-          <EarlyAccessForm />
+          <BrandEarlyAccessForm />
         </Card>
       </section>
 

@@ -38,6 +38,20 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: sanityErrorMessage(nameCheck, "Name") }, { status: 400 });
   }
 
+  // Brands must give a company name; sanity-check it the same way.
+  let company: string | null = null;
+  if (role === "brand") {
+    const rawCompany = String(body.company ?? "").trim();
+    if (!rawCompany) {
+      return NextResponse.json({ error: "Company / brand name is required." }, { status: 400 });
+    }
+    const companyCheck = checkFreeText(rawCompany, { fieldLabel: "Company", minLength: 2, maxLength: 120 });
+    if (!companyCheck.ok) {
+      return NextResponse.json({ error: sanityErrorMessage(companyCheck, "Company") }, { status: 400 });
+    }
+    company = companyCheck.cleaned;
+  }
+
   // Optional note gets a light sanity pass too, but never blocks the request
   // on length — people may leave it blank.
   const rawNote = optional(body.note, 1000);
@@ -64,6 +78,10 @@ export async function POST(request: Request) {
     primary_niche: optional(body.primary_niche, 40),
     follower_band: optional(body.follower_band, 40),
     city: optional(body.city, 60),
+    company,
+    website: optional(body.website, 200),
+    industry: optional(body.industry, 60),
+    budget_band: optional(body.budget_band, 40),
     note,
     source: optional(body.source, 60),
     consent_at: new Date().toISOString(),
@@ -84,7 +102,7 @@ export async function POST(request: Request) {
 
   // Confirmation email is best-effort: a delivery failure must not fail the
   // request (unlike signup, there's no account to roll back here).
-  const template = waitlistConfirmationEmail({ fullName: nameCheck.cleaned });
+  const template = waitlistConfirmationEmail({ fullName: nameCheck.cleaned, role });
   await sendEmail({
     to: email,
     subject: "You're on the Agently early-access list",
