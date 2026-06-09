@@ -53,6 +53,15 @@ export function signupConfirmationEmail({ fullName, confirmationUrl }: {
   return { html: renderAgentlyEmail(input), text: renderAgentlyEmailText(input) };
 }
 
+export function waitlistConfirmationEmail({ fullName }: { fullName: string }) {
+  const input = {
+    heading: "You're on the Agently early-access list",
+    intro: `Hi ${fullName}, thanks for requesting early access. Agently is onboarding founding creators in small batches so every profile gets proper attention. We'll email you from this address when your invite is ready — keep an eye on your inbox (and spam, just in case).`,
+    footnote: "If you didn't request early access to Agently, you can ignore this email — we won't add you to anything else."
+  };
+  return { html: renderAgentlyEmail(input), text: renderAgentlyEmailText(input) };
+}
+
 export function passwordResetEmail({ fullName, resetUrl }: { fullName: string | null; resetUrl: string; }) {
   const greeting = fullName ? `Hi ${fullName}` : "Hi";
   const input = {

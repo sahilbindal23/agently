@@ -83,17 +83,26 @@ export default async function HomePage() {
             Agently connects creators, brands, and creative freelancers, then keeps the important work in one place: matching, pricing, contracts, payment status, deliverables, and negotiation support for the talent side.
           </p>
           <div className="mt-7 flex flex-wrap gap-3">
-            <Link href="/signup">
-              <Button className="h-11 px-5">
-                Create account
-                <ArrowRight className="h-4 w-4" />
-              </Button>
-            </Link>
             {user ? (
               <Link href="/app">
-                <Button className="h-11 px-5" variant="secondary">Go to your workspace</Button>
+                <Button className="h-11 px-5">
+                  Go to your workspace
+                  <ArrowRight className="h-4 w-4" />
+                </Button>
               </Link>
-            ) : null}
+            ) : (
+              <>
+                <Link href="/early-access">
+                  <Button className="h-11 px-5">
+                    Request early access
+                    <ArrowRight className="h-4 w-4" />
+                  </Button>
+                </Link>
+                <Link href="/signup">
+                  <Button className="h-11 px-5" variant="secondary">Create account</Button>
+                </Link>
+              </>
+            )}
           </div>
         </div>
 
