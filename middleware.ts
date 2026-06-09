@@ -16,8 +16,17 @@ const publicRoutes = new Set([
   "/auth/callback",
   "/privacy",
   "/terms",
-  "/data-deletion"
+  "/data-deletion",
+  // Public beta waitlist pages — these are marketing landing pages that ad
+  // traffic (logged-out) and curious logged-in users must both reach. The
+  // prefix check below also covers /early-access/brands and any future
+  // sub-pages.
+  "/early-access"
 ]);
+
+// Public route prefixes: any path at or under these is open. Used for landing
+// pages that have sub-routes (e.g. /early-access/brands).
+const publicPrefixes = ["/early-access/"];
 const blockedSessionEmails = new Set([
   "admin@agently.demo",
   "brand@agently.demo",
@@ -59,7 +68,7 @@ const adminRoutes = [
 
 export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
-  if (isStaticOrApi(pathname) || publicRoutes.has(pathname)) {
+  if (isStaticOrApi(pathname) || publicRoutes.has(pathname) || isPublicPrefix(pathname)) {
     return NextResponse.next({ request });
   }
 
@@ -118,6 +127,10 @@ export const config = {
 
 function isStaticOrApi(pathname: string) {
   return pathname.startsWith("/api") || pathname.startsWith("/_next") || pathname.includes(".");
+}
+
+function isPublicPrefix(pathname: string) {
+  return publicPrefixes.some((prefix) => pathname.startsWith(prefix));
 }
 
 function isAllowed(role: string, pathname: string) {
