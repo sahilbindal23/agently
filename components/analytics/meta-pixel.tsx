@@ -2,7 +2,7 @@
 
 import Script from "next/script";
 import { usePathname, useSearchParams } from "next/navigation";
-import { Suspense, useEffect } from "react";
+import { Suspense, useEffect, useRef } from "react";
 
 // Meta (Facebook) Pixel for ad → signup conversion measurement.
 //
@@ -35,9 +35,17 @@ function PageViewTracker() {
   const pathname = usePathname();
   const searchParams = useSearchParams();
 
+  // The base script already fires PageView on initial load, and this effect
+  // also runs once on mount — skip that first run or every landing counts
+  // twice and ad metrics (CPM, cost-per-click context) are all inflated ~2x.
+  const isFirstRun = useRef(true);
+
   useEffect(() => {
-    // Fire a PageView on every client-side route change. The base script
-    // already fires the first PageView on initial load.
+    if (isFirstRun.current) {
+      isFirstRun.current = false;
+      return;
+    }
+    // Fire a PageView on every client-side route change.
     if (typeof window !== "undefined" && typeof window.fbq === "function") {
       window.fbq("track", "PageView");
     }
