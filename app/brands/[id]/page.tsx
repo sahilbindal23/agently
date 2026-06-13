@@ -11,6 +11,7 @@ import { Table, Td, Th } from "@/components/ui/table";
 import { VerificationBadge } from "@/components/verification/verification-badge";
 import { getCurrentUser } from "@/lib/auth/session";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { safeExternalHref } from "@/lib/utils/safe-url";
 
 export const dynamic = "force-dynamic";
 
@@ -74,8 +75,8 @@ export default async function BrandProfilePage({ params }: { params: Promise<{ i
             ) : (
               <Info label="Contact" value="Message via Agently" />
             )}
-            {brand.website ? (
-              <a className="inline-flex items-center gap-2 text-sm font-medium text-primary" href={String(brand.website)} rel="noreferrer" target="_blank">
+            {safeExternalHref(brand.website) ? (
+              <a className="inline-flex items-center gap-2 text-sm font-medium text-primary" href={safeExternalHref(brand.website)} rel="noopener noreferrer nofollow" target="_blank">
                 <Globe2 className="h-4 w-4" />
                 Website
               </a>
@@ -128,10 +129,10 @@ export default async function BrandProfilePage({ params }: { params: Promise<{ i
               {connectedAccounts.map((account) => (
                 <a
                   className="flex items-start gap-3 rounded-md border bg-white p-3 transition hover:border-primary/50 dark:border-white/8 dark:bg-card"
-                  href={account.account_url ? String(account.account_url) : "#"}
+                  href={safeExternalHref(account.account_url) ?? "#"}
                   key={`${account.provider}-${account.handle}`}
-                  rel="noreferrer"
-                  target={account.account_url ? "_blank" : undefined}
+                  rel="noopener noreferrer nofollow"
+                  target={safeExternalHref(account.account_url) ? "_blank" : undefined}
                 >
                   <div className="rounded-md bg-primary/10 p-2 text-primary">
                     <Sparkles className="h-4 w-4" />

@@ -12,6 +12,7 @@ import { Card, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, Td, Th } from "@/components/ui/table";
 import { VerificationBadge } from "@/components/verification/verification-badge";
 import { getCurrentUser } from "@/lib/auth/session";
+import { safeExternalHref } from "@/lib/utils/safe-url";
 import { getCreatorBundle } from "@/lib/db/live-data";
 import { getCreatorLanguages, getIndiaAudiencePercent } from "@/lib/utils/creator-metrics";
 import { formatCurrency, formatNumber, formatPercent } from "@/lib/utils/format";
@@ -142,7 +143,7 @@ export default async function CreatorDetailPage({ params }: { params: Promise<{ 
                 <Insight label="Followers" value={formatNumber(platform.followers)} />
                 <Insight label="Avg views" value={formatNumber(platform.avg_views)} />
               </div>
-              {platform.url ? <a className="mt-3 inline-flex text-sm font-medium text-primary" href={platform.url} target="_blank">Open social profile</a> : null}
+              {safeExternalHref(platform.url) ? <a className="mt-3 inline-flex text-sm font-medium text-primary" href={safeExternalHref(platform.url)} target="_blank" rel="noopener noreferrer nofollow">Open social profile</a> : null}
             </div>
           ))}
         </div>

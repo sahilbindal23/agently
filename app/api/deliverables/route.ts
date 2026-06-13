@@ -4,11 +4,12 @@ import { trackEvent, userEventBase } from "@/lib/analytics/track";
 import { notifyDeliverableSubmitted } from "@/lib/email/workflow";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
+import { isHttpUrl } from "@/lib/utils/safe-url";
 
 const schema = z.object({
   entity_type: z.enum(["deal", "freelancer_project"]).default("deal"),
   entity_id: z.string().trim().min(1, "Work item ID is required."),
-  content_url: z.string().trim().url("A valid deliverable URL is required."),
+  content_url: z.string().trim().url("A valid deliverable URL is required.").refine(isHttpUrl, "Deliverable link must start with http:// or https://"),
   platform: z.string().trim().max(80).optional().default(""),
   title: z.string().trim().max(200).optional().default(""),
   notes: z.string().trim().max(2000).optional().default("")

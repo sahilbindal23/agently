@@ -3,12 +3,13 @@ import { z } from "zod";
 import { gateRateLimit } from "@/lib/security/rate-limit-gate";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
+import { isHttpUrl } from "@/lib/utils/safe-url";
 
 const openSchema = z.object({
   deal_id: z.string().uuid().optional(),
   freelancer_project_id: z.string().uuid().optional(),
   reason: z.string().trim().min(10, "Please describe the issue in at least 10 characters.").max(2000),
-  evidence_url: z.string().trim().url("Evidence URL must be a valid link.").max(500).optional().or(z.literal(""))
+  evidence_url: z.string().trim().url("Evidence URL must be a valid link.").max(500).refine(isHttpUrl, "Evidence link must start with http:// or https://").optional().or(z.literal(""))
 }).refine((data) => Boolean(data.deal_id) !== Boolean(data.freelancer_project_id), {
   message: "Provide exactly one of deal_id or freelancer_project_id."
 });

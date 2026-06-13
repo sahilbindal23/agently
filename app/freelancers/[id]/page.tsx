@@ -13,6 +13,7 @@ import { VerificationBadge } from "@/components/verification/verification-badge"
 import { getCurrentUser } from "@/lib/auth/session";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { formatCurrency } from "@/lib/utils/format";
+import { safeExternalHref } from "@/lib/utils/safe-url";
 
 export default async function FreelancerDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
@@ -98,7 +99,7 @@ export default async function FreelancerDetailPage({ params }: { params: Promise
           <CardHeader><CardTitle>Portfolio Gallery</CardTitle><Badge tone="green">{data.portfolio.length}</Badge></CardHeader>
           <div className="grid gap-3 md:grid-cols-2">
             {data.portfolio.slice(0, 6).map((item) => (
-              <a className="group rounded-md border bg-white p-4 transition hover:border-primary hover:shadow-soft" href={String(item.url)} key={String(item.id)} target="_blank">
+              <a className="group rounded-md border bg-white p-4 transition hover:border-primary hover:shadow-soft" href={safeExternalHref(item.url) ?? "#"} key={String(item.id)} target="_blank" rel="noopener noreferrer nofollow">
                 <div className="mb-3 flex items-start justify-between gap-3">
                   <div>
                     <p className="font-semibold">{String(item.title)}</p>

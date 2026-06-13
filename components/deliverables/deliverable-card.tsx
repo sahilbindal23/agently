@@ -3,6 +3,7 @@ import { ExternalLink } from "lucide-react";
 import { DeliverableReviewActions } from "@/components/deliverables/deliverable-review-actions";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { safeExternalHref } from "@/lib/utils/safe-url";
 import type { Deliverable } from "@/types";
 
 export function DeliverableCard({
@@ -34,12 +35,16 @@ export function DeliverableCard({
       </div>
       <p className="text-sm leading-6 text-muted-foreground">{deliverable.notes || "No talent notes added."}</p>
       <div className="mt-3">
-        <Link href={deliverable.content_url} target="_blank">
-          <Button type="button" variant="secondary" size="sm">
-            <ExternalLink className="h-4 w-4" />
-            Open deliverable
-          </Button>
-        </Link>
+        {safeExternalHref(deliverable.content_url) ? (
+          <Link href={safeExternalHref(deliverable.content_url) as string} target="_blank" rel="noopener noreferrer nofollow">
+            <Button type="button" variant="secondary" size="sm">
+              <ExternalLink className="h-4 w-4" />
+              Open deliverable
+            </Button>
+          </Link>
+        ) : (
+          <p className="text-xs text-muted-foreground">Submitted link is not a valid web URL.</p>
+        )}
       </div>
       {deliverable.review_notes ? (
         <div className="mt-3 rounded-md bg-muted p-3">
