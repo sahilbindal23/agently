@@ -46,8 +46,9 @@ export async function POST(request: Request) {
     }, { status: 403 });
   }
 
-  const role = profileResult.data?.role ?? "admin";
-  if (admin) {
+  // Fail closed: never default a missing-profile login to "admin".
+  const role = profileResult.data?.role ?? "";
+  if (admin && role) {
     await admin.auth.admin.updateUserById(data.user.id, {
       user_metadata: {
         ...data.user.user_metadata,
@@ -59,6 +60,11 @@ export async function POST(request: Request) {
   return NextResponse.json({
     user_id: data.user.id,
     role,
-    next_url: role === "creator" ? "/creator-home" : role === "brand" ? "/brand-home" : role === "freelancer" ? "/freelancer-home" : "/dashboard"
+    next_url:
+      role === "creator" ? "/creator-home" :
+      role === "brand" ? "/brand-home" :
+      role === "freelancer" ? "/freelancer-home" :
+      role === "admin" ? "/dashboard" :
+      "/"
   });
 }

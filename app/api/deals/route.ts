@@ -204,7 +204,9 @@ export async function POST(request: Request) {
 
 async function getRole(admin: NonNullable<ReturnType<typeof createAdminClient>>, profileId: string) {
   const { data } = await admin.from("profiles").select("role").eq("id", profileId).maybeSingle();
-  return String(data?.role ?? "admin");
+  // Fail closed: a missing profile row yields no role (not "admin"), so the
+  // GET handler returns an empty list rather than every deal on the platform.
+  return String(data?.role ?? "");
 }
 
 async function getCampaign(admin: NonNullable<ReturnType<typeof createAdminClient>>, campaignId: string) {

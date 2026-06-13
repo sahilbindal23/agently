@@ -53,7 +53,7 @@ export default async function AiInsightsPage({ searchParams }: { searchParams: P
 
       <ValuationEngine />
 
-      <BrandMatchEngine creators={visibleCreators} role={user?.role ?? "admin"} />
+      <BrandMatchEngine creators={visibleCreators} role={user?.role ?? "creator"} />
 
       {showNegotiationCopilot ? <NegotiationCopilot initialValues={negotiationPrefill(params)} role={negotiationRole} /> : null}
     </AppShell>

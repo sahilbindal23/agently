@@ -191,7 +191,7 @@ export async function AppShell({ children }: { children: React.ReactNode }) {
         </div>
         {children}
       </main>
-      <GuidedWalkthrough role={user?.role ?? "admin"} />
+      <GuidedWalkthrough role={user?.role ?? "creator"} />
     </div>
   );
 }

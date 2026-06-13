@@ -27,7 +27,7 @@ const roleCopy = {
 
 export default async function DemoGuidePage() {
   const user = await getCurrentUser();
-  const role = user?.role ?? "admin";
+  const role = user?.role ?? "creator";
   const intro = roleCopy[role] ?? roleCopy.admin;
 
   return (

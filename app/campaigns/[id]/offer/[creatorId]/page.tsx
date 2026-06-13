@@ -6,12 +6,18 @@ import { AppShell } from "@/components/layout/app-shell";
 import { PageHeader } from "@/components/layout/page-header";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardHeader, CardTitle } from "@/components/ui/card";
+import { getCurrentUser } from "@/lib/auth/session";
+import { canAccessCampaign } from "@/lib/auth/guards";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { formatCurrency } from "@/lib/utils/format";
 import type { Campaign, Creator } from "@/types";
 
 export default async function OfferComposerPage({ params }: { params: Promise<{ id: string; creatorId: string }> }) {
   const { id, creatorId } = await params;
+  // Only the campaign owner (or admin) may compose an offer from it — otherwise
+  // a brand could read a competitor's campaign budget/audience via this page.
+  const user = await getCurrentUser();
+  if (!(await canAccessCampaign(user, id))) notFound();
   const data = await getOfferData(id, creatorId);
   if (!data.campaign || !data.creator) notFound();
 

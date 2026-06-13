@@ -6,11 +6,16 @@ import { AppShell } from "@/components/layout/app-shell";
 import { PageHeader } from "@/components/layout/page-header";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardHeader, CardTitle } from "@/components/ui/card";
+import { getCurrentUser } from "@/lib/auth/session";
+import { canAccessCampaign } from "@/lib/auth/guards";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { formatCurrency } from "@/lib/utils/format";
 
 export default async function FreelancerProjectComposerPage({ params }: { params: Promise<{ id: string; freelancerId: string }> }) {
   const { id, freelancerId } = await params;
+  // Only the campaign owner (or admin) may compose a project from it.
+  const user = await getCurrentUser();
+  if (!(await canAccessCampaign(user, id))) notFound();
   const data = await getProjectData(id, freelancerId);
   if (!data.campaign || !data.freelancer) notFound();
 
