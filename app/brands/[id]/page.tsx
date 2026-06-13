@@ -66,7 +66,14 @@ export default async function BrandProfilePage({ params }: { params: Promise<{ i
           <div className="space-y-3 text-sm">
             <Info label="Industry" value={String(brand.industry ?? "Not listed")} />
             <Info label="Status" value={String(brand.status ?? "target")} />
-            <Info label="Contact" value={String(brand.contact_email ?? "Not listed")} />
+            {/* Contact email is PII — only the brand owner or an admin sees the
+                raw address. Everyone else uses the "Message brand" button, which
+                routes through Agently without exposing the email for harvesting. */}
+            {isOwnProfile || currentUser?.role === "admin" ? (
+              <Info label="Contact" value={String(brand.contact_email ?? "Not listed")} />
+            ) : (
+              <Info label="Contact" value="Message via Agently" />
+            )}
             {brand.website ? (
               <a className="inline-flex items-center gap-2 text-sm font-medium text-primary" href={String(brand.website)} rel="noreferrer" target="_blank">
                 <Globe2 className="h-4 w-4" />

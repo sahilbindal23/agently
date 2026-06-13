@@ -14,6 +14,7 @@ import { Card, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, Td, Th } from "@/components/ui/table";
 import { VerificationBadge } from "@/components/verification/verification-badge";
 import { getCurrentUser } from "@/lib/auth/session";
+import { homeForRole } from "@/lib/auth/guards";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { formatCurrency } from "@/lib/utils/format";
 import type { Deliverable, PaymentStatus, RiskLevel } from "@/types";
@@ -25,6 +26,7 @@ export const dynamic = "force-dynamic";
 export default async function OpsPage() {
   const user = await getCurrentUser();
   if (!user) redirect("/login");
+  if (user.role !== "admin") redirect(homeForRole(user.role));
 
   const admin = createAdminClient();
   if (!admin) redirect("/dashboard");

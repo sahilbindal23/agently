@@ -11,6 +11,7 @@ import { Card, CardHeader, CardTitle } from "@/components/ui/card";
 import { projectCampaignPerformance, type CampaignPerformanceProjection } from "@/lib/campaigns/performance";
 import { applyEventInformedRanking, rankCreators, rankFreelancers, type CampaignRecommendation, type FreelancerRecommendationInput, type RecommendationEventSignal, type ServiceRateInput } from "@/lib/campaigns/recommendations";
 import { getCurrentUser } from "@/lib/auth/session";
+import { canAccessCampaign } from "@/lib/auth/guards";
 import { canSeeDemoData, withoutDemoRows } from "@/lib/db/demo-visibility";
 import { getAgentlyData, getCreatorMetricSnapshots } from "@/lib/db/live-data";
 import { upsertRecommendationLedgerRows } from "@/lib/engines/outcome-ledger";
@@ -28,6 +29,10 @@ export default async function CampaignDetailPage({
 }) {
   const { id } = await params;
   const user = await getCurrentUser();
+  // Ownership gate: campaigns are brand-side. Only the campaign/brand owner or
+  // an admin may view the brief, budget, shortlist, and roster. Without this,
+  // any brand could read a competitor's campaign by changing the URL id.
+  if (!(await canAccessCampaign(user, id))) notFound();
   const includeDemo = canSeeDemoData(user);
   const [{ creators, creatorPlatforms, deals, brands }, campaignData] = await Promise.all([
     getAgentlyData({ includeDemo }),

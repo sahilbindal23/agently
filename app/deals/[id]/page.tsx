@@ -10,6 +10,7 @@ import { DealProtectionTimeline } from "@/components/protection/deal-protection-
 import { Badge } from "@/components/ui/badge";
 import { Card, CardHeader, CardTitle } from "@/components/ui/card";
 import { getCurrentUser } from "@/lib/auth/session";
+import { canAccessDeal } from "@/lib/auth/guards";
 import { getDealBundle } from "@/lib/db/live-data";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { formatCurrency } from "@/lib/utils/format";
@@ -22,6 +23,11 @@ export default async function DealDetailPage({ params }: { params: Promise<{ id:
     getCurrentUser()
   ]);
   if (!deal) notFound();
+  // Ownership gate: only the deal's creator, the brand/campaign owner, or an
+  // admin may view it. Without this, any user who can reach /deals/* could read
+  // any deal's amount, payout, contract, and deliverables by changing the URL.
+  // notFound() (not 403) so we don't even confirm the ID exists.
+  if (!(await canAccessDeal(user, id))) notFound();
   const isAdmin = user?.role === "admin";
   const deliverable = await getLatestDeliverable(id);
 

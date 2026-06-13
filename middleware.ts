@@ -1,6 +1,7 @@
 import type { NextRequest } from "next/server";
 import { NextResponse } from "next/server";
 import { createServerClient } from "@supabase/ssr";
+import { createAdminClient } from "@/lib/supabase/admin";
 
 // Routes that never require auth. /forgot-password and /reset-password are
 // part of the password-recovery flow; /auth/callback is where Supabase lands
@@ -115,10 +116,23 @@ export async function middleware(request: NextRequest) {
 
   if (pathname === "/app") return response;
 
-  const role = String(data.user.user_metadata?.role ?? "admin");
+  // Authorization must use the role from the profiles table, NOT
+  // data.user.user_metadata.role — a logged-in user can rewrite their own
+  // user_metadata (supabase.auth.updateUser({ data: { role: 'admin' } })) and
+  // would otherwise self-promote to admin route access. Fail closed: if the
+  // role can't be resolved, send to /login rather than assuming any access.
+  const role = await resolveRole(data.user.id);
+  if (!role) return redirectTo(request, "/login");
   if (isAllowed(role, pathname)) return response;
 
   return redirectTo(request, homeForRole(role));
+}
+
+async function resolveRole(userId: string): Promise<string> {
+  const admin = createAdminClient();
+  if (!admin) return "";
+  const { data } = await admin.from("profiles").select("role").eq("id", userId).maybeSingle();
+  return String(data?.role ?? "");
 }
 
 export const config = {

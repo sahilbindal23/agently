@@ -6,11 +6,13 @@ import { Badge } from "@/components/ui/badge";
 import { Card, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, Td, Th } from "@/components/ui/table";
 import { VerificationBadge } from "@/components/verification/verification-badge";
+import { requireRole } from "@/lib/auth/guards";
 import { getAgentlyData } from "@/lib/db/live-data";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { formatCurrency } from "@/lib/utils/format";
 
 export default async function DashboardPage() {
+  await requireRole("admin");
   const { brands, contracts, creators, deals, payments, source } = await getAgentlyData();
   const verificationQueue = await getVerificationQueue();
   const pipelineValue = deals.reduce((sum, deal) => sum + deal.amount_cents, 0);

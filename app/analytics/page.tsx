@@ -6,6 +6,7 @@ import { Badge } from "@/components/ui/badge";
 import { Card, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, Td, Th } from "@/components/ui/table";
 import { getCurrentUser } from "@/lib/auth/session";
+import { homeForRole } from "@/lib/auth/guards";
 import { createAdminClient } from "@/lib/supabase/admin";
 
 type ProductEvent = {
@@ -32,6 +33,7 @@ export const dynamic = "force-dynamic";
 export default async function AnalyticsPage() {
   const user = await getCurrentUser();
   if (!user) redirect("/login");
+  if (user.role !== "admin") redirect(homeForRole(user.role));
 
   const admin = createAdminClient();
   if (!admin) redirect("/dashboard");

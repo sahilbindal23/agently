@@ -7,6 +7,7 @@ import { Card, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, Td, Th } from "@/components/ui/table";
 import { applyEventInformedRanking, rankCreators, rankFreelancers, type CampaignRecommendation, type FreelancerRecommendationInput, type RecommendationEventSignal, type ServiceRateInput } from "@/lib/campaigns/recommendations";
 import { getCurrentUser } from "@/lib/auth/session";
+import { homeForRole } from "@/lib/auth/guards";
 import { getAgentlyData, getCreatorMetricSnapshots } from "@/lib/db/live-data";
 import { enginePrinciples, engineWeights } from "@/lib/engines/math";
 import { createAdminClient } from "@/lib/supabase/admin";
@@ -17,6 +18,7 @@ export const dynamic = "force-dynamic";
 export default async function EngineRoomPage() {
   const user = await getCurrentUser();
   if (!user) redirect("/login");
+  if (user.role !== "admin") redirect(homeForRole(user.role));
 
   if (user.role !== "admin") {
     return (

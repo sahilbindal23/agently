@@ -16,11 +16,14 @@ export const getCurrentUser = cache(async (): Promise<CurrentUser> => {
 
   const admin = createAdminClient();
   if (!admin) {
+    // Service role key missing = misconfiguration. Fail CLOSED to the least-
+    // privileged role rather than open to admin, so a broken deploy can never
+    // hand every visitor admin access. (Was previously "admin".)
     return {
       id: data.user.id,
       email: data.user.email ?? "",
       full_name: data.user.user_metadata?.full_name ?? "Agently user",
-      role: "admin"
+      role: "creator"
     };
   }
 
@@ -34,6 +37,9 @@ export const getCurrentUser = cache(async (): Promise<CurrentUser> => {
     id: data.user.id,
     email: profile?.email ?? data.user.email ?? "",
     full_name: profile?.full_name ?? data.user.user_metadata?.full_name ?? "Agently user",
-    role: profile?.role ?? "admin"
+    // Role is authoritative ONLY from the profiles table. If the row is missing
+    // we fail closed to a non-privileged role — never admin, and never the
+    // client-writable user_metadata.role (which a user can rewrite themselves).
+    role: profile?.role ?? "creator"
   };
 });

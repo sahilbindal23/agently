@@ -1,8 +1,10 @@
 import { AuditWorkbench } from "@/components/ai/audit-workbench";
 import { AppShell } from "@/components/layout/app-shell";
 import { PageHeader } from "@/components/layout/page-header";
+import { requireRole } from "@/lib/auth/guards";
 
-export default function AuditsPage() {
+export default async function AuditsPage() {
+  await requireRole("admin");
   return (
     <AppShell>
       <PageHeader
