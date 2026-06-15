@@ -21,7 +21,7 @@ export default async function CampaignsPage() {
   const includeDemo = canSeeDemoData(user);
   const [{ creators, creatorPlatforms, brands }, campaignData] = await Promise.all([
     getAgentlyData({ includeDemo }),
-    getCampaignData(includeDemo)
+    getCampaignData(includeDemo, user)
   ]);
   const latestCampaign = campaignData.campaigns[0];
   const latestCampaignBrand = latestCampaign?.brand_id ? brands.find((brand) => brand.id === latestCampaign.brand_id) ?? null : null;
@@ -150,7 +150,7 @@ function RecommendationColumn({
   );
 }
 
-async function getCampaignData(includeDemo: boolean) {
+async function getCampaignData(includeDemo: boolean, user: Awaited<ReturnType<typeof getCurrentUser>>) {
   const admin = createAdminClient();
   if (!admin) {
     return { campaigns: [] as Campaign[], freelancers: [] as FreelancerRecommendationInput[], serviceRates: [] as ServiceRateInput[], shortlists: [] as CampaignShortlist[], invites: [] as { campaign_id: string; creator_id: string }[], productEvents: [] as RecommendationEventSignal[] };
@@ -165,14 +165,39 @@ async function getCampaignData(includeDemo: boolean) {
     getProductEvents(admin)
   ]);
 
+  // Scope campaigns to the viewer's OWN briefs unless they're an admin.
+  // Without this, every brand sees every other brand's campaign title, budget,
+  // and focus in the "Recent Campaigns" list (cross-tenant leak). The detail
+  // page is already guarded by canAccessCampaign; this closes the list view.
+  let campaignRows = (campaignsResult.data ?? []) as Array<Record<string, unknown>>;
+  if (user?.role !== "admin") {
+    const brandIds = user ? await getBrandIdsForUser(admin, user.id, user.email) : [];
+    campaignRows = user
+      ? campaignRows.filter((c) =>
+          String(c.profile_id ?? "") === user.id ||
+          (Boolean(c.brand_id) && brandIds.includes(String(c.brand_id))))
+      : [];
+  }
+
   return {
-    campaigns: withoutDemoRows((campaignsResult.data ?? []).map(normalizeCampaign), includeDemo),
+    campaigns: withoutDemoRows(campaignRows.map(normalizeCampaign), includeDemo),
     freelancers: withoutDemoRows((freelancersResult.data ?? []) as FreelancerRecommendationInput[], includeDemo),
     serviceRates: (serviceRatesResult.data ?? []) as ServiceRateInput[],
     shortlists: (shortlistsResult.data ?? []).map(normalizeShortlist),
     invites: (invitesResult.data ?? []).map((row) => ({ campaign_id: String(row.campaign_id), creator_id: String(row.creator_id) })),
     productEvents
   };
+}
+
+async function getBrandIdsForUser(admin: NonNullable<ReturnType<typeof createAdminClient>>, profileId: string, email: string) {
+  const [{ data: brands }, { data: audits }] = await Promise.all([
+    admin.from("brands").select("id").eq("contact_email", email),
+    admin.from("brand_audits").select("brand_id").eq("profile_id", profileId)
+  ]);
+  return Array.from(new Set([
+    ...((brands ?? []).map((brand) => String(brand.id))),
+    ...((audits ?? []).map((audit) => String(audit.brand_id)).filter(Boolean))
+  ]));
 }
 
 async function getProductEvents(admin: NonNullable<ReturnType<typeof createAdminClient>>) {
