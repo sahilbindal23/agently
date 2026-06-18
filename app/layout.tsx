@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from "next";
 import { Analytics } from "@vercel/analytics/next";
 import { CookieConsentBanner } from "@/components/legal/cookie-consent-banner";
 import { MetaPixel } from "@/components/analytics/meta-pixel";
+import { MotionProvider } from "@/components/motion/motion-provider";
 import "./globals.css";
 
 const SITE_URL = process.env.NEXT_PUBLIC_APP_URL || process.env.APP_URL || "https://agently.co.in";
@@ -65,7 +66,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <script dangerouslySetInnerHTML={{ __html: `(function(){try{var t=localStorage.getItem('theme');if(t==='dark'||(!t&&window.matchMedia('(prefers-color-scheme: dark)').matches)){document.documentElement.classList.add('dark')}}catch(e){}})()` }} />
       </head>
       <body suppressHydrationWarning>
-        {children}
+        <MotionProvider>{children}</MotionProvider>
         <CookieConsentBanner />
         <Analytics />
         <MetaPixel />
