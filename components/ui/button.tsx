@@ -1,7 +1,17 @@
-import * as React from "react";
-import { cn } from "@/lib/utils/cn";
+"use client";
 
-type ButtonProps = React.ButtonHTMLAttributes<HTMLButtonElement> & {
+import * as React from "react";
+import { motion } from "motion/react";
+import { cn } from "@/lib/utils/cn";
+import { SPRING_SNAPPY } from "@/lib/motion/variants";
+
+// Omit the DOM event handlers whose signatures collide with Motion's own
+// (drag + animation lifecycle). No Button caller uses these, and dropping them
+// lets us spread the rest cleanly onto motion.button without type conflicts.
+type ButtonProps = Omit<
+  React.ButtonHTMLAttributes<HTMLButtonElement>,
+  "onAnimationStart" | "onAnimationEnd" | "onAnimationIteration" | "onDrag" | "onDragStart" | "onDragEnd"
+> & {
   variant?: "primary" | "secondary" | "ghost" | "danger";
   size?: "sm" | "md" | "icon";
 };
@@ -19,9 +29,16 @@ const sizes = {
   icon: "h-10 w-10 p-0"
 };
 
+// Every button in the app gets the same physical press feedback: a small
+// scale-up on hover and a quick squash on tap, on a snappy spring. Disabled
+// buttons have pointer-events:none (below), so they never animate. Reduced
+// motion is honored globally via MotionProvider.
 export function Button({ className, variant = "primary", size = "md", ...props }: ButtonProps) {
   return (
-    <button
+    <motion.button
+      whileHover={{ scale: 1.02 }}
+      whileTap={{ scale: 0.97 }}
+      transition={SPRING_SNAPPY}
       className={cn(
         "inline-flex items-center justify-center gap-2 rounded-md font-medium transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50",
         variants[variant],
