@@ -61,6 +61,15 @@ a {
   text-decoration: none;
 }
 
+/* Display face (Space Grotesk) for every heading, app-wide, so type hierarchy
+   reads as one intentional system. Body inherits Manrope via Tailwind's
+   fontFamily.sans. Slight negative tracking keeps the grotesk tight at large
+   sizes; per-element tracking-* utilities still win where set. */
+h1, h2, h3, h4 {
+  font-family: var(--font-display), ui-sans-serif, system-ui, sans-serif;
+  letter-spacing: -0.018em;
+}
+
 /* Dark-mode guardrails for legacy light utility classes.
    Several prototype screens still compose panels directly with bg-white/light
    utilities instead of the shared Card primitive. These overrides keep text and

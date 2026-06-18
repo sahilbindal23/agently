@@ -1,9 +1,27 @@
 import type { Metadata, Viewport } from "next";
+import { Manrope, Space_Grotesk } from "next/font/google";
 import { Analytics } from "@vercel/analytics/next";
 import { CookieConsentBanner } from "@/components/legal/cookie-consent-banner";
 import { MetaPixel } from "@/components/analytics/meta-pixel";
 import { MotionProvider } from "@/components/motion/motion-provider";
 import "./globals.css";
+
+// Distinctive type pairing (avoids the generic Inter/system-default tell):
+// Space Grotesk for display headings, Manrope for body. Loaded as CSS variables
+// so Tailwind's fontFamily.sans / .display resolve to them. display:"swap"
+// keeps text visible during font load (no invisible-text flash).
+const sans = Manrope({
+  subsets: ["latin"],
+  weight: ["400", "500", "600", "700"],
+  variable: "--font-sans",
+  display: "swap"
+});
+const display = Space_Grotesk({
+  subsets: ["latin"],
+  weight: ["500", "600", "700"],
+  variable: "--font-display",
+  display: "swap"
+});
 
 const SITE_URL = process.env.NEXT_PUBLIC_APP_URL || process.env.APP_URL || "https://agently.co.in";
 
@@ -60,7 +78,7 @@ export const viewport: Viewport = {
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="en" suppressHydrationWarning>
+    <html lang="en" className={`${sans.variable} ${display.variable}`} suppressHydrationWarning>
       <head>
         {/* Prevent flash of wrong theme on load */}
         <script dangerouslySetInnerHTML={{ __html: `(function(){try{var t=localStorage.getItem('theme');if(t==='dark'||(!t&&window.matchMedia('(prefers-color-scheme: dark)').matches)){document.documentElement.classList.add('dark')}}catch(e){}})()` }} />

@@ -9,6 +9,13 @@ const config: Config = {
   ],
   theme: {
     extend: {
+      fontFamily: {
+        // Body text — Manrope (loaded via next/font in app/layout.tsx). Tailwind
+        // preflight applies `sans` to <body>, so this becomes the default face
+        // everywhere. Display — Space Grotesk, applied to headings in globals.css.
+        sans: ["var(--font-sans)", "ui-sans-serif", "system-ui", "-apple-system", "Segoe UI", "sans-serif"],
+        display: ["var(--font-display)", "var(--font-sans)", "ui-sans-serif", "system-ui", "sans-serif"]
+      },
       colors: {
         border: "hsl(var(--border))",
         input: "hsl(var(--input))",
