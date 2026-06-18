@@ -25,6 +25,13 @@ export const DURATION = {
 export const SPRING_SNAPPY: Transition = { type: "spring", stiffness: 420, damping: 32, mass: 0.7 };
 /** Softer spring for hover lift and layout shifts. */
 export const SPRING_SOFT: Transition = { type: "spring", stiffness: 260, damping: 26 };
+/**
+ * Crisp non-overshooting tween for utility press feedback. Per the motion-
+ * principles anti-slop list, utility/high-frequency buttons should NOT use
+ * bouncy springs or hover-scale — a fast, flat tap response reads as precise,
+ * not playful. Reserve springs for prominent CTAs and layout shifts.
+ */
+export const TWEEN_FAST: Transition = { duration: 0.13, ease: EASE_OUT };
 
 export const fadeUp: Variants = {
   hidden: { opacity: 0, y: 14 },
@@ -53,11 +60,25 @@ export const staggerItem: Variants = {
   visible: { opacity: 1, y: 0, transition: { duration: DURATION.slow, ease: EASE_OUT } }
 };
 
-/** Standard interactive feedback for buttons/links. */
+/**
+ * Utility press feedback — tap-only, no hover-scale, crisp tween. This is the
+ * default for app buttons (avoids the "indiscriminate hover-scale" + "bouncy
+ * spring on utility buttons" anti-slop tells). Hover is left to CSS colour
+ * changes, which read as intentional rather than gimmicky.
+ */
 export const pressable = {
+  whileTap: { scale: 0.98 },
+  transition: TWEEN_FAST
+} as const;
+
+/**
+ * Prominent-CTA press feedback — a small deliberate hover lift + tap, for hero
+ * call-to-actions where the scale reads as emphasis, not noise. Use sparingly.
+ */
+export const pressableCta = {
   whileHover: { scale: 1.02 },
   whileTap: { scale: 0.97 },
-  transition: SPRING_SNAPPY
+  transition: SPRING_SOFT
 } as const;
 
 /** Card hover lift. */

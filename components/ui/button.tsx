@@ -3,7 +3,7 @@
 import * as React from "react";
 import { motion } from "motion/react";
 import { cn } from "@/lib/utils/cn";
-import { SPRING_SNAPPY } from "@/lib/motion/variants";
+import { pressable } from "@/lib/motion/variants";
 
 // Omit the DOM event handlers whose signatures collide with Motion's own
 // (drag + animation lifecycle). No Button caller uses these, and dropping them
@@ -29,16 +29,14 @@ const sizes = {
   icon: "h-10 w-10 p-0"
 };
 
-// Every button in the app gets the same physical press feedback: a small
-// scale-up on hover and a quick squash on tap, on a snappy spring. Disabled
-// buttons have pointer-events:none (below), so they never animate. Reduced
-// motion is honored globally via MotionProvider.
+// Every button gets the same crisp press feedback: a quick squash on tap (no
+// hover-scale, no bouncy spring — those read as AI-slop on utility buttons).
+// Hover is handled by the variant's CSS colour change. Disabled buttons have
+// pointer-events:none, so they never animate. Reduced motion honored globally.
 export function Button({ className, variant = "primary", size = "md", ...props }: ButtonProps) {
   return (
     <motion.button
-      whileHover={{ scale: 1.02 }}
-      whileTap={{ scale: 0.97 }}
-      transition={SPRING_SNAPPY}
+      {...pressable}
       className={cn(
         "inline-flex items-center justify-center gap-2 rounded-md font-medium transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50",
         variants[variant],
