@@ -1,6 +1,8 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
+import type { ReactNode } from "react";
 import { AppShell } from "@/components/layout/app-shell";
+import { AnimatedNumber } from "@/components/motion/animated-number";
 import { MarketplaceTabs } from "@/components/marketplace/marketplace-tabs";
 import { PageHeader } from "@/components/layout/page-header";
 import { ProfileCompletenessCard } from "@/components/profile/profile-completeness-card";
@@ -102,7 +104,7 @@ export default async function BrandHomePage() {
           brands targeting other Indian cities. */}
       <section className="grid gap-4 md:grid-cols-2">
         <Metric label="Creator size band" value={String(result?.creator_size_band ?? "Run intake")} />
-        <Metric label="Active offers" value={`${deals?.length ?? 0}`} />
+        <Metric label="Active offers" value={<AnimatedNumber value={deals?.length ?? 0} />} />
       </section>
 
       <section className="mt-5 grid gap-5 xl:grid-cols-[minmax(0,1fr)_320px]">
@@ -168,7 +170,7 @@ export default async function BrandHomePage() {
   );
 }
 
-function Metric({ label, value }: { label: string; value: string }) {
+function Metric({ label, value }: { label: string; value: ReactNode }) {
   return (
     <Card>
       <p className="text-sm text-muted-foreground">{label}</p>

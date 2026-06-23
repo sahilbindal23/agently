@@ -1,14 +1,16 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
+import type { ReactNode } from "react";
 import { AppShell } from "@/components/layout/app-shell";
 import { PageHeader } from "@/components/layout/page-header";
+import { AnimatedNumber } from "@/components/motion/animated-number";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, Td, Th } from "@/components/ui/table";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
-import { formatCurrency, formatNumber } from "@/lib/utils/format";
+import { formatCurrency } from "@/lib/utils/format";
 
 type CampaignRow = {
   id: string;
@@ -111,16 +113,16 @@ export default async function BrandInsightsPage() {
       />
 
       <section className="grid gap-4 md:grid-cols-4">
-        <Metric label="Active campaign spend" value={formatCurrency(activeSpend, "inr")} />
-        <Metric label="Accepted talent" value={`${acceptedDeals.length + acceptedProjects.length}`} />
-        <Metric label="Deliverables in review" value={`${submittedDeliverables}`} />
-        <Metric label="Payment release queue" value={`${releaseReady}`} />
+        <Metric label="Active campaign spend" value={<AnimatedNumber value={activeSpend} format="currency" />} />
+        <Metric label="Accepted talent" value={<AnimatedNumber value={acceptedDeals.length + acceptedProjects.length} />} />
+        <Metric label="Deliverables in review" value={<AnimatedNumber value={submittedDeliverables} />} />
+        <Metric label="Payment release queue" value={<AnimatedNumber value={releaseReady} />} />
       </section>
 
       <section className="mt-5 grid gap-4 md:grid-cols-4">
-        <Metric label="Estimated reach" value={formatNumber(estimatedReach)} />
-        <Metric label="Estimated engagements" value={formatNumber(estimatedEngagements)} />
-        <Metric label="Creator signals" value={`${snapshotRows.filter((snapshot) => snapshot.entity_type === "creator").length}`} />
+        <Metric label="Estimated reach" value={<AnimatedNumber value={estimatedReach} />} />
+        <Metric label="Estimated engagements" value={<AnimatedNumber value={estimatedEngagements} />} />
+        <Metric label="Creator signals" value={<AnimatedNumber value={snapshotRows.filter((snapshot) => snapshot.entity_type === "creator").length} />} />
         <Metric label="Avg recommendation fit" value={`${Math.round(avgFit) || 0}/100`} />
       </section>
 
@@ -202,7 +204,7 @@ export default async function BrandInsightsPage() {
   );
 }
 
-function Metric({ label, value }: { label: string; value: string }) {
+function Metric({ label, value }: { label: string; value: ReactNode }) {
   return (
     <Card>
       <p className="text-sm text-muted-foreground">{label}</p>
