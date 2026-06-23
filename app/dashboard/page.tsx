@@ -6,6 +6,7 @@ import { Badge } from "@/components/ui/badge";
 import { Card, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, Td, Th } from "@/components/ui/table";
 import { VerificationBadge } from "@/components/verification/verification-badge";
+import { AnimatedNumber } from "@/components/motion/animated-number";
 import { requireRole } from "@/lib/auth/guards";
 import { getAgentlyData } from "@/lib/db/live-data";
 import { createAdminClient } from "@/lib/supabase/admin";
@@ -29,10 +30,10 @@ export default async function DashboardPage() {
       />
 
       <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-        <Metric title="Pipeline value" value={formatCurrency(pipelineValue, "inr")} icon={<TrendingUp className="h-5 w-5" />} />
-        <Metric title="Active deals" value={activeDeals.toString()} icon={<Clock className="h-5 w-5" />} />
-        <Metric title="Funded payments" value={formatCurrency(fundedValue, "inr")} icon={<Banknote className="h-5 w-5" />} />
-        <Metric title="Creators represented" value={creators.length.toString()} icon={<Users className="h-5 w-5" />} />
+        <Metric title="Pipeline value" value={<AnimatedNumber value={pipelineValue} format="currency" />} icon={<TrendingUp className="h-5 w-5" />} />
+        <Metric title="Active deals" value={<AnimatedNumber value={activeDeals} />} icon={<Clock className="h-5 w-5" />} />
+        <Metric title="Funded payments" value={<AnimatedNumber value={fundedValue} format="currency" />} icon={<Banknote className="h-5 w-5" />} />
+        <Metric title="Creators represented" value={<AnimatedNumber value={creators.length} />} icon={<Users className="h-5 w-5" />} />
       </section>
 
       <section className="mt-5 grid gap-5 xl:grid-cols-[1.4fr_0.8fr]">
@@ -216,7 +217,7 @@ function checkedCount(value: unknown) {
   return total ? `${completed}/${total} checked` : "No checks yet";
 }
 
-function Metric({ title, value, icon }: { title: string; value: string; icon: React.ReactNode }) {
+function Metric({ title, value, icon }: { title: string; value: React.ReactNode; icon: React.ReactNode }) {
   return (
     <Card>
       <div className="flex items-center justify-between">

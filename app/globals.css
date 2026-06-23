@@ -102,6 +102,13 @@ html {
   background-color: hsl(var(--primary) / 0.25);
 }
 
+/* Calm loading shimmer for <Skeleton> — a gentle opacity breathe, not a
+   strobing flash. Disabled by the reduced-motion block below. */
+@keyframes shimmer {
+  0%, 100% { opacity: 0.55; }
+  50% { opacity: 0.85; }
+}
+
 @media (prefers-reduced-motion: reduce) {
   html {
     scroll-behavior: auto;

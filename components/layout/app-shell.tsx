@@ -7,6 +7,7 @@ import { SentryUserContext } from "@/components/monitoring/sentry-user-context";
 import { NotificationBell } from "@/components/notifications/notification-bell";
 import { ThemeToggle } from "@/components/layout/theme-toggle";
 import { GuidedWalkthrough } from "@/components/onboarding/guided-walkthrough";
+import { PageTransition } from "@/components/motion/page-transition";
 import { WalkthroughLaunchButton } from "@/components/onboarding/walkthrough-launch-button";
 import { Badge } from "@/components/ui/badge";
 import { getCurrentUser } from "@/lib/auth/session";
@@ -189,7 +190,7 @@ export async function AppShell({ children }: { children: React.ReactNode }) {
             </Link>
           ) : null}
         </div>
-        {children}
+        <PageTransition>{children}</PageTransition>
       </main>
       <GuidedWalkthrough role={user?.role ?? "creator"} />
     </div>
