@@ -7,6 +7,7 @@ import {
   ClipboardCheck,
   FileCheck2,
   IndianRupee,
+  Lock,
   ShieldCheck,
   Sparkles,
   Target,
@@ -80,9 +81,30 @@ const useCases = [
   }
 ];
 
+// The headline promise. Wording is escrow-truthful: the money is genuinely
+// secured with Agently before work starts, so "guaranteed" is accurate without
+// claiming insurance or covering brand defaults from our own funds.
+const protectionSteps = [
+  {
+    title: "Brand funds upfront",
+    copy: "The full fee is secured with Agently before you create a thing — so a brand can't ghost you after delivery.",
+    icon: Lock
+  },
+  {
+    title: "You create",
+    copy: "Do the work knowing the money is already set aside for you. No upfront risk, no unpaid spec work.",
+    icon: Sparkles
+  },
+  {
+    title: "Paid on approval",
+    copy: "Deliverable approved, payout released. You never chase an invoice or wait on a brand's accounts team.",
+    icon: Wallet
+  }
+];
+
 const navLinks = [
+  { href: "#protection", label: "Protection" },
   { href: "#who", label: "Who it's for" },
-  { href: "#why", label: "Why Agently" },
   { href: "#use-cases", label: "Use cases" }
 ];
 
@@ -180,7 +202,7 @@ export default async function HomePage() {
           <StaggerItem>
             <div className="mt-8 flex flex-wrap gap-2.5">
               {[
-                { icon: ShieldCheck, label: "Protected payments" },
+                { icon: ShieldCheck, label: "Guaranteed payouts" },
                 { icon: FileCheck2, label: "Contract risk scans" },
                 { icon: BadgeCheck, label: "Free during beta" }
               ].map((chip) => {
@@ -219,6 +241,63 @@ export default async function HomePage() {
                 See who it&apos;s for
                 <ArrowDown className="h-3.5 w-3.5" />
               </a>
+            </div>
+          </Reveal>
+        </div>
+      </section>
+
+      {/* PAYMENT PROTECTION — the headline promise, first thing after the hero */}
+      <section id="protection" className="relative scroll-mt-10 py-16 sm:py-20">
+        <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+          <Reveal>
+            <div className="relative overflow-hidden rounded-3xl border border-teal-400/20 bg-gradient-to-br from-teal-500/[0.10] via-emerald-500/[0.05] to-transparent p-8 sm:p-12">
+              <div aria-hidden className="pointer-events-none absolute -right-20 -top-20 h-64 w-64 rounded-full bg-teal-500/10 blur-3xl" />
+              <div className="relative grid gap-10 lg:grid-cols-[1fr_1fr] lg:items-center">
+                <div>
+                  <p className="mb-4 inline-flex items-center gap-2 rounded-full border border-teal-400/30 bg-teal-400/10 px-4 py-1.5 text-xs font-semibold uppercase tracking-[0.18em] text-teal-300">
+                    <ShieldCheck className="h-3.5 w-3.5" />
+                    Payment protection
+                  </p>
+                  <h2 className="text-4xl font-bold leading-[1.1] tracking-tight text-white sm:text-5xl">
+                    Get paid for approved work.{" "}
+                    <span className="bg-gradient-to-r from-teal-300 via-emerald-300 to-cyan-300 bg-clip-text text-transparent">
+                      Guaranteed.
+                    </span>
+                  </h2>
+                  <p className="mt-5 max-w-xl text-base leading-7 text-slate-300">
+                    Brands fund the deal into Agently <span className="font-semibold text-white">before you create a thing</span>.
+                    The money is secured upfront — so a brand can&apos;t disappear after you&apos;ve delivered, and
+                    you never chase an invoice again.
+                  </p>
+                  <p className="mt-4 max-w-xl text-sm leading-6 text-slate-400">
+                    Deliver the work, get it approved, get paid. That&apos;s the whole promise — and it&apos;s why
+                    creators can say yes to a brand they&apos;ve never worked with.
+                  </p>
+                </div>
+
+                <Stagger className="space-y-3" stagger={0.09}>
+                  {protectionSteps.map((step, i) => {
+                    const Icon = step.icon;
+                    return (
+                      <StaggerItem
+                        key={step.title}
+                        className="flex gap-4 rounded-2xl border border-white/10 bg-white/[0.04] p-5 backdrop-blur"
+                      >
+                        <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-teal-400 to-emerald-500 text-[#070b15] shadow-lg shadow-teal-500/20">
+                          <Icon className="h-5 w-5" />
+                        </div>
+                        <div>
+                          <p className="font-semibold text-white">
+                            <span className="mr-2 text-teal-300">{i + 1}.</span>
+                            {step.title}
+                          </p>
+                          <p className="mt-1 text-sm leading-6 text-slate-400">{step.copy}</p>
+                        </div>
+                      </StaggerItem>
+                    );
+                  })}
+                </Stagger>
+              </div>
             </div>
           </Reveal>
         </div>
