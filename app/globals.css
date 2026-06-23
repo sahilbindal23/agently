@@ -70,6 +70,51 @@ h1, h2, h3, h4 {
   letter-spacing: -0.018em;
 }
 
+/* ── Interaction polish + accessibility ──────────────────────────────────
+   Checklist items from the UI/UX guidance, applied app-wide:
+   - Real pointer cursor on controls. Tailwind's preflight intentionally drops
+     the default button cursor, so without this, buttons feel "dead".
+   - A single, consistent keyboard focus ring on every interactive element
+     (teal, semi-transparent so it reads on both the light app and the dark
+     marketing canvas). Mouse clicks don't trigger it (:focus-visible only).
+   - Smooth in-page anchor scrolling for the section nav.
+   - Branded text selection.
+   - A reduced-motion backstop for CSS animations/transitions, complementing
+     MotionProvider's reducedMotion handling for JS-driven motion. */
+button:not(:disabled),
+[role="button"]:not([aria-disabled="true"]),
+summary,
+label[for] {
+  cursor: pointer;
+}
+
+:where(a, button, [role="button"], input, select, textarea, [tabindex]):focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 3px hsl(var(--ring) / 0.55);
+  border-radius: 6px;
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+::selection {
+  background-color: hsl(var(--primary) / 0.25);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
+  *,
+  ::before,
+  ::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
 /* Dark-mode guardrails for legacy light utility classes.
    Several prototype screens still compose panels directly with bg-white/light
    utilities instead of the shared Card primitive. These overrides keep text and
